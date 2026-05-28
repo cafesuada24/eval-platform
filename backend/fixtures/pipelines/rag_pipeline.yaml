@@ -1,0 +1,6 @@
+name: "customer_support_rag_eval"
+metrics:
+  - metric_name: "hallucination_ai_judge"
+    threshold:
+      fail_over: 3.5
+      warning_over: 2.0

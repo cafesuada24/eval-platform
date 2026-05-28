@@ -63,3 +63,8 @@ backend/
 │   └── services/           
 │       └── metric_agent.py # Metric Builder agent
 ```
+
+## 5. Code format
+* Always adhere to Python 3.12 best practices
+* Always include type hint
+* Use context7-mcp if you need library reference

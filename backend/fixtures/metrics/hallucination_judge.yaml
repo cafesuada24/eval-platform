@@ -1,0 +1,15 @@
+name: "hallucination_ai_judge"
+type: "ai-judge"
+description: "Evaluates if the output_text is strictly grounded in the retrieved_context."
+model_configuration:
+  provider: "anthropic"
+  model: "claude-3-5-sonnet"
+required_inputs:
+  - "output_text"
+  - "retrieved_context"
+scoring_scale:
+  min: 1
+  max: 5
+  data_type: "integer"
+prompt_template: |
+  Analyze if the following statement is fully grounded in the provided context...
