@@ -1,0 +1,20 @@
+[project]
+name = "backend"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "evalplatform-sdk",
+    "fastapi>=0.136.3",
+    "google-genai>=2.6.0",
+    "jinja2>=3.1.6",
+    "litellm>=1.86.2",
+    "pydantic>=2.13.4",
+    "python-dotenv>=1.2.2",
+    "pyyaml>=6.0.3",
+    "uvicorn>=0.48.0",
+]
+
+[tool.uv.sources]
+evalplatform-sdk = { workspace = true, editable = true }
