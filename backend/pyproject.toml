@@ -11,7 +11,6 @@ dependencies = [
     "jinja2>=3.1.6",
     "litellm>=1.86.2",
     "pydantic>=2.13.4",
-    "pytest>=9.0.3",
     "python-dotenv>=1.2.2",
     "pyyaml>=6.0.3",
     "uvicorn>=0.48.0",
@@ -19,3 +18,8 @@ dependencies = [
 
 [tool.uv.sources]
 evalplatform-sdk = { workspace = true, editable = true }
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+]
