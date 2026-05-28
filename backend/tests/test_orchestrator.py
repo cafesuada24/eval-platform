@@ -19,7 +19,7 @@ def test_load_metric_config():
 def test_load_pipeline_config():
     config = load_pipeline_config("customer_support_rag_eval")
     assert config.name == "customer_support_rag_eval"
-    assert len(config.metrics) == 1
+    assert len(config.metrics) == 3
     assert config.metrics[0].metric_name == "hallucination_ai_judge"
 
 @pytest.mark.anyio

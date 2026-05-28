@@ -1,51 +1,31 @@
+import json
 from typing import Any
 
 from app.engine.resolver import SYSTEM_EXTRACTOR_REGISTRY
+from app.models.config import MetricConfig
 from google import genai
 from google.genai import types
 from pydantic import BaseModel, Field
 
 
-class ModelConfigToolInput(BaseModel):
-
-    provider: str = Field(
-        description="The model provider, e.g., 'anthropic' or 'google'"
+class MetricBuilderResponse(BaseModel):
+    response_text: str = Field(
+        description="The friendly conversational response to the user, answering their questions, providing context, or explaining changes."
     )
-    model: str = Field(
-        description="The model name, e.g., 'claude-3-5-sonnet' or 'gemini-2-flash'"
-    )
-
-
-class ScoringScaleToolInput(BaseModel):
-    min: float = Field(description='The minimum possible score value')
-    max: float = Field(description='The maximum possible score value')
-    data_type: str = Field(
-        description="The data type of the score, e.g., 'integer' or 'float'"
+    updated_metric: MetricConfig | None = Field(
+        default=None,
+        description="The complete structured MetricConfig draft, if a metric is being created or updated. Return None if no metric is under discussion or if no changes were made."
     )
 
 
-class UpdateMetricConfigTool(BaseModel):
-    """Form parameters to update or create a MetricConfig."""
-
-    name: str = Field(
-        description='The unique name of the metric (e.g., hallucination_ai_judge)'
-    )
-    type: str = Field(description="The type of the metric (e.g., 'ai-judge')")
-    description: str = Field(
-        description='A clear description of the metric, explaining what it evaluates'
-    )
-    model_configuration: ModelConfigToolInput = Field(
-        description='Configuration of the model used for evaluation'
-    )
-    required_inputs: list[str] = Field(
-        description='Variables required by the metric template, selected ONLY from SYSTEM_EXTRACTOR_REGISTRY.'
-    )
-    prompt_template: str = Field(
-        description='The Jinja2 prompt template using selected variables'
-    )
-    scoring_scale: ScoringScaleToolInput = Field(
-        description='The minimum/maximum values and type of the metric score'
-    )
+def remove_additional_properties(schema: Any) -> Any:
+    """Recursively removes the 'additionalProperties' key from a JSON schema dictionary."""
+    if isinstance(schema, dict):
+        schema.pop("additionalProperties", None)
+        return {k: remove_additional_properties(v) for k, v in schema.items()}
+    elif isinstance(schema, list):
+        return [remove_additional_properties(item) for item in schema]
+    return schema
 
 
 class MetricAgentService:
@@ -64,7 +44,7 @@ class MetricAgentService:
         """Interact with the AI Metric Builder agent.
 
         Injects the Extractor Registry and the current YAML state into the system instruction,
-        and registers the UpdateMetricConfigTool.
+        and enforces structured JSON output matching MetricBuilderResponse.
         """
         allowed_vars = list(SYSTEM_EXTRACTOR_REGISTRY.keys())
 
@@ -73,8 +53,9 @@ class MetricAgentService:
             'CRITICAL RULES:\n'
             '1. You must autonomously decide which system variables are required.\n'
             f'2. You MUST select variables ONLY from this exact list: {allowed_vars}. Do not invent variables.\n'
-            '3. Write the Jinja2 template using your selected variables, write a clear metric `description` explaining the metric, '
-            'and invoke UpdateMetricConfigTool to save or update the configuration.\n'
+            '3. Return the friendly conversational response in `response_text`, explaining any changes.\n'
+            '4. Return the complete, updated structured MetricConfig in `updated_metric`. If the user is creating or modifying a metric, '
+            'ensure that `updated_metric` represents the complete draft configuration with all fields populated appropriately.\n'
         )
 
         if current_yaml_config:
@@ -92,11 +73,14 @@ class MetricAgentService:
                 ),
             )
 
-        called_tool_args = []
-
+        from pydantic import TypeAdapter
+        raw_schema = TypeAdapter(MetricBuilderResponse).json_schema()
+        clean_schema = remove_additional_properties(raw_schema)
 
         config = types.GenerateContentConfig(
             system_instruction=system_instruction,
+            response_mime_type="application/json",
+            response_schema=clean_schema,
         )
 
         response = self.client.models.generate_content(
@@ -105,7 +89,15 @@ class MetricAgentService:
             config=config,
         )
 
+        try:
+            parsed_data = json.loads(response.text)
+            response_text = parsed_data.get("response_text", "")
+            updated_metric = parsed_data.get("updated_metric")
+        except Exception:
+            response_text = response.text
+            updated_metric = None
+
         return {
-            'response_text': response.text,
-            'called_tool_args': called_tool_args,
+            'response_text': response_text,
+            'updated_metric': updated_metric,
         }

@@ -33,7 +33,7 @@ def list_metrics() -> list[MetricConfig]:
 def get_metric(name: str) -> MetricConfig:
     try:
         return load_metric_config(name)
-    except FileNotFoundError:
+    except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail='Metric not found') from e
 
 
@@ -41,7 +41,8 @@ def get_metric(name: str) -> MetricConfig:
 def save_metric(metric: MetricConfig, name: str | None = None):
     if name and name != metric.name:
         raise HTTPException(
-            status_code=400, detail='Name in path does not match metric name',
+            status_code=400,
+            detail='Name in path does not match metric name',
         )
 
     os.makedirs(METRICS_DIR, exist_ok=True)
@@ -71,15 +72,16 @@ def list_pipelines() -> list[PipelineConfig]:
 def get_pipeline(name: str) -> PipelineConfig:
     try:
         return load_pipeline_config(name)
-    except FileNotFoundError:
+    except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail='Pipeline not found') from e
 
 
-@router.put('/pipelines/{name}', response_model=PipelineConfig)
-def save_pipeline(pipeline: PipelineConfig, name: str | None = None):
+@router.put('/pipelines/{name}')
+def save_pipeline(pipeline: PipelineConfig, name: str | None = None) -> PipelineConfig:
     if name and name != pipeline.name:
         raise HTTPException(
-            status_code=400, detail='Name in path does not match pipeline name',
+            status_code=400,
+            detail='Name in path does not match pipeline name',
         )
 
     os.makedirs(PIPELINES_DIR, exist_ok=True)

@@ -3,12 +3,26 @@ import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ListTree, Plus } from "lucide-react"
 
-const pipelines = [
-  { id: "1", name: "Production Chatbot Evals", description: "Runs weekly regression testing against the main production model." },
-  { id: "2", name: "RAG Factuality Pipeline", description: "Evaluates the hallucination rate of retrieved contexts." },
-]
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-export default function PipelinesPage() {
+interface Pipeline {
+  name: string;
+  metrics?: any[];
+}
+
+async function getPipelines(): Promise<Pipeline[]> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/v1/pipelines`, { cache: 'no-store' });
+    if (!res.ok) return [];
+    return res.json();
+  } catch (error) {
+    console.error("Failed to fetch pipelines:", error);
+    return [];
+  }
+}
+
+export default async function PipelinesPage() {
+  const pipelines = await getPipelines();
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-8">
       <div className="flex items-center justify-between">
@@ -35,16 +49,16 @@ export default function PipelinesPage() {
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-          {pipelines.map((pipeline) => (
-            <Link key={pipeline.id} href={`/pipelines/${pipeline.id}`}>
+          {pipelines.map((pipeline, index) => (
+            <Link key={`${pipeline.name}-${index}`} href={`/pipelines/${pipeline.name}`}>
               <Card className="hover:border-primary/50 transition-colors bg-card/50 backdrop-blur-sm cursor-pointer group">
                 <CardHeader>
                   <CardTitle className="group-hover:text-primary transition-colors flex items-center justify-between">
                     {pipeline.name}
                     <ListTree className="w-4 h-4 text-muted-foreground opacity-50 group-hover:opacity-100 transition-opacity" />
                   </CardTitle>
-                  <CardDescription className="line-clamp-2">
-                    {pipeline.description}
+                  <CardDescription>
+                    {pipeline.metrics?.length || 0} configured metrics
                   </CardDescription>
                 </CardHeader>
               </Card>

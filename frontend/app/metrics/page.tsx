@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -16,14 +17,30 @@ import {
 } from "@/components/ui/tooltip"
 import { Pencil, Settings2 } from "lucide-react"
 
-const metrics = [
-  { id: "1", name: "Exact Match", type: "primitive", model: "-", description: "System level exact string match." },
-  { id: "2", name: "Toxicity Judge", type: "custom", model: "gemini-2.5-pro", description: "Evaluates the toxicity of the response." },
-  { id: "3", name: "JSON Validator", type: "primitive", model: "-", description: "Validates JSON structure." },
-  { id: "4", name: "Relevance Scorer", type: "custom", model: "gemini-2.5-flash", description: "Scores the relevance of the output to the prompt." },
-]
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-export default function MetricsPage() {
+interface Metric {
+  id: string;
+  name: string;
+  type: string;
+  model?: string;
+  description: string;
+  model_configuration?: any;
+}
+
+async function getMetrics(): Promise<Metric[]> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/v1/metrics`, { cache: 'no-store' });
+    if (!res.ok) return [];
+    return res.json();
+  } catch (error) {
+    console.error("Failed to fetch metrics:", error);
+    return [];
+  }
+}
+
+export default async function MetricsPage() {
+  const metrics = await getMetrics();
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-8">
       <div className="flex items-center justify-between">
@@ -33,10 +50,12 @@ export default function MetricsPage() {
             Manage your primitive and custom AI-judged evaluation metrics.
           </p>
         </div>
-        <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-          <Settings2 className="w-4 h-4 mr-2" />
-          Create Custom Metric
-        </Button>
+        <Link href="/playground">
+          <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+            <Settings2 className="w-4 h-4 mr-2" />
+            Create Custom Metric
+          </Button>
+        </Link>
       </div>
 
       <div className="border border-border/50 rounded-xl bg-card/50 backdrop-blur-sm overflow-hidden">
@@ -50,8 +69,8 @@ export default function MetricsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {metrics.map((metric) => (
-              <TableRow key={metric.id} className="border-border/50 transition-colors hover:bg-muted/30">
+            {metrics.map((metric, index) => (
+              <TableRow key={metric.id || metric.name || index} className="border-border/50 transition-colors hover:bg-muted/30">
                 <TableCell className="font-medium">
                   <div className="flex flex-col gap-1">
                     <span>{metric.name}</span>
@@ -67,7 +86,7 @@ export default function MetricsPage() {
                   </Badge>
                 </TableCell>
                 <TableCell className="font-mono text-xs text-muted-foreground">
-                  {metric.model}
+                  {metric.model_configuration?.model || metric.model || '-'}
                 </TableCell>
                 <TableCell className="text-right">
                   {metric.type === "primitive" ? (
@@ -85,10 +104,12 @@ export default function MetricsPage() {
                       </Tooltip>
                     </TooltipProvider>
                   ) : (
-                    <Button variant="ghost" size="icon" className="hover:text-primary hover:bg-primary/10">
-                      <Pencil className="w-4 h-4" />
-                      <span className="sr-only">Edit</span>
-                    </Button>
+                    <Link href={`/playground?metric=${metric.name}`}>
+                      <Button variant="ghost" size="icon" className="hover:text-primary hover:bg-primary/10">
+                        <Pencil className="w-4 h-4" />
+                        <span className="sr-only">Edit</span>
+                      </Button>
+                    </Link>
                   )}
                 </TableCell>
               </TableRow>
