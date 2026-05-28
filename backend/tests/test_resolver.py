@@ -4,7 +4,6 @@ from app.engine.resolver import (
     serialize_for_llm,
     resolve_bindings,
     format_prompt,
-    SYSTEM_EXTRACTOR_REGISTRY
 )
 
 def test_serialize_for_llm():
@@ -22,34 +21,17 @@ def test_resolve_bindings_success():
         input_text="What is FastAPI?",
         output_text="FastAPI is a modern web framework.",
         resource_usage={"latency_ms": 150.5},
-        artifacts=[{"type": "retrieved_context", "content": ["FastAPI docs", "FastAPI tutorial"]}],
-        metadata={"user": "admin"}
+        metadata={"input_artifacts_ocr": "ocr text data"},
+        events=[]
     )
     
-    required = ["input_text", "output_text", "latency_ms", "retrieved_context"]
+    required = ["input_text", "output_text", "latency_ms", "input_artifacts_ocr"]
     resolved = resolve_bindings(state, required)
     
     assert resolved["input_text"] == "What is FastAPI?"
     assert resolved["output_text"] == "FastAPI is a modern web framework."
     assert resolved["latency_ms"] == "150.5"
-    assert "FastAPI docs" in resolved["retrieved_context"]
-
-def test_resolve_bindings_metadata_fallback():
-    # Test fallback extraction of retrieved_context and latency_ms from metadata
-    state = RuntimeState(
-        trace_id="trace-123",
-        input_text="hello",
-        output_text="world",
-        metadata={
-            "retrieved_context": "context from metadata",
-            "latency_ms": "300"
-        }
-    )
-    
-    required = ["retrieved_context", "latency_ms"]
-    resolved = resolve_bindings(state, required)
-    assert resolved["retrieved_context"] == "context from metadata"
-    assert resolved["latency_ms"] == "300.0"
+    assert resolved["input_artifacts_ocr"] == "ocr text data"
 
 def test_resolve_bindings_unsupported_variable():
     state = RuntimeState(trace_id="t", input_text="in", output_text="out")
@@ -59,43 +41,78 @@ def test_resolve_bindings_unsupported_variable():
 
 def test_resolve_bindings_missing_value():
     state = RuntimeState(trace_id="t", input_text="in", output_text="out")
-    # latency_ms is not present in state
     with pytest.raises(ValueError) as excinfo:
         resolve_bindings(state, ["latency_ms"])
     assert "could not be extracted from the runtime state" in str(excinfo.value)
 
 def test_format_prompt():
-    template = "Prompt: {{ input_text }}\nResponse: {{ output_text }}\nContext: {{ retrieved_context }}"
+    template = "Prompt: {{ input_text }}\nResponse: {{ output_text }}"
     bindings = {
         "input_text": "hello",
         "output_text": "world",
-        "retrieved_context": "metadata context"
     }
     rendered = format_prompt(template, bindings)
-    assert rendered == "Prompt: hello\nResponse: world\nContext: metadata context"
+    assert rendered == "Prompt: hello\nResponse: world"
 
-def test_resolve_input_artifacts_ocr_fallbacks():
-    # 1. Metadata fallback 'input_artifacts_ocr'
-    state1 = RuntimeState(
-        trace_id="t1", input_text="in", output_text="out",
-        metadata={"input_artifacts_ocr": "ocr text 1"}
+def test_resolve_new_performance_metrics():
+    state = RuntimeState(
+        trace_id="t4", input_text="in", output_text="out",
+        resource_usage={
+            "ocr_process_time_ms": 1200.0,
+            "ocr_failed_rate": 0.05,
+            "retrieval_time_ms": 250.0,
+            "pdf_process_time_ms": 3200.0,
+            "pdf_failed_rate": 0.0
+        }
     )
-    resolved = resolve_bindings(state1, ["input_artifacts_ocr"])
-    assert resolved["input_artifacts_ocr"] == "ocr text 1"
+    
+    required = [
+        "ocr_process_time_ms",
+        "ocr_failed_rate",
+        "retrieval_time_ms",
+        "pdf_process_time_ms",
+        "pdf_failed_rate"
+    ]
+    resolved = resolve_bindings(state, required)
+    
+    assert resolved["ocr_process_time_ms"] == "1200.0"
+    assert resolved["ocr_failed_rate"] == "0.05"
+    assert resolved["retrieval_time_ms"] == "250.0"
+    assert resolved["pdf_process_time_ms"] == "3200.0"
+    assert resolved["pdf_failed_rate"] == "0.0"
 
-    # 2. Metadata fallback 'ocr_text'
-    state2 = RuntimeState(
-        trace_id="t2", input_text="in", output_text="out",
-        metadata={"ocr_text": "ocr text 2"}
+def test_resolve_metrics_from_events():
+    from app.models.telemetry import RuntimeEvent
+    
+    state = RuntimeState(
+        trace_id="t5", input_text="in", output_text="out",
+        events=[
+            RuntimeEvent(
+                event_id="e1", trace_id="t5", event_type="ocr.completed",
+                payload={"ocr_process_time_ms": 1400.0, "ocr_failed_rate": 0.12}
+            ),
+            RuntimeEvent(
+                event_id="e2", trace_id="t5", event_type="pdf.completed",
+                payload={"pdf_process_time_ms": 2800.0, "pdf_failed_rate": 0.0}
+            ),
+            RuntimeEvent(
+                event_id="e3", trace_id="t5", event_type="retrieval.completed",
+                payload={"retrieval_time_ms": 190.0}
+            )
+        ]
     )
-    resolved = resolve_bindings(state2, ["input_artifacts_ocr"])
-    assert resolved["input_artifacts_ocr"] == "ocr text 2"
-
-    # 3. Artifact list fallback 'input_artifacts_ocr'
-    state3 = RuntimeState(
-        trace_id="t3", input_text="in", output_text="out",
-        artifacts=[{"type": "ocr", "content": "ocr text 3"}]
-    )
-    resolved = resolve_bindings(state3, ["input_artifacts_ocr"])
-    assert resolved["input_artifacts_ocr"] == "ocr text 3"
-
+    
+    required = [
+        "ocr_process_time_ms",
+        "ocr_failed_rate",
+        "retrieval_time_ms",
+        "pdf_process_time_ms",
+        "pdf_failed_rate"
+    ]
+    resolved = resolve_bindings(state, required)
+    
+    assert resolved["ocr_process_time_ms"] == "1400.0"
+    assert resolved["ocr_failed_rate"] == "0.12"
+    assert resolved["retrieval_time_ms"] == "190.0"
+    assert resolved["pdf_process_time_ms"] == "2800.0"
+    assert resolved["pdf_failed_rate"] == "0.0"

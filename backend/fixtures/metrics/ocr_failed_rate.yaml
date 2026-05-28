@@ -1,0 +1,10 @@
+name: "ocr_failed_rate"
+type: "primitive"
+description: "Evaluates the failure rate of OCR operation as a percentage or fraction."
+scoring_scale:
+  min: 0.0
+  max: 1.0
+  data_type: "float"
+required_inputs:
+  - "ocr_failed_rate"
+formula: "ocr_failed_rate"

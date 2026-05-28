@@ -1,0 +1,10 @@
+name: "pdf_process_time_ms"
+type: "primitive"
+description: "Evaluates the processing time of PDF parsing operation in milliseconds."
+scoring_scale:
+  min: 0.0
+  max: 60000.0
+  data_type: "float"
+required_inputs:
+  - "pdf_process_time_ms"
+formula: "pdf_process_time_ms"

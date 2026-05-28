@@ -1,10 +1,8 @@
 import json
 from collections.abc import Callable
 from typing import Any
-
 from app.models.telemetry import RuntimeState
 from jinja2 import Template
-
 
 def extract_input_text(state: RuntimeState) -> str:
     return state.input_text
@@ -13,57 +11,75 @@ def extract_output_text(state: RuntimeState) -> str:
     return state.output_text
 
 def extract_retrieved_context(state: RuntimeState) -> Any:
-    # 1. Check metadata
+    if state.events:
+        for ev in state.events:
+            if ev.event_type == "retrieval.completed" and "retrieved_context" in ev.payload:
+                return ev.payload["retrieved_context"]
     if state.metadata and "retrieved_context" in state.metadata:
         return state.metadata["retrieved_context"]
-    if state.metadata and "context" in state.metadata:
-        return state.metadata["context"]
-    # 2. Check artifacts
-    if state.artifacts:
-        for art in state.artifacts:
-            if art.get("type") == "retrieved_context":
-                return art.get("content")
-            if "retrieved_context" in art:
-                return art["retrieved_context"]
-            if "content" in art and art.get("name") == "retrieved_context":
-                return art["content"]
     return None
 
 def extract_latency_ms(state: RuntimeState) -> float | None:
+    if state.events:
+        for ev in state.events:
+            if ev.event_type == "generation.completed" and "latency_ms" in ev.payload:
+                return float(ev.payload["latency_ms"])
     if state.resource_usage and "latency_ms" in state.resource_usage:
-        try:
-            return float(state.resource_usage["latency_ms"])
-        except (ValueError, TypeError):
-            pass
-    if state.metadata and "latency_ms" in state.metadata:
-        try:
-            return float(state.metadata["latency_ms"])
-        except (ValueError, TypeError):
-            pass
+        return float(state.resource_usage["latency_ms"])
     return None
 
 def extract_input_artifacts_ocr(state: RuntimeState) -> Any:
-    # 1. Check metadata
-    if state.metadata:
-        if "input_artifacts_ocr" in state.metadata:
-            return state.metadata["input_artifacts_ocr"]
-        if "ocr_text" in state.metadata:
-            return state.metadata["ocr_text"]
-        if "artifacts_ocr" in state.metadata:
-            return state.metadata["artifacts_ocr"]
+    if state.events:
+        for ev in state.events:
+            if ev.event_type == "ocr.completed" and "input_artifacts_ocr" in ev.payload:
+                return ev.payload["input_artifacts_ocr"]
+    if state.metadata and "input_artifacts_ocr" in state.metadata:
+        return state.metadata["input_artifacts_ocr"]
+    return None
 
-    # 2. Check artifacts list
-    if state.artifacts:
-        for art in state.artifacts:
-            if isinstance(art, dict):
-                art_type = str(art.get("type", "")).lower()
-                art_name = str(art.get("name", "")).lower()
-                if art_type in ("ocr", "input_artifacts_ocr") or art_name in ("ocr", "input_artifacts_ocr"):
-                    return art.get("content") or art.get("ocr_text")
-                if "input_artifacts_ocr" in art:
-                    return art["input_artifacts_ocr"]
-                if "content" in art and art.get("name") == "input_artifacts_ocr":
-                    return art["content"]
+def extract_ocr_process_time_ms(state: RuntimeState) -> float | None:
+    if state.events:
+        for ev in state.events:
+            if ev.event_type == "ocr.completed" and "ocr_process_time_ms" in ev.payload:
+                return float(ev.payload["ocr_process_time_ms"])
+    if state.resource_usage and "ocr_process_time_ms" in state.resource_usage:
+        return float(state.resource_usage["ocr_process_time_ms"])
+    return None
+
+def extract_ocr_failed_rate(state: RuntimeState) -> float | None:
+    if state.events:
+        for ev in state.events:
+            if ev.event_type == "ocr.completed" and "ocr_failed_rate" in ev.payload:
+                return float(ev.payload["ocr_failed_rate"])
+    if state.resource_usage and "ocr_failed_rate" in state.resource_usage:
+        return float(state.resource_usage["ocr_failed_rate"])
+    return None
+
+def extract_retrieval_time_ms(state: RuntimeState) -> float | None:
+    if state.events:
+        for ev in state.events:
+            if ev.event_type == "retrieval.completed" and "retrieval_time_ms" in ev.payload:
+                return float(ev.payload["retrieval_time_ms"])
+    if state.resource_usage and "retrieval_time_ms" in state.resource_usage:
+        return float(state.resource_usage["retrieval_time_ms"])
+    return None
+
+def extract_pdf_process_time_ms(state: RuntimeState) -> float | None:
+    if state.events:
+        for ev in state.events:
+            if ev.event_type == "pdf.completed" and "pdf_process_time_ms" in ev.payload:
+                return float(ev.payload["pdf_process_time_ms"])
+    if state.resource_usage and "pdf_process_time_ms" in state.resource_usage:
+        return float(state.resource_usage["pdf_process_time_ms"])
+    return None
+
+def extract_pdf_failed_rate(state: RuntimeState) -> float | None:
+    if state.events:
+        for ev in state.events:
+            if ev.event_type == "pdf.completed" and "pdf_failed_rate" in ev.payload:
+                return float(ev.payload["pdf_failed_rate"])
+    if state.resource_usage and "pdf_failed_rate" in state.resource_usage:
+        return float(state.resource_usage["pdf_failed_rate"])
     return None
 
 # Extractor Registry
@@ -73,6 +89,11 @@ SYSTEM_EXTRACTOR_REGISTRY: dict[str, Callable[[RuntimeState], Any]] = {
     "retrieved_context": extract_retrieved_context,
     "latency_ms": extract_latency_ms,
     "input_artifacts_ocr": extract_input_artifacts_ocr,
+    "ocr_process_time_ms": extract_ocr_process_time_ms,
+    "ocr_failed_rate": extract_ocr_failed_rate,
+    "retrieval_time_ms": extract_retrieval_time_ms,
+    "pdf_process_time_ms": extract_pdf_process_time_ms,
+    "pdf_failed_rate": extract_pdf_failed_rate,
 }
 
 def serialize_for_llm(value: Any) -> str:

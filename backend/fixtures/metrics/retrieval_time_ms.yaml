@@ -1,0 +1,10 @@
+name: "retrieval_time_ms"
+type: "primitive"
+description: "Evaluates the database/vector store retrieval execution time in milliseconds."
+scoring_scale:
+  min: 0.0
+  max: 10000.0
+  data_type: "float"
+required_inputs:
+  - "retrieval_time_ms"
+formula: "retrieval_time_ms"

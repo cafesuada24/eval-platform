@@ -19,3 +19,4 @@ class RuntimeState(BaseModel):
     resource_usage: dict[str, Any] | None = None
     artifacts: list[dict[str, Any]] | None = None
     metadata: dict[str, Any] | None = None
+    events: list[RuntimeEvent] | None = None
