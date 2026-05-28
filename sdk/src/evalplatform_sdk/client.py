@@ -9,6 +9,14 @@ from .models import RuntimeEvent
 
 logger = logging.getLogger(__name__)
 
+_default_client = None
+
+def get_default_client() -> "EvalClient":
+    """Retrieves the default initialized EvalClient instance."""
+    if _default_client is None:
+        raise RuntimeError("EvalPlatform SDK is not initialized. Create an EvalClient first.")
+    return _default_client
+
 
 class EvalClient:
     """
@@ -24,6 +32,10 @@ class EvalClient:
         max_buffer_size: int = 50,
         max_buffer_capacity: int = 5000,
     ) -> None:
+        global _default_client
+        if _default_client is None:
+            _default_client = self
+
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
         self.flush_interval_seconds = flush_interval_seconds
@@ -66,22 +78,38 @@ class EvalClient:
             self._flush_event.set()
 
     def _background_loop(self) -> None:
-        """Background worker loop to flush buffer periodically."""
-        while not self._stop_event.is_set():
-            # Wait until either the flush interval passes or flush is triggered
-            self._flush_event.wait(self.flush_interval_seconds)
-            self._flush_event.clear()
-            self._flush_buffer()
+        """Background worker loop to flush buffer periodically with exponential backoff."""
+        consecutive_failures = 0
+        base_backoff = 2.0
 
-    def _flush_buffer(self) -> None:
-        """Safely extracts all items from the buffer and dispatches them via HTTP."""
+        while not self._stop_event.is_set():
+            wait_time = self.flush_interval_seconds
+            if consecutive_failures > 0:
+                # Exponential backoff up to ~60 seconds
+                wait_time = min(60.0, base_backoff ** consecutive_failures)
+
+            # Wait until either the flush interval passes or flush is triggered
+            self._flush_event.wait(wait_time)
+            self._flush_event.clear()
+            
+            success = self._flush_buffer()
+            if success:
+                consecutive_failures = 0
+            else:
+                consecutive_failures += 1
+
+    def _flush_buffer(self) -> bool:
+        """
+        Safely extracts batch from buffer and dispatches them via HTTP.
+        Returns True on success or empty, False on network/5xx errors to trigger backoff.
+        """
         with self._lock:
             if not self._buffer:
-                return
+                return True
 
-            # Extract batch and clear buffer
-            payload_events = self._buffer[:]
-            self._buffer.clear()
+            # Extract batch and clear from buffer
+            payload_events = self._buffer[:self.max_buffer_size]
+            del self._buffer[:self.max_buffer_size]
 
         payload = [event.model_dump(mode="json") for event in payload_events]
 
@@ -91,8 +119,27 @@ class EvalClient:
                 f"{self.base_url}/v1/events", json={"events": payload}
             )
             response.raise_for_status()
+            return True
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code >= 500:
+                logger.warning("EvalPlatform backend error (%d). Re-queueing events.", e.response.status_code)
+                self._requeue_events(payload_events)
+                return False
+            else:
+                # 4xx errors mean bad data, we shouldn't retry
+                logger.warning("EvalPlatform rejected telemetry data: %s", e)
+                return True
         except Exception as e:
             logger.warning("Failed to flush telemetry events to EvalPlatform: %s", e)
+            self._requeue_events(payload_events)
+            return False
+
+    def _requeue_events(self, events: list[RuntimeEvent]) -> None:
+        """Pushes events back into the front of the buffer, respecting max capacity."""
+        with self._lock:
+            combined = events + self._buffer
+            # Keep newest elements if capacity is exceeded
+            self._buffer = combined[-self.max_buffer_capacity:]
 
     def flush_sync(self) -> None:
         """Synchronously flush remaining events. Useful for shutdown operations."""
