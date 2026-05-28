@@ -1,5 +1,9 @@
 from fastapi import FastAPI
-from app.api.routes import events
+from app.api.routes import events, configs, agent
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI(
     title="EvalPlatform Backend",
@@ -9,6 +13,8 @@ app = FastAPI(
 
 # Include the routers
 app.include_router(events.router, prefix="/v1", tags=["events"])
+app.include_router(configs.router, prefix="/v1", tags=["configs"])
+app.include_router(agent.router, prefix="/v1/agent", tags=["agent"])
 
 @app.get("/healthz")
 async def healthz():
