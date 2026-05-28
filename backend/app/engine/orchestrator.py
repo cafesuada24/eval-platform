@@ -176,22 +176,21 @@ async def _run_single_metric(
             assertion_status=assertion_status,
         )
 
-    else:
-        bindings = resolve_bindings(state, config.required_inputs)
-        if not config.prompt_template:
-            raise ValueError(
-                f"AI-judge metric '{config.name}' must have a prompt_template."
-            )
-        prompt = format_prompt(config.prompt_template, bindings)
-        judge_output = await execute_ai_judge_async(config, prompt)
-        assertion_status = evaluate_threshold(judge_output.score, metric_item.threshold)
-
-        return MetricRunResult(
-            metric_name=metric_item.metric_name,
-            score=judge_output.score,
-            justification=judge_output.justification,
-            assertion_status=assertion_status,
+    bindings = resolve_bindings(state, config.required_inputs)
+    if not config.prompt_template:
+        raise ValueError(
+            f"AI-judge metric '{config.name}' must have a prompt_template."
         )
+    prompt = format_prompt(config.prompt_template, bindings)
+    judge_output = await execute_ai_judge_async(config, prompt)
+    assertion_status = evaluate_threshold(judge_output.score, metric_item.threshold)
+
+    return MetricRunResult(
+        metric_name=metric_item.metric_name,
+        score=judge_output.score,
+        justification=judge_output.justification,
+        assertion_status=assertion_status,
+    )
 
 
 async def execute_pipeline(

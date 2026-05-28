@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import events, configs, agent
 
 from dotenv import load_dotenv
@@ -9,6 +10,14 @@ app = FastAPI(
     title="EvalPlatform Backend",
     description="The central ingestion, parsing, and execution engine for the EvalPlatform observability ecosystem.",
     version="0.1.0"
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Include the routers

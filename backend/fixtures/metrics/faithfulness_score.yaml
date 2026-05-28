@@ -1,0 +1,21 @@
+name: faithfulness_score
+type: ai-judge
+description: Evaluates whether the output_text is fully supported by the retrieved_context.
+  A score of 1 indicates the output is completely unsupported or hallucinates information,
+  while 5 indicates the output is entirely faithful to the provided context.
+model_configuration:
+  provider: openai
+  model: gpt-4o
+required_inputs:
+- retrieved_context
+- output_text
+prompt_template: "Evaluate the faithfulness of the following output based ONLY on\
+  \ the provided context. \n\nContext: {{ retrieved_context }}\nOutput: {{ output_text\
+  \ }}\n\nScore the faithfulness on a scale of 1 to 5, where:\n1: The output contradicts\
+  \ or contains information not present in the context.\n5: The output is entirely\
+  \ derived from and supported by the context.\n\nProvide your reasoning and the final\
+  \ score in the format:\nReasoning: <your reasoning>\nScore: <1-5>"
+scoring_scale:
+  min: 1.0
+  max: 5.0
+  data_type: integer

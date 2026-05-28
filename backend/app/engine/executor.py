@@ -12,6 +12,7 @@ class JudgeOutput(BaseModel):
 
 def get_litellm_model_name(config: MetricConfig) -> str:
     """Format provider and model name properly for litellm.
+
     e.g., 'anthropic/claude-3-5-sonnet' or 'google/gemini-1.5-pro'
     """
     provider = config.model_configuration.provider.lower()
@@ -38,6 +39,7 @@ def get_system_instruction(config: MetricConfig) -> str:
 
 def execute_ai_judge(config: MetricConfig, prompt: str) -> JudgeOutput:
     """Synchronously execute the evaluation metric prompt via LiteLLM.
+
     Enforces a JSON object response format.
     """
     model_name = get_litellm_model_name(config)

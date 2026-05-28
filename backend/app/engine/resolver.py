@@ -1,8 +1,10 @@
 import json
 from collections.abc import Callable
 from typing import Any
+
 from app.models.telemetry import RuntimeState
 from jinja2 import Template
+
 
 def extract_input_text(state: RuntimeState) -> str:
     return state.input_text

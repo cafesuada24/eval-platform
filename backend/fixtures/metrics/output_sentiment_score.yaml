@@ -1,0 +1,29 @@
+name: output_sentiment_score
+type: custom
+description: Custom AI judge metric for output_sentiment_score
+model_configuration:
+  provider: google
+  model: gemini-2.5-pro
+  temperature: 0.2
+required_inputs:
+- output_text
+prompt_template: 'Analyze the sentiment of the following text:
+
+
+  {{ output_text }}
+
+
+  Provide a score between 0.0 and 1.0, where:
+
+  0.0 = Very Negative
+
+  0.5 = Neutral
+
+  1.0 = Very Positive
+
+
+  Return only the decimal score.'
+scoring_scale:
+  min: 1.0
+  max: 5.0
+  data_type: integer

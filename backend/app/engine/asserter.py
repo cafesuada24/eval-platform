@@ -6,13 +6,15 @@ AssertionResult = Literal['pass', 'fail', 'warning']
 
 
 def evaluate_threshold(
-    score: float, threshold: ThresholdConfig | None,
+    score: float,
+    threshold: ThresholdConfig | None,
 ) -> AssertionResult:
     """Evaluates a metric's score against optional semantic thresholds in order of severity:
     1. Critical failures (fail_over, fail_below)
     2. Warnings (warning_over, warning_below)
     Returns "pass" if no boundaries are breached.
     """
+
     if not threshold:
         return 'pass'
 

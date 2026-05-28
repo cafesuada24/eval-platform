@@ -1,0 +1,16 @@
+name: customer_support_rag_eval
+metrics:
+- metric_name: hallucination_ai_judge
+  threshold:
+    fail_over: 3.5
+    fail_below: null
+    warning_over: 2.0
+    warning_below: null
+- metric_name: latency_seconds
+  threshold:
+    fail_over: null
+    fail_below: null
+    warning_over: null
+    warning_below: null
+- metric_name: structural_integrity_judge
+  threshold: {}
