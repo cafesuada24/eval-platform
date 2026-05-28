@@ -73,3 +73,29 @@ def test_format_prompt():
     }
     rendered = format_prompt(template, bindings)
     assert rendered == "Prompt: hello\nResponse: world\nContext: metadata context"
+
+def test_resolve_input_artifacts_ocr_fallbacks():
+    # 1. Metadata fallback 'input_artifacts_ocr'
+    state1 = RuntimeState(
+        trace_id="t1", input_text="in", output_text="out",
+        metadata={"input_artifacts_ocr": "ocr text 1"}
+    )
+    resolved = resolve_bindings(state1, ["input_artifacts_ocr"])
+    assert resolved["input_artifacts_ocr"] == "ocr text 1"
+
+    # 2. Metadata fallback 'ocr_text'
+    state2 = RuntimeState(
+        trace_id="t2", input_text="in", output_text="out",
+        metadata={"ocr_text": "ocr text 2"}
+    )
+    resolved = resolve_bindings(state2, ["input_artifacts_ocr"])
+    assert resolved["input_artifacts_ocr"] == "ocr text 2"
+
+    # 3. Artifact list fallback 'input_artifacts_ocr'
+    state3 = RuntimeState(
+        trace_id="t3", input_text="in", output_text="out",
+        artifacts=[{"type": "ocr", "content": "ocr text 3"}]
+    )
+    resolved = resolve_bindings(state3, ["input_artifacts_ocr"])
+    assert resolved["input_artifacts_ocr"] == "ocr text 3"
+

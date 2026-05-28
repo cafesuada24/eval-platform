@@ -6,9 +6,31 @@
 **Goal:** Establish the strict Pydantic schemas that mirror the backend, ensuring data is validated client-side before network transmission.
 
 1.  **Core Models (`src/evalplatform_sdk/models.py`)**:
-    * Create `Artifact` (BaseModel): `type` (str), `content` (Any), `metadata` (Optional[Dict]).
-    * Create `RuntimeEvent` (BaseModel): `event_id` (str), `trace_id` (str), `event_type` (str), `timestamp` (datetime), `payload` (Dict), `metadata` (Dict).
-    * Create `RuntimeState` (BaseModel): `trace_id` (str), `input_text` (str), `output_text` (str), `resource_usage` (Dict containing `latency_ms`, `total_tokens`, etc.), `artifacts` (List[Artifact]), `metadata` (Dict).
+    * Create `Artifact` (BaseModel): 
+      * `type`: str. **Crucial Standard:** Use specific types like `"application/pdf"`, `"image_ocr"`, or `"generated_image_description"` to ensure backend compatibility.
+      * `content`: Any (String for OCR text, Base64 for raw images).
+      * `metadata`: dict | None.
+    * Create `RuntimeEvent` (BaseModel): ...
+    * Create `RuntimeState` (BaseModel): ...
+    ```python
+    from typing import Any, Literal, Optional
+    from pydantic import BaseModel
+
+    ArtifactType = Literal[
+        "document/text",        # Markdown, TXT
+        "document/pdf",
+        "image/ocr",            # Tesseract/Vision API results
+        "image/caption",        # Descriptive image alt-text
+        "generated/description" # LLM outputted image context
+    ]
+
+    class Artifact(BaseModel):
+        type: ArtifactType
+        content: Any
+        metadata: dict[str, Any] | None = None
+        
+    class RuntimeState(BaseModel): ... # Core properties
+    ```
 
 ---
 

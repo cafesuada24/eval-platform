@@ -42,12 +42,37 @@ def extract_latency_ms(state: RuntimeState) -> float | None:
             pass
     return None
 
+def extract_input_artifacts_ocr(state: RuntimeState) -> Any:
+    # 1. Check metadata
+    if state.metadata:
+        if "input_artifacts_ocr" in state.metadata:
+            return state.metadata["input_artifacts_ocr"]
+        if "ocr_text" in state.metadata:
+            return state.metadata["ocr_text"]
+        if "artifacts_ocr" in state.metadata:
+            return state.metadata["artifacts_ocr"]
+
+    # 2. Check artifacts list
+    if state.artifacts:
+        for art in state.artifacts:
+            if isinstance(art, dict):
+                art_type = str(art.get("type", "")).lower()
+                art_name = str(art.get("name", "")).lower()
+                if art_type in ("ocr", "input_artifacts_ocr") or art_name in ("ocr", "input_artifacts_ocr"):
+                    return art.get("content") or art.get("ocr_text")
+                if "input_artifacts_ocr" in art:
+                    return art["input_artifacts_ocr"]
+                if "content" in art and art.get("name") == "input_artifacts_ocr":
+                    return art["content"]
+    return None
+
 # Extractor Registry
 SYSTEM_EXTRACTOR_REGISTRY: dict[str, Callable[[RuntimeState], Any]] = {
     "input_text": extract_input_text,
     "output_text": extract_output_text,
     "retrieved_context": extract_retrieved_context,
     "latency_ms": extract_latency_ms,
+    "input_artifacts_ocr": extract_input_artifacts_ocr,
 }
 
 def serialize_for_llm(value: Any) -> str:

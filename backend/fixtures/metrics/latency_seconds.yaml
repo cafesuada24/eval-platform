@@ -1,0 +1,10 @@
+name: "latency_seconds"
+type: "primitive"
+description: "Directly evaluates the response latency in seconds by dividing the milliseconds value by 1000."
+scoring_scale:
+  min: 0.0
+  max: 60.0
+  data_type: "float"
+required_inputs:
+  - "latency_ms"
+formula: "latency_ms / 1000"

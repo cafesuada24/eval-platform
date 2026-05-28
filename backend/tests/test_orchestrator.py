@@ -95,3 +95,82 @@ async def test_execute_pipeline_aggregation(mock_execute_async):
 
     result = await execute_pipeline(state, pipeline)
     assert result.overall_status == "fail"
+
+def test_load_latency_seconds_config():
+    config = load_metric_config("latency_seconds")
+    assert config.name == "latency_seconds"
+    assert config.type == "primitive"
+    assert config.formula == "latency_ms / 1000"
+
+@pytest.mark.anyio
+async def test_run_single_primitive_metric_success():
+    state = RuntimeState(
+        trace_id="trace-123",
+        input_text="Hi",
+        output_text="FastAPI is modern.",
+        resource_usage={"latency_ms": 1500.0}
+    )
+
+    metric_item = PipelineMetric(
+        metric_name="latency_seconds",
+        threshold=ThresholdConfig(fail_over=2.0, warning_over=1.0)
+    )
+
+    # 1500.0 / 1000.0 = 1.5 -> warning status (> 1.0 but <= 2.0)
+    result = await _run_single_metric(state, metric_item)
+    assert result.metric_name == "latency_seconds"
+    assert result.score == 1.5
+    assert "divided by 1000.0" in result.justification
+    assert result.assertion_status == "warning"
+
+@pytest.mark.anyio
+async def test_run_single_primitive_metric_missing_target():
+    state = RuntimeState(
+        trace_id="trace-123",
+        input_text="Hi",
+        output_text="FastAPI is modern.",
+        resource_usage={} # missing latency_ms
+    )
+
+    metric_item = PipelineMetric(
+        metric_name="latency_seconds"
+    )
+
+    with pytest.raises(ValueError) as excinfo:
+        await _run_single_metric(state, metric_item)
+    assert "could not be extracted from the runtime state" in str(excinfo.value)
+
+@pytest.mark.anyio
+async def test_run_single_primitive_metric_math_operations():
+    state = RuntimeState(
+        trace_id="trace-123",
+        input_text="Hi",
+        output_text="FastAPI is modern.",
+        resource_usage={"latency_ms": 100.0}
+    )
+
+    # 1. Multiply test (100.0 * 5.0 = 500.0)
+    metric_config = load_metric_config("latency_seconds")
+    metric_config.formula = "latency_ms * 5"
+
+    with patch("app.engine.orchestrator.load_metric_config", return_value=metric_config):
+        metric_item = PipelineMetric(metric_name="latency_seconds")
+        result = await _run_single_metric(state, metric_item)
+        assert result.score == 500.0
+        assert "multiplied by 5.0" in result.justification
+
+    # 2. Add test (100.0 + 10.0 = 110.0)
+    metric_config.formula = "latency_ms + 10"
+    with patch("app.engine.orchestrator.load_metric_config", return_value=metric_config):
+        result = await _run_single_metric(state, metric_item)
+        assert result.score == 110.0
+        assert "added 10.0" in result.justification
+
+    # 3. Subtract test (100.0 - 20.0 = 80.0)
+    metric_config.formula = "latency_ms - 20"
+    with patch("app.engine.orchestrator.load_metric_config", return_value=metric_config):
+        result = await _run_single_metric(state, metric_item)
+        assert result.score == 80.0
+        assert "subtracted 20.0" in result.justification
+
+
