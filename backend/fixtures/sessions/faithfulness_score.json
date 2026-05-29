@@ -1,9 +1,0 @@
-{
-  "metric_name": "faithfulness_score",
-  "messages": [
-    {
-      "role": "user",
-      "content": "[Test Run]\n**Inputs:**\n- **retrieved_context**: ### Sprint 4: Advanced Metrics & Observability\n**Goal: Detect drift and evaluate using AI judges.**\n* **Core Team**:\n  - Implement the `DriftDetector` (rolling averages vs. configured pipeline thresholds).\n  - Build simple alerting/logging for detected drift.\n* **Representative Agent Team**:\n  - Implement hallucination fault injection (returning factually incorrect data).\n  - Build the offline test runner script that loops through the Golden Dataset and hits the Agent.\n* **Metrics Builder Team**:\n  - Implement the `hallucination_detection` AI Judge metric (integrating with an LLM provider).\n* **Golden Dataset Team**:\n  - Finalize all dataset annotations.\n  - Define clear rubrics for what constitutes a \"hallucination\" in the dataset.\n\n### Sprint 4: Advanced Metrics & Observability\n**Goal: Detect drift and evaluate using AI judges.**\n* **Core Team**:\n  - Implement the `DriftDetector` (rolling averages vs. configured pipeline thresholds).\n  - Build simple alerting/logging for detected drift.\n* **Representative Agent Team**:\n  - Implement hallucination fault injection (returning factually incorrect data).\n  - Build the offline test runner script that loops through the Golden Dataset and hits the Agent.\n* **Metrics Builder Team**:\n  - Implement the `hallucination_detection` AI Judge metric (integrating with an LLM provider).\n* **Golden Dataset Team**:\n  - Finalize all dataset annotations.\n  - Define clear rubrics for what constitutes a \"hallucination\" in the dataset.\n- **output_text**: Hello! How can I help you today?\n\n**Result:**\n- Score: 1.0\n- Justification: The output is a generic conversational greeting that is completely unrelated to the provided context regarding Sprint 4 tasks and does not contain any information derived from the context."
-    }
-  ]
-}
