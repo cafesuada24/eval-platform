@@ -49,19 +49,33 @@
 ## 4. Backend Directory Structure
 
 ```text
-backend/
-├── pyproject.toml          # uv project dependencies
-├── fixtures/               # Ground-truth YAML configs for testing
-├── app/
-│   ├── api/                # FastAPI routers
-│   ├── models/             # Pydantic schemas (telemetry.py, config.py)
-│   ├── engine/             # The Evaluation Core
-│   │   ├── resolver.py     # Extractor Registry & Serialization
-│   │   ├── executor.py     # LiteLLM routing
-│   │   ├── asserter.py     # Threshold evaluation logic
-│   │   └── orchestrator.py # NEW: Pipeline Executor & Concurrency
-│   └── services/           
-│       └── metric_agent.py # Metric Builder agent
+backend
+├── AGENTS.md
+├── API.md
+├── app
+│   ├── api
+│   │   └── v1
+│   ├── core
+│   │   ├── agents        # Agent features
+│   │   ├── config.py
+│   │   ├── eval_engine   # Evaluation engine feature
+│   │   ├── exceptions.py
+│   │   ├── shared        # Shared stuff
+│   ├── infra
+│   │   ├── agents
+│   │   ├── dtos
+│   │   ├── __init__.py
+│   │   └── services
+│   └── main.py
+├── fixtures
+│   ├── chromadb
+│   ├── metrics                 
+│   ├── pipelines
+│   ├── sessions
+│   └── uploads
+├── pyproject.toml
+├── README.md
+└── tests
 ```
 
 ## 5. Code format

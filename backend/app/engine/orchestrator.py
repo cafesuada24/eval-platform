@@ -15,7 +15,7 @@ from app.models.report import MetricRunResult, PipelineResult
 from app.models.telemetry import RuntimeState
 
 # Resolve paths relative to backend directory
-if os.environ.get("PYTEST_CURRENT_TEST"):
+if os.environ.get('PYTEST_CURRENT_TEST'):
     FIXTURES_DIR = os.path.abspath(
         os.path.join(os.path.dirname(__file__), '..', '..', 'fixtures', 'test_run'),
     )
@@ -89,7 +89,7 @@ def parse_formula(formula: str) -> tuple[str, str | None, float | None]:
     formula = formula.strip()
     # Pattern to match: <variable> <operator> <number>
     # Operators allowed: /, *, +, -
-    pattern = r"^([a-zA-Z_][a-zA-Z0-9_]*)\s*([/*+-])\s*([+-]?\d*(?:\.\d+)?)$"
+    pattern = r'^([a-zA-Z_][a-zA-Z0-9_]*)\s*([/*+-])\s*([+-]?\d*(?:\.\d+)?)$'
     match = re.match(pattern, formula)
     if match:
         var_name = match.group(1)
@@ -101,7 +101,7 @@ def parse_formula(formula: str) -> tuple[str, str | None, float | None]:
             pass
 
     # If it is just a plain variable name
-    if re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", formula):
+    if re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', formula):
         return formula, None, None
 
     raise ValueError(
@@ -210,7 +210,7 @@ async def execute_pipeline(
     # 1. fail if any metric fails
     # 2. warning if any metric warnings
     # 3. pass otherwise
-    overall_status = 'pass'
+    overall_status = max(result.assertion_status for result in results)
     for r in results:
         if r.assertion_status == 'fail':
             overall_status = 'fail'
