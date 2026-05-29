@@ -15,9 +15,14 @@ from app.models.report import MetricRunResult, PipelineResult
 from app.models.telemetry import RuntimeState
 
 # Resolve paths relative to backend directory
-FIXTURES_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '..', '..', 'fixtures'),
-)
+if os.environ.get("PYTEST_CURRENT_TEST"):
+    FIXTURES_DIR = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), '..', '..', 'fixtures', 'test_run'),
+    )
+else:
+    FIXTURES_DIR = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), '..', '..', 'fixtures'),
+    )
 
 
 def load_metric_config(metric_name: str) -> MetricConfig:

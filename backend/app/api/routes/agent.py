@@ -115,9 +115,10 @@ async def chat_with_agent(request: ChatRequest) -> ChatResponse:
             detail='No message or message history provided in request.',
         )
 
-    # Format messages for the Gemini SDK call
+    # Format messages for the Gemini SDK call, excluding system-generated [Test Run] logs from conversational history
     formatted_messages = [
         {'role': msg.role, 'content': msg.content} for msg in messages_list
+        if not msg.content.startswith('[Test Run]')
     ]
 
     try:

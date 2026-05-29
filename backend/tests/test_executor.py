@@ -52,6 +52,7 @@ def test_execute_ai_judge(mock_completion, dummy_metric_config):
     kwargs = mock_completion.call_args.kwargs
     assert kwargs["model"] == "anthropic/claude-3-5-sonnet"
     assert kwargs["response_format"] == {"type": "json_object"}
+    assert kwargs["temperature"] == 0.2
 
 @pytest.mark.anyio
 @patch("app.engine.executor.litellm.acompletion")
@@ -69,3 +70,7 @@ async def test_execute_ai_judge_async(mock_acompletion, dummy_metric_config):
     assert output.justification == "Average."
 
     mock_acompletion.assert_called_once()
+    kwargs = mock_acompletion.call_args.kwargs
+    assert kwargs["model"] == "anthropic/claude-3-5-sonnet"
+    assert kwargs["response_format"] == {"type": "json_object"}
+    assert kwargs["temperature"] == 0.2

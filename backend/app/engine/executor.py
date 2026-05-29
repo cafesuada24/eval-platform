@@ -17,9 +17,9 @@ def get_litellm_model_name(config: MetricConfig) -> str:
     """
     provider = config.model_configuration.provider.lower()
     model = config.model_configuration.model
-    if provider and not model.startswith(f'{provider}/'):
-        return f'{provider}/{model}'
-    return model
+    if model.lower().startswith(f'{provider}/'):
+        return model
+    return f'{provider}/{model}'
 
 
 def get_system_instruction(config: MetricConfig) -> str:
@@ -44,6 +44,11 @@ def execute_ai_judge(config: MetricConfig, prompt: str) -> JudgeOutput:
     """
     model_name = get_litellm_model_name(config)
     system_instruction = get_system_instruction(config)
+    temperature = (
+        config.model_configuration.temperature
+        if config.model_configuration is not None
+        else 0.2
+    )
 
     messages = [
         {'role': 'system', 'content': system_instruction},
@@ -54,6 +59,7 @@ def execute_ai_judge(config: MetricConfig, prompt: str) -> JudgeOutput:
         model=model_name,
         messages=messages,
         response_format={'type': 'json_object'},
+        temperature=temperature,
     )
 
     content = response.choices[0].message.content
@@ -67,6 +73,11 @@ async def execute_ai_judge_async(config: MetricConfig, prompt: str) -> JudgeOutp
     """
     model_name = get_litellm_model_name(config)
     system_instruction = get_system_instruction(config)
+    temperature = (
+        config.model_configuration.temperature
+        if config.model_configuration is not None
+        else 0.2
+    )
 
     messages = [
         {'role': 'system', 'content': system_instruction},
@@ -77,6 +88,7 @@ async def execute_ai_judge_async(config: MetricConfig, prompt: str) -> JudgeOutp
         model=model_name,
         messages=messages,
         response_format={'type': 'json_object'},
+        temperature=temperature,
     )
 
     content = response.choices[0].message.content

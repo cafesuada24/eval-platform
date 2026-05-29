@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.routes import events, configs, agent
+from app.api.routes import events, configs, agent, playground
 
 from dotenv import load_dotenv
 
@@ -24,7 +24,9 @@ app.add_middleware(
 app.include_router(events.router, prefix="/v1", tags=["events"])
 app.include_router(configs.router, prefix="/v1", tags=["configs"])
 app.include_router(agent.router, prefix="/v1/agent", tags=["agent"])
+app.include_router(playground.router, prefix="/v1", tags=["playground"])
 
 @app.get("/healthz")
 async def healthz():
     return {"status": "ok"}
+

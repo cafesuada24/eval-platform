@@ -4,7 +4,7 @@ from pydantic import BaseModel, NonNegativeFloat
 class ModelConfiguration(BaseModel):
     provider: str
     model: str
-    temperature: NonNegativeFloat
+    temperature: NonNegativeFloat = 0.2
     # Flexible for additional provider-specific configuration
     model_config = {
         'extra': 'allow',

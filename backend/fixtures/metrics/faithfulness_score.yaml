@@ -1,11 +1,10 @@
 name: faithfulness_score
 type: ai-judge
-description: Evaluates whether the output_text is fully supported by the retrieved_context.
-  A score of 1 indicates the output is completely unsupported or hallucinates information,
-  while 5 indicates the output is entirely faithful to the provided context.
+description: Custom AI judge metric for faithfulness_score
 model_configuration:
-  provider: openai
-  model: gpt-4o
+  provider: gemini
+  model: gemini-3.1-flash-lite
+  temperature: 0.2
 required_inputs:
 - retrieved_context
 - output_text
