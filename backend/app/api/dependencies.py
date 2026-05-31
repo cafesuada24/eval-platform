@@ -1,0 +1,104 @@
+"""Dependency injection for the API layer."""
+
+from functools import lru_cache
+from typing import Annotated
+
+from app.core.agents.metric_helper.ports import ChatSessionRepository
+from app.core.config import settings
+from app.core.documents.ports import DocumentRepository
+from app.core.documents.services import DocumentService
+from app.core.eval_engine.extractors.runtime_state_extractor import (
+    RuntimeStateExtractorService,
+)
+from app.core.eval_engine.ports import (
+    AIJudgeService,
+    MetricRepository,
+    PipelineRepository,
+)
+from app.core.eval_engine.services.formula_evaluator import FormulaEvaluatorService
+from app.core.eval_engine.services.metric_evaluator import MetricEvaluatorService
+from app.core.kernel.ports import RuntimeStateRepository
+from app.core.vector_storage.ports import VectorStoragePort
+from app.infra.agents.metric_helper_agent import GeminiMetricHelper
+from app.infra.repositories.json_chat_session_repository import (
+    LocalJsonChatSessionRepository,
+)
+from app.infra.repositories.json_document_repository import LocalJsonDocumentRepository
+from app.infra.repositories.yaml_metric_repository import YamlMetricRepository
+from app.infra.repositories.yaml_pipeline_repository import YamlPipelineRepository
+from app.infra.repositories.yaml_runtimestate_repository import (
+    YamlRuntimeStateRepository,
+)
+from app.infra.services.ai_judge_service import LiteLLMAIJudge
+from app.infra.vector_storage.chroma_adapter import ChromaVectorStorage
+from fastapi import Depends
+
+
+@lru_cache
+def get_metric_repo() -> MetricRepository:
+    """Get the metric repository singleton."""
+    return YamlMetricRepository(settings.metrics_dir)
+
+
+@lru_cache
+def get_pipeline_repo() -> PipelineRepository:
+    """Get the pipeline repository singleton."""
+    return YamlPipelineRepository(settings.pipelines_dir)
+
+
+@lru_cache
+def get_runtime_state_repo() -> RuntimeStateRepository:
+    """Get the runtime state repository singleton."""
+    return YamlRuntimeStateRepository(settings.runtimes_dir)
+
+@lru_cache
+def get_chat_session_repo() -> ChatSessionRepository:
+    """Get the chat session repository singleton."""
+    return LocalJsonChatSessionRepository(settings.sessions_dir)
+
+@lru_cache
+def get_document_repo() -> DocumentRepository:
+    """Get the document repository singleton."""
+    return LocalJsonDocumentRepository(settings.uploads_dir)
+
+
+@lru_cache
+def get_vector_storage() -> VectorStoragePort:
+    """Get the vector storage singleton."""
+    return ChromaVectorStorage(settings.chromadb_dir)
+
+
+def get_document_service(
+    document_repo: Annotated[DocumentRepository, Depends(get_document_repo)],
+    vector_storage: Annotated[VectorStoragePort, Depends(get_vector_storage)],
+) -> DocumentService:
+    """Get the document service."""
+    return DocumentService(document_repo=document_repo, vector_storage=vector_storage)
+
+
+@lru_cache
+def get_ai_judge_service() -> AIJudgeService:
+    """Get the AI judge service singleton."""
+    return LiteLLMAIJudge()
+
+
+def get_metric_evaluator(
+    ai_judge: Annotated[AIJudgeService, Depends(get_ai_judge_service)],
+) -> MetricEvaluatorService:
+    """Get the metric evaluator service."""
+    return MetricEvaluatorService(
+        rs_extractor=RuntimeStateExtractorService(),
+        formula_evaluator=FormulaEvaluatorService(),
+        ai_judge_service=ai_judge,
+    )
+
+
+def get_agentic_helper(
+    runtime_repo: Annotated[RuntimeStateRepository, Depends(get_runtime_state_repo)],
+    vector_storage: Annotated[VectorStoragePort, Depends(get_vector_storage)],
+) -> GeminiMetricHelper:
+    """Get the agentic builder."""
+    return GeminiMetricHelper(
+        runtime_state_repo=runtime_repo,
+        vector_storage=vector_storage,
+    )

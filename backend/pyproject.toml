@@ -5,12 +5,15 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "chromadb>=1.5.9",
     "evalplatform-sdk",
     "fastapi>=0.136.3",
     "google-genai>=2.6.0",
     "jinja2>=3.1.6",
+    "langchain-text-splitters>=1.1.2",
     "litellm>=1.86.2",
     "pydantic>=2.13.4",
+    "pydantic-settings>=2.14.1",
     "python-dotenv>=1.2.2",
     "python-multipart>=0.0.29",
     "pyyaml>=6.0.3",

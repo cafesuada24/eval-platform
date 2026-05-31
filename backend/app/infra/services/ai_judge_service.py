@@ -1,9 +1,8 @@
 """AI judge service implementations."""
 
 import litellm
-from app.core.entities.metric import Metric
-from app.core.services.ai_judge_service import AIJudgeService
-from app.core.value_objects.judge_result import JudgeResult
+from app.core.eval_engine.models import JudgeResult, Metric
+from app.core.eval_engine.ports import AIJudgeService
 from pydantic import TypeAdapter
 
 
@@ -57,4 +56,4 @@ class LiteLLMAIJudge(AIJudgeService):
 
         content = response.choices[0].message.content
 
-        return TypeAdapter(JudgeResult).validate_json(content)
+        return ta.validate_json(content)

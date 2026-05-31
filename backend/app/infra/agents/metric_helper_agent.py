@@ -12,16 +12,36 @@ from app.core.agents.metric_helper.models import (
     MetricDraft,
     MetricHelperResponse,
     QueryDocumentsEvent,
+    QueryDocumentsResultEvent,
     Thread,
 )
 from app.core.agents.metric_helper.utils import thread_to_prompt
+from app.core.config import settings
 from app.core.eval_engine.extractors.runtime_state_extractor import (
     RuntimeStateExtractorService,
 )
 from app.core.kernel.builders.runtime_builder import RuntimeStateBuilder
+from app.core.kernel.ports import RuntimeStateRepository
+from app.core.vector_storage.models import QueryResult, RAGParameters
+from app.core.vector_storage.ports import VectorStoragePort
 from google import genai
 from google.genai import types
 from pydantic import TypeAdapter, ValidationError
+
+
+def format_query_results(results: list[QueryResult]) -> str:
+    """Helper to convert chunks into an LLM-friendly string format."""
+    if not results:
+        return 'No relevant documents found.'
+
+    formatted: list[str] = []
+    for i, res in enumerate(results):
+        doc_name = res.document.metadata.get('filename', res.document.id)
+        formatted.append(
+            f'--- Document {i + 1} (Source: {doc_name}) ---\n{res.document.text}\n',
+        )
+    return '\n'.join(formatted)
+
 
 SYS_INSTRUCTION_TEMPLATE = Template(
     """<instruction>
@@ -38,25 +58,26 @@ $allowed_variables
 3. Return the friendly conversational response in `response_text`, explaining any changes.
 4. Return the complete, updated structured MetricConfig in `updated_metric`. If the user is creating or modifying a metric,
 ensure that `updated_metric` represents the complete draft configuration with all fields populated appropriately.
+5. You must detect user intent between normal conversation, or updating or create metric. The latter allows you access retrieval tools.
 </rules>
-
-<response_contract>
-{
-    "response_text": "Friendly response",
-    "updated_metric": "MetricConfig"
-}
-</response_contract>
 """,
 )
 
 
-class GeminiAgenticBuilder:
+class GeminiMetricHelper:
     """Agentic builder backed by gemini."""
 
-    def __init__(self, model: str = 'gemini-3.1-flash-lite') -> None:
+    def __init__(
+        self,
+        runtime_state_repo: RuntimeStateRepository | None = None,
+        vector_storage: VectorStoragePort | None = None,
+        model: str = 'gemini-3.1-flash-lite',
+    ) -> None:
         self.__model = model
+        self.__runtime_state_repo = runtime_state_repo
+        self.__vector_storage = vector_storage
         self.__client = genai.Client(
-            api_key=os.getenv('GOOGLE_API_KEY'),
+            api_key=settings.google_api_key or os.getenv('GOOGLE_API_KEY'),
         )
 
     async def chat(
@@ -72,7 +93,7 @@ class GeminiAgenticBuilder:
         )
 
         system_instruction = SYS_INSTRUCTION_TEMPLATE.substitute(
-            allowed_vars=allowed_vars,
+            allowed_variables=allowed_vars,
         )
 
         if current_metric_config:
@@ -89,7 +110,7 @@ class GeminiAgenticBuilder:
         messages: list[ChatMessage],
     ) -> MetricHelperResponse:
         if not messages:
-            raise ValueError("Messages list cannot be empty.")
+            raise ValueError('Messages list cannot be empty.')
 
         runtime_builder = RuntimeStateBuilder()
 
@@ -146,6 +167,8 @@ class GeminiAgenticBuilder:
                 "What's the next step?"
             )
 
+            print(msg)
+
             formatted_contents[-1] = types.Content(
                 role='user',
                 parts=[types.Part.from_text(text=msg)],
@@ -170,6 +193,7 @@ class GeminiAgenticBuilder:
                 raise
 
             if ev.type == 'response':
+                print(ev.data)
                 assert isinstance(ev.data, str)
                 response_text = ev.data
                 break
@@ -182,16 +206,28 @@ class GeminiAgenticBuilder:
 
             if ev.type == 'query_documents':
                 assert isinstance(ev.data, QueryDocumentsEvent)
-                # TODO: implement real RAG mechanism
-                # runtime_builder.event('retrieval.started', {'query': ev.data.query})
-                # Query...
-                # runtime_builder.event('retrieval.completed', {'query': ev.data.query, 'chunks': ...})
-                # thread.events.append(
-                #     AgentEvent(
-                #         type='query_documents_result',
-                #         data=QueryDocumentsResultEvent(query_result=...),
-                #     ),
-                # )
+
+                runtime_builder.event('retrieval.started', {'query': ev.data.query})
+
+                query_result_str = 'Vector storage is not configured.'
+                results = []
+                if self.__vector_storage:
+                    rag_params = RAGParameters(
+                        chunk_size=settings.rag_chunk_size,
+                        chunk_overlap=settings.rag_chunk_overlap,
+                        top_k=settings.rag_top_k,
+                    )
+                    results = self.__vector_storage.query(ev.data.query, rag_params)
+                    query_result_str = format_query_results(results)
+
+                runtime_builder.event('retrieval.completed', {'query': ev.data.query, 'chunks': results})
+
+                thread.events.append(
+                    AgentEvent(
+                        type='query_documents_result',
+                        data=QueryDocumentsResultEvent(query_result=query_result_str),
+                    ),
+                )
 
         delta = time.perf_counter() - start
 
@@ -205,6 +241,10 @@ class GeminiAgenticBuilder:
         )
         runtime_builder.latency_ms(int(delta))
         runtime = runtime_builder.build()
+
+        if self.__runtime_state_repo:
+            self.__runtime_state_repo.save(runtime)
+
         return MetricHelperResponse(
             response_text=response_text,
             metric_draft=metric_draft,

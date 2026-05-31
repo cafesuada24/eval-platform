@@ -1,7 +1,7 @@
 """Metric helper agent models."""
 
 from dataclasses import dataclass
-from typing import Literal, TypedDict
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 
 @dataclass(slots=True, frozen=True)
-class MetricDraft(TypedDict):
+class MetricDraft:
     """A metric draft."""
 
     name: str
@@ -37,7 +37,7 @@ class UserMessageEvent:
 
 @dataclass(slots=True, frozen=True)
 class CreateOrUpdateMetricEvent:
-    """Response a message directly."""
+    """Creating or updating existing metric as user requested."""
 
     response: str
     metric_draft: MetricDraft
@@ -51,6 +51,7 @@ class QueryDocumentsEvent:
 
 @dataclass(slots=True, frozen=True)
 class QueryDocumentsResultEvent:
+    """Result of a querying document event."""
     query_result: str
 
 
@@ -79,21 +80,11 @@ class Thread:
 
 
 @dataclass(slots=True)
-class ToolCall:
-    """A tool call made by model."""
-
-    id: str
-    name: str
-    arguments: dict[str, object]
-
-
-@dataclass(slots=True)
 class ChatMessage:
     """A chat message."""
 
-    role: Literal['assistant', 'user', 'tool']
+    role: Literal['model', 'user', 'tool']
     content: str
-    tool_calls: list[ToolCall]
 
 
 @dataclass(slots=True)

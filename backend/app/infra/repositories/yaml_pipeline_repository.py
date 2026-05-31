@@ -59,6 +59,19 @@ class YamlPipelineRepository:
             raise PipelineNotFoundError(name)
         return pipeline
 
+    def list_all(self) -> list[Pipeline]:
+        """List all pipeline configurations."""
+        pipelines: list[Pipeline] = []
+        for file_path in self.__fixtures_dir.glob("*.yaml"):
+            try:
+                with file_path.open("r", encoding="utf-8") as f:
+                    data = yaml.safe_load(f)
+                    if data:
+                        pipelines.append(self.__adapter.validate_python(data))
+            except Exception:
+                pass
+        return pipelines
+
     def save(self, pipeline: Pipeline) -> None:
         """Save a pipeline configuration to a YAML file."""
         file_path = self.__fixtures_dir / f'{pipeline.id}.yaml'

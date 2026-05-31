@@ -20,6 +20,21 @@ class MetricRepository(Protocol):
         """
         ...
 
+    def find_by_id(self, metric_id: UUID) -> Metric | None:
+        """Find a metric config by id."""
+        ...
+
+    def get_by_id(self, metric_id: UUID) -> Metric:
+        """Get a metric config by id.
+
+        Raise MetricNotFoundError if not found.
+        """
+        ...
+
+    def list_all(self) -> list[Metric]:
+        """List all metric configurations."""
+        ...
+
     def save(self, metric: Metric) -> None:
         """Save a metric configuration."""
         ...
@@ -45,6 +60,10 @@ class PipelineRepository(Protocol):
 
         Raise PipelineNotFoundError if not found.
         """
+        ...
+
+    def list_all(self) -> list[Pipeline]:
+        """List all pipeline configurations."""
         ...
 
     def save(self, pipeline: Pipeline) -> None:
