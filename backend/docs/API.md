@@ -44,7 +44,7 @@ interface Pipeline {
   id: string; // UUID format
   name: string;
   metrics: Array<{
-    metric: Metric;
+    metric_id: string; // UUID of the metric
     threshold?: {
       fail_over?: number;
       fail_below?: number;

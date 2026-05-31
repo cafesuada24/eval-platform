@@ -55,7 +55,7 @@ class MetricThreshold:
 class PipelineMetric:
     """A metric configuration in a pipeline."""
 
-    metric: Metric
+    metric_id: UUID
     threshold: MetricThreshold | None = None
 
 
