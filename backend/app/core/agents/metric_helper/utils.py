@@ -17,7 +17,20 @@ def stringifyToYaml(obj: object) -> str:
 
 def event_to_prompt(event: AgentEvent) -> str:
     """Convert an event to XML tag format."""
-    data = event.data if isinstance(event.data, str) else stringifyToYaml(event.data)
+    # Exclude None values and the type field itself
+    data_dict = event.model_dump(exclude_none=True, exclude={'type'})
+
+    # If there is exactly one data field and it's a string, we print it natively
+    if len(data_dict) == 1 and list(data_dict.keys())[0] in (
+        'query',
+        'response',
+        'query_result',
+    ):
+        data = list(data_dict.values())[0]
+    else:
+        # Otherwise (e.g. create_or_update_metric), dump as YAML
+        data = stringifyToYaml(data_dict)
+
     return f'<{event.type}>\n{data}\n</{event.type}>'
 
 

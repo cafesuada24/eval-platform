@@ -77,33 +77,15 @@ async def chat_with_agent(
             )
             current_yaml = yaml.dump(data, sort_keys=False)
 
-    messages_list: list[ChatMessage] = []
-
-    if metric_id:
-        if request.messages is not None and len(request.messages) > 0:
-            messages_list = request.messages
-        else:
-            session = session_repo.find_by_id(metric_id)
-            if session:
-                messages_list = session.messages
-    else:
-        messages_list = request.messages or []
-        metric_id = uuid.uuid4()
-
-    if request.message:
-        messages_list.append(ChatMessage(role='user', content=request.message))
+    messages_list = request.messages
 
     if not messages_list:
         raise HTTPException(
-            status_code=400, detail='No message or message history provided in request.',
+            status_code=400, detail='No message history provided in request.',
         )
 
-    # Filter out test runs
-    formatted_messages = [
-        msg for msg in messages_list if not msg.content.startswith('[Test Run]')
-    ]
-
-    session = ChatSession(metric_id=metric_id, messages=formatted_messages)
+    session_id = metric_id if metric_id else uuid.uuid4()
+    session = ChatSession(metric_id=session_id, messages=messages_list)
 
     try:
         result = await agentic_builder.chat(
@@ -116,10 +98,11 @@ async def chat_with_agent(
     if result.response_text:
         messages_list.append(ChatMessage(role='model', content=result.response_text))
 
-    try:
-        session_data = ChatSession(metric_id=metric_id, messages=messages_list)
-        session_repo.save(session_data)
-    except Exception as e:
-        print(f'Failed to save session: {e}')
+    if metric_id:
+        try:
+            session_data = ChatSession(metric_id=metric_id, messages=messages_list)
+            session_repo.save(session_data)
+        except Exception as e:
+            print(f'Failed to save session: {e}')
 
     return result

@@ -8,11 +8,8 @@ from app.core.agents.metric_helper.models import (
     AgentEvent,
     ChatMessage,
     ChatSession,
-    CreateOrUpdateMetricEvent,
     MetricDraft,
     MetricHelperResponse,
-    QueryDocumentsEvent,
-    QueryDocumentsResultEvent,
     Thread,
 )
 from app.core.agents.metric_helper.utils import thread_to_prompt
@@ -53,15 +50,19 @@ $allowed_variables
 </allowed_variables>
 
 <rules>
-1. You must autonomously decide which system variables are required.
-2. You MUST select variables ONLY from `allowed_variables` list. Do not invent variables.
-3. Return the friendly conversational response in `response_text`, explaining any changes.
-4. Return the complete, updated structured MetricConfig in `updated_metric`. If the user is creating or modifying a metric,
-ensure that `updated_metric` represents the complete draft configuration with all fields populated appropriately.
-5. You must detect user intent between normal conversation, or updating or create metric. The latter allows you access retrieval tools.
+1. Identify the user's intent to respond appropriately:
+   - Normal Conversation: If the user simply says "Hi" or asks general questions (e.g., "What is a metric?"), set the `type` field to `"response"` and provide your conversational reply in the `response` field.
+   - Testing/Querying: If the user asks questions about their uploaded documents, or explicitly wants to "test" a metric, set the `type` field to `"query_documents"` and put the query in the `query` field. When responding later, set `type` to `"response"` and provide your reply in the `response` field.
+   - Creating/Updating a Metric: ONLY set the `type` field to `"create_or_update_metric"` when the user has provided clear requirements. Provide your conversational reply in the `response` field, and the draft in the `metric_draft` field.
+2. For creating or updating metrics, you must autonomously decide which system variables are required.
+3. You MUST select variables ONLY from the `allowed_variables` list. Do not invent variables.
+4. Ensure `metric_draft` represents the complete draft configuration with all fields populated appropriately.
 </rules>
 """,
 )
+
+
+from app.core.documents.ports import DocumentRepository
 
 
 class GeminiMetricHelper:
@@ -71,11 +72,13 @@ class GeminiMetricHelper:
         self,
         runtime_state_repo: RuntimeStateRepository | None = None,
         vector_storage: VectorStoragePort | None = None,
+        document_repo: DocumentRepository | None = None,
         model: str = 'gemini-3.1-flash-lite',
     ) -> None:
         self.__model = model
         self.__runtime_state_repo = runtime_state_repo
         self.__vector_storage = vector_storage
+        self.__document_repo = document_repo
         self.__client = genai.Client(
             api_key=settings.google_api_key or os.getenv('GOOGLE_API_KEY'),
         )
@@ -95,6 +98,12 @@ class GeminiMetricHelper:
         system_instruction = SYS_INSTRUCTION_TEMPLATE.substitute(
             allowed_variables=allowed_vars,
         )
+
+        if self.__document_repo:
+            docs = self.__document_repo.list_all()
+            if docs:
+                doc_list = '\n'.join([f'- {doc.name}' for doc in docs])
+                system_instruction += f'\n\n<available_documents>\nThe user has uploaded the following files. If the user asks about them, their contents, or uses keywords relating to them, YOU MUST trigger the `query_documents` event with these filenames/keywords in mind.\n{doc_list}\n</available_documents>'
 
         if current_metric_config:
             system_instruction += f'\n<current_metric_state>\n```yaml\n{current_metric_config}\n```\n</current_metric_state>'
@@ -131,10 +140,10 @@ class GeminiMetricHelper:
         ]
 
         thread = Thread(
-            [
+            events=[
                 AgentEvent(
                     type='user_message',
-                    data=messages[-1].content,
+                    query=messages[-1].content,
                 ),
             ],
         )
@@ -193,21 +202,20 @@ class GeminiMetricHelper:
                 raise
 
             if ev.type == 'response':
-                print(ev.data)
-                assert isinstance(ev.data, str)
-                response_text = ev.data
+                print(ev.response)
+                assert ev.response is not None
+                response_text = ev.response
                 break
 
             if ev.type == 'create_or_update_metric':
-                assert isinstance(ev.data, CreateOrUpdateMetricEvent)
-                response_text = ev.data.response
-                metric_draft = ev.data.metric_draft
+                assert ev.response is not None
+                response_text = ev.response
+                metric_draft = ev.metric_draft
                 break
 
             if ev.type == 'query_documents':
-                assert isinstance(ev.data, QueryDocumentsEvent)
-
-                runtime_builder.event('retrieval.started', {'query': ev.data.query})
+                assert ev.query is not None
+                runtime_builder.event('retrieval.started', {'query': ev.query})
 
                 query_result_str = 'Vector storage is not configured.'
                 results = []
@@ -217,15 +225,17 @@ class GeminiMetricHelper:
                         chunk_overlap=settings.rag_chunk_overlap,
                         top_k=settings.rag_top_k,
                     )
-                    results = self.__vector_storage.query(ev.data.query, rag_params)
+                    results = self.__vector_storage.query(ev.query, rag_params)
                     query_result_str = format_query_results(results)
 
-                runtime_builder.event('retrieval.completed', {'query': ev.data.query, 'chunks': results})
+                runtime_builder.event(
+                    'retrieval.completed', {'query': ev.query, 'chunks': results}
+                )
 
                 thread.events.append(
                     AgentEvent(
                         type='query_documents_result',
-                        data=QueryDocumentsResultEvent(query_result=query_result_str),
+                        query_result=query_result_str,
                     ),
                 )
 

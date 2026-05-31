@@ -10,7 +10,7 @@ class Settings(BaseSettings):
 
     # Project directories
     # Default to the backend directory's fixtures folder
-    fixtures_dir: Path = Path(__file__).parent.parent.parent.parent / 'fixtures'
+    fixtures_dir: Path = Path('./fixtures')
 
     # API Keys
     google_api_key: str | None = None
@@ -21,7 +21,10 @@ class Settings(BaseSettings):
     rag_top_k: int = 3
 
     model_config = SettingsConfigDict(
-        env_file='.env', env_file_encoding='utf-8', case_sensitive=False, extra='ignore'
+        env_file='.env',
+        env_file_encoding='utf-8',
+        case_sensitive=False,
+        extra='ignore',
     )
 
     @property

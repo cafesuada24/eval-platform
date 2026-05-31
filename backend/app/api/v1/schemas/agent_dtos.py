@@ -5,6 +5,5 @@ from pydantic import BaseModel
 
 
 class ChatRequest(BaseModel):
-    message: str | None = None
-    messages: list[ChatMessage] | None = None
+    messages: list[ChatMessage]
     metric_id: UUID | None = None

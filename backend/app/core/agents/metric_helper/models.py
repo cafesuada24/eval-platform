@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 # --- VALUE OBJECTS ---
 
@@ -28,35 +28,8 @@ class MetricDraft:
 # Agent intents
 
 
-@dataclass(slots=True, frozen=True)
-class UserMessageEvent:
-    """A user query."""
 
-    query: str
-
-
-@dataclass(slots=True, frozen=True)
-class CreateOrUpdateMetricEvent:
-    """Creating or updating existing metric as user requested."""
-
-    response: str
-    metric_draft: MetricDraft
-
-
-@dataclass(slots=True, frozen=True)
-class QueryDocumentsEvent:
-    """Agent need to query documents."""
-
-    query: str
-
-@dataclass(slots=True, frozen=True)
-class QueryDocumentsResultEvent:
-    """Result of a querying document event."""
-    query_result: str
-
-
-@dataclass(slots=True)
-class AgentEvent:
+class AgentEvent(BaseModel):
     """An event in an agent loop."""
 
     type: Literal[
@@ -66,7 +39,30 @@ class AgentEvent:
         'response',
         'query_documents_result',
     ]
-    data: UserMessageEvent | QueryDocumentsEvent | CreateOrUpdateMetricEvent | str | QueryDocumentsResultEvent
+    query: str | None = None
+    response: str | None = None
+    metric_draft: MetricDraft | None = None
+    query_result: str | None = None
+
+    @model_validator(mode='after')
+    def validate_fields(self) -> 'AgentEvent':
+        """Ensure appropriate fields are present based on type."""
+        if self.type in ('user_message', 'query_documents'):
+            if not self.query:
+                raise ValueError(f'query is required for type {self.type}')
+        elif self.type == 'create_or_update_metric':
+            if not self.response or not self.metric_draft:
+                raise ValueError(
+                    'response and metric_draft are required for create_or_update_metric',
+                )
+        elif self.type == 'response':
+            if not self.response:
+                raise ValueError('response is required for type response')
+        elif self.type == 'query_documents_result' and not self.query_result:
+            raise ValueError(
+                'query_result is required for type query_documents_result',
+            )
+        return self
 
 
 @dataclass(slots=True)

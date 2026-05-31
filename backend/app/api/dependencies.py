@@ -96,9 +96,11 @@ def get_metric_evaluator(
 def get_agentic_helper(
     runtime_repo: Annotated[RuntimeStateRepository, Depends(get_runtime_state_repo)],
     vector_storage: Annotated[VectorStoragePort, Depends(get_vector_storage)],
+    document_repo: Annotated[DocumentRepository, Depends(get_document_repo)],
 ) -> GeminiMetricHelper:
     """Get the agentic builder."""
     return GeminiMetricHelper(
         runtime_state_repo=runtime_repo,
         vector_storage=vector_storage,
+        document_repo=document_repo,
     )
