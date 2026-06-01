@@ -4,9 +4,8 @@ from uuid import UUID
 
 import yaml
 from app.api.dependencies import (
-    get_agentic_helper,
     get_chat_session_repo,
-    get_metric_repo,
+    get_metric_helper_app_service,
 )
 from app.api.v1.schemas.agent_dtos import ChatRequest, SaveSessionRequest
 from app.core.agents.metric_helper.models import (
@@ -18,10 +17,8 @@ from app.core.agents.metric_helper.ports import (
     AgenticMetricHelper,
     ChatSessionRepository,
 )
-from app.core.eval_engine.models import Metric
-from app.core.eval_engine.ports import MetricRepository
+from app.core.agents.metric_helper.services import MetricHelperAppService
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import TypeAdapter
 
 router = APIRouter()
 
@@ -81,55 +78,11 @@ def save_session(
 @router.post('/chat', response_model=MetricHelperResponse)
 async def chat_with_agent(
     request: ChatRequest,
-    agentic_builder: Annotated[AgenticMetricHelper, Depends(get_agentic_helper)],
-    metric_repo: Annotated[MetricRepository, Depends(get_metric_repo)],
-    session_repo: Annotated[ChatSessionRepository, Depends(get_chat_session_repo)],
+    app_service: Annotated[MetricHelperAppService, Depends(get_metric_helper_app_service)],
 ) -> MetricHelperResponse:
-    current_yaml = None
-    metric_id = request.metric_id
-
-    if metric_id:
-        metric_config = metric_repo.find_by_id(metric_id)
-        if metric_config:
-            data = TypeAdapter(Metric).dump_python(
-                metric_config,
-                mode='json',
-                exclude_none=True,
-            )
-            current_yaml = yaml.dump(data, sort_keys=False)
-
-    messages_list = request.messages
-
-    if not messages_list:
-        raise HTTPException(
-            status_code=400, detail='No message history provided in request.',
-        )
-
-    session_id = metric_id if metric_id else uuid.uuid4()
-    session = ChatSession(metric_id=session_id, messages=messages_list)
-
     try:
-        result = await agentic_builder.chat(
-            session=session,
-            current_metric_config=current_yaml,
-        )
+        return await app_service.chat(request)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise
-
-    if result.response_text:
-        messages_list.append(
-            ChatMessage(
-                role='model',
-                content=result.response_text,
-                runtime_id=result.runtime_id,
-            )
-        )
-
-    if metric_id:
-        try:
-            session_data = ChatSession(metric_id=metric_id, messages=messages_list)
-            session_repo.save(session_data)
-        except Exception as e:
-            print(f'Failed to save session: {e}')
-
-    return result
+        raise HTTPException(status_code=500, detail=f"An error occurred during chat: {str(e)}") from e

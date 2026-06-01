@@ -3,7 +3,8 @@
 from functools import lru_cache
 from typing import Annotated
 
-from app.core.agents.metric_helper.ports import ChatSessionRepository
+from app.core.agents.metric_helper.ports import AgenticMetricHelper, ChatSessionRepository
+from app.core.agents.metric_helper.services import MetricHelperAppService
 from app.core.config import settings
 from app.core.documents.ports import DocumentRepository
 from app.core.documents.services import DocumentService
@@ -97,10 +98,23 @@ def get_agentic_helper(
     runtime_repo: Annotated[RuntimeStateRepository, Depends(get_runtime_state_repo)],
     vector_storage: Annotated[VectorStoragePort, Depends(get_vector_storage)],
     document_repo: Annotated[DocumentRepository, Depends(get_document_repo)],
-) -> GeminiMetricHelper:
+) -> AgenticMetricHelper:
     """Get the agentic builder."""
     return GeminiMetricHelper(
         runtime_state_repo=runtime_repo,
         vector_storage=vector_storage,
         document_repo=document_repo,
+    )
+
+
+def get_metric_helper_app_service(
+    agentic_helper: Annotated[AgenticMetricHelper, Depends(get_agentic_helper)],
+    metric_repo: Annotated[MetricRepository, Depends(get_metric_repo)],
+    session_repo: Annotated[ChatSessionRepository, Depends(get_chat_session_repo)],
+) -> MetricHelperAppService:
+    """Get the metric helper application service."""
+    return MetricHelperAppService(
+        agentic_helper=agentic_helper,
+        metric_repo=metric_repo,
+        session_repo=session_repo,
     )

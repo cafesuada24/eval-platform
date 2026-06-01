@@ -7,7 +7,7 @@ from enum import IntEnum
 from typing import Any, Literal
 from uuid import UUID, uuid4
 
-from app.core.kernel.models import RuntimeState
+from app.core.kernel.models import RuntimeState, RuntimeEvent
 
 # --- VALUE OBJECTS ---
 
@@ -147,6 +147,15 @@ class EvaluationContext:
     test_case: TestCase
     runtime_states: list[RuntimeState]
     id: UUID = field(default_factory=uuid4)
+    events_by_type: dict[str, list[RuntimeEvent]] = field(init=False, default_factory=dict)
+
+    def __post_init__(self):
+        from collections import defaultdict
+        events_dict = defaultdict(list)
+        for state in self.runtime_states:
+            for event in state.events:
+                events_dict[event.event_type].append(event)
+        self.events_by_type = dict(events_dict)
 
     @property
     def final_state(self) -> RuntimeState | None:

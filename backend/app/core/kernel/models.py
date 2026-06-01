@@ -2,8 +2,20 @@
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from enum import Enum
 from typing import Any
 from uuid import UUID, uuid4
+
+
+class RuntimeEventType(str, Enum):
+    """Types of runtime events."""
+
+    GENERATION_STARTED = 'generation.started'
+    GENERATION_START = 'generation.start'
+    GENERATION_COMPLETED = 'generation.completed'
+    GENERATION_END = 'generation.end'
+    RETRIEVAL_COMPLETED = 'retrieval.completed'
+    OCR_COMPLETED = 'ocr.completed'
 
 
 @dataclass(slots=True)

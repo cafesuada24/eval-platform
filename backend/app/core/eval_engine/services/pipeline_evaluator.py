@@ -1,5 +1,7 @@
 """Pipeline evaluator service."""
 
+import asyncio
+
 from app.core.eval_engine.models import MetricRunResult, Pipeline, PipelineRunResult, EvaluationContext
 from app.core.eval_engine.services.metric_evaluator import MetricEvaluatorService
 
@@ -25,9 +27,7 @@ class PipelineEvaluatorService:
             for metric_item in pipeline.metrics
         ]
 
-        # Running sequentially to avoid over-engineering in MVP
-        # TODO: replace this with strategy pattern:)
-        results: list[MetricRunResult] = [await task for task in tasks]
+        results: list[MetricRunResult] = list(await asyncio.gather(*tasks))
 
         # TODO: replace this with strategy pattern:)
         overall_status = max(result.assertion_status for result in results)
