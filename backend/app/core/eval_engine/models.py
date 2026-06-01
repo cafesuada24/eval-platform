@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import IntEnum
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 from uuid import UUID, uuid4
 
-from app.core.kernel.models import RuntimeState, RuntimeEvent
+from app.core.kernel.models import RuntimeEvent
+
+if TYPE_CHECKING:
+    from app.core.kernel.models import RuntimeState
 
 # --- VALUE OBJECTS ---
 
@@ -49,7 +53,7 @@ class MetricThreshold:
             raise ValueError('fail_below and fail_over cannot be defined together.')
         if self.warning_below and self.warning_over:
             raise ValueError(
-                'warning_below and warning_over cannot be defined together.'
+                'warning_below and warning_over cannot be defined together.',
             )
 
 
@@ -96,6 +100,8 @@ class Metric:
     formula: str | None = None
 
     id: UUID = field(default_factory=uuid4)
+    is_system_default: bool = False
+
 
 
 @dataclass(slots=True)
@@ -147,11 +153,10 @@ class EvaluationContext:
     test_case: TestCase
     runtime_states: list[RuntimeState]
     id: UUID = field(default_factory=uuid4)
-    events_by_type: dict[str, list[RuntimeEvent]] = field(init=False, default_factory=dict)
+    events_by_type: dict[str, list[RuntimeEvent]] = field(init=False, default_factory=dict[str, list[RuntimeEvent]])
 
-    def __post_init__(self):
-        from collections import defaultdict
-        events_dict = defaultdict(list)
+    def __post_init__(self) -> None:
+        events_dict: dict[str, list[RuntimeEvent]] = defaultdict(list[RuntimeEvent])
         for state in self.runtime_states:
             for event in state.events:
                 events_dict[event.event_type].append(event)

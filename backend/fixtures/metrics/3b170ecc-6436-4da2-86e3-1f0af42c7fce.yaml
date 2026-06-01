@@ -1,0 +1,31 @@
+name: context_relevance
+description: Evaluates how relevant the retrieved context is to the user's input.
+type: ai-judge
+required_inputs:
+- input_text
+- retrieved_context
+scoring_scale:
+  min: 0.0
+  max: 1.0
+  data_type: float
+model_configuration:
+  provider: openai
+  model: gpt-4o
+  temperature: 0.2
+prompt_template: 'You are an expert judge evaluating the quality of retrieval.
+
+  Given the following input (the user''s question) and the retrieved context, determine
+  how relevant the context is to answering the question.
+
+  Input: {{input_text}}
+
+  Retrieved Context: {{retrieved_context}}
+
+  Provide a score from 0 to 1 where: 0.0 - The context is completely irrelevant to
+  the question. 0.5 - The context is somewhat relevant but insufficient to fully answer
+  the question. 1.0 - The context directly answers the question or provides necessary
+  information to solve it.
+
+  Respond only with the decimal score (e.g., 0.0, 0.5, 1.0).'
+id: 3b170ecc-6436-4da2-86e3-1f0af42c7fce
+is_system_default: true

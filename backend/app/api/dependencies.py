@@ -3,7 +3,10 @@
 from functools import lru_cache
 from typing import Annotated
 
-from app.core.agents.metric_helper.ports import AgenticMetricHelper, ChatSessionRepository
+from app.core.agents.metric_helper.ports import (
+    AgenticMetricHelper,
+    ChatSessionRepository,
+)
 from app.core.agents.metric_helper.services import MetricHelperAppService
 from app.core.config import settings
 from app.core.documents.ports import DocumentRepository

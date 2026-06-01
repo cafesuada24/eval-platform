@@ -1,0 +1,17 @@
+name: Faithfulness_Score
+description: Custom AI judge metric for Faithfulness_Score
+type: ai-judge
+required_inputs:
+- output_text
+- retrieved_context
+scoring_scale:
+  min: 0.0
+  max: 5.0
+  data_type: integer
+model_configuration:
+  provider: google
+  model: gemini-3.1-flash-lite
+  temperature: 0.0
+prompt_template: Evaluate if the output_text is supported by the retrieved_context.
+  Score from 0 to 5, where 0 is completely hallucinated and 5 is perfectly grounded.
+id: 5f5727a3-1b97-44fd-bd8b-6583883ae7d0
