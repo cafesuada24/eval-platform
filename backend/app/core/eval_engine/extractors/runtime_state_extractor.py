@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 
-from app.core.kernel.models import RuntimeState
+from app.core.eval_engine.models import EvaluationContext
 
 type Formula = str
 type Numeric = int | float
@@ -14,21 +14,21 @@ type VariableExtractedValue = str | int | float
 
 EXTRACTOR_REGISTRY: dict[
     str,
-    Callable[[RuntimeState], VariableExtractedValue | None],
+    Callable[[EvaluationContext], VariableExtractedValue | None],
 ] = {}
 
 
 def extractor(
     variable: str,
 ) -> Callable[
-    [Callable[[RuntimeState], VariableExtractedValue | None]],
-    Callable[[RuntimeState], VariableExtractedValue | None],
+    [Callable[[EvaluationContext], VariableExtractedValue | None]],
+    Callable[[EvaluationContext], VariableExtractedValue | None],
 ]:
     """Extractor decorator."""
 
     def __decorator(
-        fun: Callable[[RuntimeState], VariableExtractedValue | None],
-    ) -> Callable[[RuntimeState], VariableExtractedValue | None]:
+        fun: Callable[[EvaluationContext], VariableExtractedValue | None],
+    ) -> Callable[[EvaluationContext], VariableExtractedValue | None]:
         EXTRACTOR_REGISTRY[variable] = fun
         return fun
 
@@ -36,31 +36,35 @@ def extractor(
 
 
 @extractor('input_text')
-def extract_input_text(state: RuntimeState) -> str | None:
-    for ev in state.events:
-        if ev.event_type in ('generation.started', 'generation.start'):
-            if 'input_text' in ev.payload:
-                return ev.payload['input_text']
-            if 'prompt' in ev.payload:
-                return ev.payload['prompt']
+def extract_input_text(context: EvaluationContext) -> str | None:
+    for state in context.runtime_states:
+        for ev in state.events:
+            if ev.event_type in ('generation.started', 'generation.start'):
+                if 'input_text' in ev.payload:
+                    return ev.payload['input_text']
+                if 'prompt' in ev.payload:
+                    return ev.payload['prompt']
     return None
 
 
 @extractor('output_text')
-def extract_output_text(state: RuntimeState) -> str | None:
-    for ev in state.events:
-        if ev.event_type in ('generation.completed', 'generation.end'):
-            if 'output_text' in ev.payload:
-                return ev.payload['output_text']
-            if 'response' in ev.payload:
-                return ev.payload['response']
+def extract_output_text(context: EvaluationContext) -> str | None:
+    for state in context.runtime_states:
+        for ev in state.events:
+            if ev.event_type in ('generation.completed', 'generation.end'):
+                if 'output_text' in ev.payload:
+                    return ev.payload['output_text']
+                if 'response' in ev.payload:
+                    return ev.payload['response']
     return None
 
 
 @extractor('retrieved_context')
-def extract_retrieved_context(state: RuntimeState) -> str | None:
-    for ev in state.events:
-        if ev.event_type == 'retrieval.completed':
+def extract_retrieved_context(context: EvaluationContext) -> str | None:
+    for state in context.runtime_states:
+        for ev in state.events:
+            if ev.event_type != 'retrieval.completed':
+                continue
             if 'retrieved_context' in ev.payload:
                 return ev.payload['retrieved_context']
             if 'chunks' in ev.payload:
@@ -89,23 +93,29 @@ def extract_retrieved_context(state: RuntimeState) -> str | None:
                     )
                 return '\n'.join(formatted)
 
-    if state.metadata and 'retrieved_context' in state.metadata:
-        return state.metadata['retrieved_context']
+        if state.metadata and 'retrieved_context' in state.metadata:
+            return state.metadata['retrieved_context']
     return None
 
 
 @extractor('ocr_time_ms')
-def ocr_latency_ms(state: RuntimeState) -> str | None:
-
-    for ev in state.events:
-        if ev.event_type == 'ocr.completed' and 'latency_ms' in ev.payload:
-            return ev.payload['latency_ms']
+def ocr_latency_ms(context: EvaluationContext) -> str | None:
+    for state in context.runtime_states:
+        for ev in state.events:
+            if ev.event_type == 'ocr.completed' and 'latency_ms' in ev.payload:
+                return ev.payload['latency_ms']
     return None
 
 
 @extractor('latency_ms')
-def extract_latency_ms(state: RuntimeState) -> int | None:
-    return state.resource_usage.latency_ms
+def extract_latency_ms(context: EvaluationContext) -> int | None:
+    total = 0
+    found = False
+    for state in context.runtime_states:
+        if state.resource_usage and state.resource_usage.latency_ms:
+            total += state.resource_usage.latency_ms
+            found = True
+    return total if found else None
 
 
 # ==========
@@ -120,10 +130,10 @@ class RuntimeStateExtractorService:
     @staticmethod
     def extract_variable(
         variable: str,
-        runtime_state: RuntimeState,
+        context: EvaluationContext,
     ) -> VariableExtractedValue | None:
         """Extract a variable from runtime state."""
         extractor = EXTRACTOR_REGISTRY.get(variable)
         if extractor is None:
             raise ValueError(f'Invalid variable {variable}.')
-        return extractor(runtime_state)
+        return extractor(context)

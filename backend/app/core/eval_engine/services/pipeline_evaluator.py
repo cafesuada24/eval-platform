@@ -1,8 +1,7 @@
 """Pipeline evaluator service."""
 
-from app.core.eval_engine.models import MetricRunResult, Pipeline, PipelineRunResult
+from app.core.eval_engine.models import MetricRunResult, Pipeline, PipelineRunResult, EvaluationContext
 from app.core.eval_engine.services.metric_evaluator import MetricEvaluatorService
-from app.core.kernel.models import RuntimeState
 
 
 class PipelineEvaluatorService:
@@ -14,13 +13,13 @@ class PipelineEvaluatorService:
     async def evaluate(
         self,
         pipeline: Pipeline,
-        state: RuntimeState,
+        context: EvaluationContext,
     ) -> PipelineRunResult:
         """Run all metrics in a pipeline concurrently and aggregate outcomes."""
         tasks = [
             self.__metric_eval_srv.evaluate(
                 metric_item.metric,
-                state,
+                context,
                 metric_item.threshold,
             )
             for metric_item in pipeline.metrics
@@ -34,7 +33,7 @@ class PipelineEvaluatorService:
         overall_status = max(result.assertion_status for result in results)
 
         return PipelineRunResult(
-            runtime_id=state.runtime_id,
+            evaluation_context_id=context.id,
             pipeline_id=pipeline.id,
             overall_status=overall_status,
             metric_results=list(results),

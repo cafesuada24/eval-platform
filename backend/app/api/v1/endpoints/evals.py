@@ -1,8 +1,12 @@
 from typing import Annotated
-from uuid import UUID
+from uuid import UUID, uuid4
 
-from app.api.dependencies import get_metric_evaluator, get_metric_repo, get_runtime_state_repo
-from app.core.eval_engine.models import MetricRunResult
+from app.api.dependencies import (
+    get_metric_evaluator,
+    get_metric_repo,
+    get_runtime_state_repo,
+)
+from app.core.eval_engine.models import EvaluationContext, MetricRunResult, TestCase
 from app.core.eval_engine.ports import MetricRepository
 from app.core.eval_engine.services.metric_evaluator import MetricEvaluatorService
 from app.core.kernel.ports import RuntimeStateRepository
@@ -30,7 +34,16 @@ async def run_metric_evaluation(
 
     try:
         # evaluate() is async in MetricEvaluatorService
-        result = await evaluator.evaluate(metric, runtime_state)
-        return result
+        context = EvaluationContext(
+            test_case=TestCase(
+                id=uuid4(),
+                input_text="",
+                input_files=[],
+                expected_output=None,
+                metadata={},
+            ),
+            runtime_states=[runtime_state],
+        )
+        return await evaluator.evaluate(metric, context)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Evaluation failed: {str(e)}") from e

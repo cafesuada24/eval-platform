@@ -7,10 +7,10 @@ from app.core.eval_engine.models import (
     Metric,
     MetricRunResult,
     MetricThreshold,
+    EvaluationContext,
 )
 from app.core.eval_engine.ports import AIJudgeService
 from app.core.eval_engine.services.formula_evaluator import FormulaEvaluatorService
-from app.core.kernel.models import RuntimeState
 from jinja2 import Template
 
 
@@ -65,14 +65,14 @@ class MetricEvaluatorService:
     def __resolve_bindings(
         self,
         variables: list[str],
-        state: RuntimeState,
+        context: EvaluationContext,
         as_float: bool = False,
     ) -> dict[str, float | str | int]:
         resolved_bindings: dict[str, float | str | int] = {}
         for var in variables:
             resolved_var = self.__rs_extractor.extract_variable(
                 variable=var,
-                runtime_state=state,
+                context=context,
             )
             if resolved_var is None:
                 raise ValueError(
@@ -95,7 +95,7 @@ class MetricEvaluatorService:
     def __evaluate_primitive_metric(
         self,
         metric: Metric,
-        state: RuntimeState,
+        context: EvaluationContext,
         threshold: MetricThreshold | None = None,
     ) -> MetricRunResult:
         assert metric.type == 'primitive'
@@ -111,7 +111,7 @@ class MetricEvaluatorService:
             formula_str = target
 
         required_vars = self.__formula_evaluator.get_required_variables(formula_str)
-        resolved_vars = self.__resolve_bindings(required_vars, state, as_float=True)
+        resolved_vars = self.__resolve_bindings(required_vars, context, as_float=True)
         score = self.__formula_evaluator.evaluate_formula(
             formula=formula_str,
             var_bind=resolved_vars,
@@ -130,14 +130,14 @@ class MetricEvaluatorService:
     async def __evaluate_ai_judge_metric(
         self,
         metric: Metric,
-        state: RuntimeState,
+        context: EvaluationContext,
         threshold: MetricThreshold | None = None,
     ) -> MetricRunResult:
         if not metric.prompt_template:
             raise ValueError(
                 f"AI-judge metric '{metric.name}' must have a prompt_template.",
             )
-        bindings = self.__resolve_bindings(metric.required_inputs, state, as_float=False)
+        bindings = self.__resolve_bindings(metric.required_inputs, context, as_float=False)
         prompt = self.__format_prompt(metric.prompt_template, bindings)
         judge_output = await self.__ai_judge_serivce.evaluate(metric, prompt)
         assertion_status = self.__evaluate_threshold(
@@ -155,19 +155,19 @@ class MetricEvaluatorService:
     async def evaluate(
         self,
         metric: Metric,
-        state: RuntimeState,
+        context: EvaluationContext,
         threshold: MetricThreshold | None = None,
     ) -> MetricRunResult:
         """Evaluate a metric against a runtime state."""
         if metric.type == 'primitive':
             return self.__evaluate_primitive_metric(
                 metric=metric,
-                state=state,
+                context=context,
                 threshold=threshold,
             )
 
         return await self.__evaluate_ai_judge_metric(
             metric=metric,
-            state=state,
+            context=context,
             threshold=threshold,
         )

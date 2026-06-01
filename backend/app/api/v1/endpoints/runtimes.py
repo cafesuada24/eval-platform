@@ -1,5 +1,5 @@
 from typing import Annotated
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from app.api.dependencies import get_runtime_state_repo
 from app.core.eval_engine.extractors.runtime_state_extractor import (
@@ -8,6 +8,7 @@ from app.core.eval_engine.extractors.runtime_state_extractor import (
 from app.core.exceptions import NotFoundError
 from app.core.kernel.models import RuntimeState
 from app.core.kernel.ports import RuntimeStateRepository
+from app.core.eval_engine.models import EvaluationContext, TestCase
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 router = APIRouter()
@@ -56,8 +57,19 @@ def get_runtime_variables(
         vars_to_extract = [k for k in requested_keys if k in supported_vars]
 
     result: dict[str, str | int | float | None] = {}
+    context = EvaluationContext(
+        test_case=TestCase(
+            id=uuid4(),
+            input_text="",
+            input_files=[],
+            expected_output=None,
+            metadata={}
+        ),
+        runtime_states=[state]
+    )
+
     for var in vars_to_extract:
-        val = RuntimeStateExtractorService.extract_variable(var, state)
+        val = RuntimeStateExtractorService.extract_variable(var, context)
         if val is not None:
             result[var] = val
 

@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import IntEnum
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID, uuid4
+
+from app.core.kernel.models import RuntimeState
 
 # --- VALUE OBJECTS ---
 
@@ -120,11 +122,35 @@ class Pipeline:
 class PipelineRunResult:
     """A pipeline run result."""
 
-    runtime_id: UUID
+    evaluation_context_id: UUID
     pipeline_id: UUID
     overall_status: AssertionStatus
     metric_results: list[MetricRunResult]
     run_id: UUID = field(default_factory=uuid4)
+
+@dataclass(slots=True)
+class TestCase:
+    id: UUID
+    input_text: str
+    input_files: list[str]
+    expected_output: str | None
+    metadata: dict[str, Any]
+
+@dataclass(slots=True)
+class Dataset:
+    id: UUID
+    name: str
+    cases: list[TestCase]
+
+@dataclass(slots=True)
+class EvaluationContext:
+    test_case: TestCase
+    runtime_states: list[RuntimeState]
+    id: UUID = field(default_factory=uuid4)
+
+    @property
+    def final_state(self) -> RuntimeState | None:
+        return self.runtime_states[-1] if self.runtime_states else None
 
 
 @dataclass(frozen=True, slots=True)
