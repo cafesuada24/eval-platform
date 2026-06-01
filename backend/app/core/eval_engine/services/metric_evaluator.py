@@ -66,25 +66,30 @@ class MetricEvaluatorService:
         self,
         variables: list[str],
         state: RuntimeState,
-    ) -> dict[str, float]:
-        resolved_bindings: dict[str, float] = {}
+        as_float: bool = False,
+    ) -> dict[str, float | str | int]:
+        resolved_bindings: dict[str, float | str | int] = {}
         for var in variables:
             resolved_var = self.__rs_extractor.extract_variable(
                 variable=var,
                 runtime_state=state,
             )
-            try:
-                if resolved_var is None:
-                    raise ValueError(
-                        f"Required primitive metric target '{var}' "
-                        'could not be extracted from the runtime state.',
-                    )
-
-                resolved_bindings[var] = float(resolved_var)
-            except (ValueError, TypeError) as e:
+            if resolved_var is None:
                 raise ValueError(
-                    f"Extracted value for '{var}' is not numeric and cannot be scored for primitive metric: {resolved_var}",
-                ) from e
+                    f"Required metric target '{var}' "
+                    'could not be extracted from the runtime state.',
+                )
+
+            if as_float:
+                try:
+                    resolved_bindings[var] = float(resolved_var)
+                except (ValueError, TypeError) as e:
+                    raise ValueError(
+                        f"Extracted value for '{var}' is not numeric and cannot be scored for primitive metric: {resolved_var}",
+                    ) from e
+            else:
+                resolved_bindings[var] = resolved_var
+                
         return resolved_bindings
 
     def __evaluate_primitive_metric(
@@ -106,7 +111,7 @@ class MetricEvaluatorService:
             formula_str = target
 
         required_vars = self.__formula_evaluator.get_required_variables(formula_str)
-        resolved_vars = self.__resolve_bindings(required_vars, state)
+        resolved_vars = self.__resolve_bindings(required_vars, state, as_float=True)
         score = self.__formula_evaluator.evaluate_formula(
             formula=formula_str,
             var_bind=resolved_vars,
@@ -132,7 +137,7 @@ class MetricEvaluatorService:
             raise ValueError(
                 f"AI-judge metric '{metric.name}' must have a prompt_template.",
             )
-        bindings = self.__resolve_bindings(metric.required_inputs, state)
+        bindings = self.__resolve_bindings(metric.required_inputs, state, as_float=False)
         prompt = self.__format_prompt(metric.prompt_template, bindings)
         judge_output = await self.__ai_judge_serivce.evaluate(metric, prompt)
         assertion_status = self.__evaluate_threshold(

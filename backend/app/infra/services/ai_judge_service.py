@@ -12,6 +12,8 @@ def _get_litellm_model_name(config: Metric) -> str:
     e.g., 'anthropic/claude-3-5-sonnet' or 'google/gemini-1.5-pro'
     """
     provider = config.model_configuration.provider.lower()
+    if provider == 'google':
+        provider = 'gemini'
     model = config.model_configuration.model
     if model.lower().startswith(f'{provider}/'):
         return model

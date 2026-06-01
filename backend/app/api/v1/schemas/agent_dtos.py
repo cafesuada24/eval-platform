@@ -7,3 +7,9 @@ from pydantic import BaseModel
 class ChatRequest(BaseModel):
     messages: list[ChatMessage]
     metric_id: UUID | None = None
+
+
+class SaveSessionRequest(BaseModel):
+    """Payload to explicitly save a chat session."""
+
+    messages: list[ChatMessage]

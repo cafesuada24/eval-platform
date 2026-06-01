@@ -47,3 +47,21 @@ class YamlRuntimeStateRepository(RuntimeStateRepository):
         data = self.adapter.dump_python(state, mode='json', exclude_none=True)
         with file_path.open('w', encoding='utf-8') as f:
             yaml.safe_dump(data, f, sort_keys=False)
+
+    def list_all(self) -> list[RuntimeState]:
+        """List all runtime states."""
+        states: list[RuntimeState] = []
+        for file_path in self.fixtures_dir.glob('*.yaml'):
+            try:
+                with file_path.open('r', encoding='utf-8') as f:
+                    data = yaml.safe_load(f)
+                    if data:
+                        states.append(self.adapter.validate_python(data))
+            except Exception:
+                pass
+        return states
+
+    def delete(self, runtime_id: UUID) -> None:
+        """Delete a runtime state."""
+        file_path = self.fixtures_dir / f'{runtime_id}.yaml'
+        file_path.unlink(missing_ok=True)

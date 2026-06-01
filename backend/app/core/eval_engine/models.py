@@ -130,6 +130,5 @@ class PipelineRunResult:
 @dataclass(frozen=True, slots=True)
 class JudgeResult:
     """An ai judge result."""
-    metric_id: UUID
     score: float
     justification: str

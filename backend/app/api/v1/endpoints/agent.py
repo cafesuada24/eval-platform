@@ -8,7 +8,7 @@ from app.api.dependencies import (
     get_chat_session_repo,
     get_metric_repo,
 )
-from app.api.v1.schemas.agent_dtos import ChatRequest
+from app.api.v1.schemas.agent_dtos import ChatRequest, SaveSessionRequest
 from app.core.agents.metric_helper.models import (
     ChatMessage,
     ChatSession,
@@ -57,6 +57,27 @@ def delete_session(
     }
 
 
+@router.post('/sessions/{metric_id}')
+def save_session(
+    metric_id: UUID,
+    request: SaveSessionRequest,
+    session_repo: Annotated[ChatSessionRepository, Depends(get_chat_session_repo)],
+) -> dict[str, str]:
+    """Explicitly save the chat session history for a metric (e.g. upon creation)."""
+    try:
+        session_data = ChatSession(metric_id=metric_id, messages=request.messages)
+        session_repo.save(session_data)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f'Failed to save session: {str(e)}',
+        ) from e
+    return {
+        'status': 'success',
+        'message': f"Session for metric '{metric_id}' saved.",
+    }
+
+
 @router.post('/chat', response_model=MetricHelperResponse)
 async def chat_with_agent(
     request: ChatRequest,
@@ -96,7 +117,13 @@ async def chat_with_agent(
         raise
 
     if result.response_text:
-        messages_list.append(ChatMessage(role='model', content=result.response_text))
+        messages_list.append(
+            ChatMessage(
+                role='model',
+                content=result.response_text,
+                runtime_id=result.runtime_id,
+            )
+        )
 
     if metric_id:
         try:

@@ -23,3 +23,11 @@ class RuntimeStateRepository(Protocol):
     def save(self, state: RuntimeState) -> None:
         """Save a runtime state."""
         ...
+
+    def list_all(self) -> list[RuntimeState]:
+        """List all runtime states."""
+        ...
+
+    def delete(self, runtime_id: UUID) -> None:
+        """Delete a runtime state."""
+        ...

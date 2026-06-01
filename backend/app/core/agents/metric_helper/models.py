@@ -81,6 +81,7 @@ class ChatMessage:
 
     role: Literal['model', 'user', 'tool']
     content: str
+    runtime_id: UUID | None = None
 
 
 @dataclass(slots=True)

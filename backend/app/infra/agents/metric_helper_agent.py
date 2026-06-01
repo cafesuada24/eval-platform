@@ -34,8 +34,9 @@ def format_query_results(results: list[QueryResult]) -> str:
     formatted: list[str] = []
     for i, res in enumerate(results):
         doc_name = res.document.metadata.get('filename', res.document.id)
+        # Using 4 decimal places for score readability
         formatted.append(
-            f'--- Document {i + 1} (Source: {doc_name}) ---\n{res.document.text}\n',
+            f'--- Document {i + 1} (Source: {doc_name}, Confidence Score: {res.score:.4f}) ---\n{res.document.text}\n',
         )
     return '\n'.join(formatted)
 
@@ -57,6 +58,7 @@ $allowed_variables
 2. For creating or updating metrics, you must autonomously decide which system variables are required.
 3. You MUST select variables ONLY from the `allowed_variables` list. Do not invent variables.
 4. Ensure `metric_draft` represents the complete draft configuration with all fields populated appropriately.
+5. When generating the `prompt_template` for a metric, any variables you inject must be formatted using Jinja2 syntax (e.g., `{{ variable_name }}`). Do not use Python f-string formats like `{variable_name}`.
 </rules>
 """,
 )
@@ -219,17 +221,21 @@ class GeminiMetricHelper:
 
                 query_result_str = 'Vector storage is not configured.'
                 results = []
+                retrieval_latency_ms = 0
                 if self.__vector_storage:
                     rag_params = RAGParameters(
                         chunk_size=settings.rag_chunk_size,
                         chunk_overlap=settings.rag_chunk_overlap,
                         top_k=settings.rag_top_k,
                     )
+                    retrieval_start = time.perf_counter()
                     results = self.__vector_storage.query(ev.query, rag_params)
+                    retrieval_latency_ms = int((time.perf_counter() - retrieval_start) * 1000)
                     query_result_str = format_query_results(results)
 
                 runtime_builder.event(
-                    'retrieval.completed', {'query': ev.query, 'chunks': results}
+                    'retrieval.completed', 
+                    {'query': ev.query, 'chunks': results, 'latency_ms': retrieval_latency_ms}
                 )
 
                 thread.events.append(
@@ -249,7 +255,7 @@ class GeminiMetricHelper:
             input_tokens=input_tokens,
             output_tokens=output_tokens,
         )
-        runtime_builder.latency_ms(int(delta))
+        runtime_builder.latency_ms(int(delta * 1000))
         runtime = runtime_builder.build()
 
         if self.__runtime_state_repo:

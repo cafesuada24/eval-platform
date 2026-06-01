@@ -60,6 +60,7 @@ interface Pipeline {
 interface ChatMessage {
   role: "model" | "user" | "tool";
   content: string;
+  runtime_id?: string; // UUID of the runtime trace if role is "model"
 }
 
 interface ChatRequest {
@@ -78,6 +79,10 @@ interface MetricDraft {
   model_name: string;
   model_provider: string;
   model_temperature: number;
+}
+
+interface SaveSessionRequest {
+  messages: ChatMessage[];
 }
 
 interface MetricHelperResponse {
@@ -123,7 +128,8 @@ When building the chat interface for the AI Metric Builder, follow this state fl
 4. **Handle Response:** 
    - Append the returned `response_text` to the local state as a `model` message.
    - If the response includes a `metric_draft`, the AI has finalized the metric design. **You must immediately present a UI (like a modal or a side panel) allowing the user to review the `MetricDraft` and hit "Save".**
-5. **Save the Draft:** When the user clicks "Save", map the `MetricDraft` into the full `Metric` schema and `POST /v1/configs/metrics`.
+5. **Save the Draft:** When the user clicks "Save", map the `MetricDraft` into the full `Metric` schema and call `POST /v1/configs/metrics` to officially create it.
+6. **Save the Session:** Immediately after `POST /configs/metrics` successfully returns the new Metric (which includes its new UUID), call `POST /v1/agent/sessions/{new_metric_id}` and pass the entire `messages` array in the body. This links your brainstorm session to the newly created metric so it can be rehydrated later!
 
 ### Workflow B: Document Knowledge Base
 1. **Upload:** Use `POST /v1/documents/upload` with a `multipart/form-data` payload containing the `file`. Show a loading spinner, as the backend will synchronously extract text and embed it into ChromaDB.
@@ -137,6 +143,7 @@ When building the chat interface for the AI Metric Builder, follow this state fl
 ### 🤖 Agentic Building (AI Metric Helper)
 - `POST /v1/agent/chat` → Generates conversational responses and metric drafts.
 - `GET /v1/agent/sessions/{metric_id}` → Fetches past chat history for an existing metric to hydrate your local state on load.
+- `POST /v1/agent/sessions/{metric_id}` → Explicitly save a chat session (e.g. immediately after creating a new metric).
 - `DELETE /v1/agent/sessions/{metric_id}` → Clears the history.
 
 ### 📊 Metric Configurations
@@ -158,4 +165,8 @@ When building the chat interface for the AI Metric Builder, follow this state fl
 
 ### ⚡ Runtime & Execution
 - `POST /v1/events` → Ingest a batch of `RuntimeEvent` traces (returns 202).
+- `GET /v1/runtimes` → List all `RuntimeState` objects.
+- `GET /v1/runtimes/{runtime_id}` → Get a specific `RuntimeState`.
+- `GET /v1/runtimes/{runtime_id}/variables` → Run extractors on a trace. Pass `?keys=input_text,retrieved_context` to filter.
+- `DELETE /v1/runtimes/{runtime_id}` → Delete a specific `RuntimeState`.
 - `POST /v1/evaluations/metrics/{metric_id}/run/{runtime_id}` → Forcibly trigger a pipeline/metric evaluation on a historical trace.
