@@ -36,3 +36,22 @@ def test_runtime_state_defaults():
     assert state.events == []
     assert state.resource_usage == {}
     assert state.metadata is None
+
+def test_track_generation():
+    state = RuntimeState(trace_id="t1")
+    with state.track_generation(model="gpt-4", custom_meta="foo") as gen:
+        gen.input_tokens = 10
+        gen.output_tokens = 20
+        assert len(state.events) == 1
+        start_event = state.events[0]
+        assert start_event.event_type == "generation.start"
+        assert start_event.metadata == {"model": "gpt-4", "custom_meta": "foo"}
+
+    assert len(state.events) == 2
+    end_event = state.events[1]
+    assert end_event.event_type == "generation.end"
+    assert end_event.payload["input_tokens"] == 10
+    assert end_event.payload["output_tokens"] == 20
+    assert "latency_ms" in end_event.payload
+    assert end_event.payload["latency_ms"] >= 0
+    assert end_event.metadata == {"model": "gpt-4", "custom_meta": "foo"}

@@ -1,4 +1,7 @@
+"""Eval Platform SDK client."""
+
 import atexit
+import contextlib
 import logging
 import threading
 
@@ -9,15 +12,30 @@ from .models import RuntimeEvent
 
 logger = logging.getLogger(__name__)
 
+
+class NullClient:
+    """A no-op client returned when the SDK is uninitialized to prevent crashes."""
+
+    def log_event(self, event: RuntimeEvent) -> None:
+        pass
+
+    def flush(self) -> None:
+        pass
+
+    def flush_sync(self) -> None:
+        pass
+
+
 _default_client = None
 
 
-def get_default_client() -> 'EvalClient':
+def get_default_client() -> 'EvalClient | NullClient':
     """Retrieves the default initialized EvalClient instance."""
     if _default_client is None:
-        raise RuntimeError(
-            'EvalPlatform SDK is not initialized. Create an EvalClient first.'
+        logger.warning(
+            'EvalPlatform SDK is not initialized. Telemetry will be silently dropped.',
         )
+        return NullClient()
     return _default_client
 
 
@@ -52,7 +70,8 @@ class EvalClient:
 
         # Configured for graceful degradation - short timeout to not block connection pool.
         self._http_client = httpx.Client(
-            timeout=2.0,
+            timeout=httpx.Timeout(10.0, connect=5.0),
+            limits=httpx.Limits(max_connections=10),
             headers={'Authorization': f'Bearer {self.api_key}'},
         )
 
@@ -65,7 +84,7 @@ class EvalClient:
         self.pipelines = PipelineClient(self._management_client, self.base_url)
 
         self._worker_thread = threading.Thread(
-            target=self._background_loop, daemon=True
+            target=self._background_loop, daemon=True,
         )
         self._worker_thread.start()
 
@@ -155,12 +174,27 @@ class EvalClient:
             # Keep newest elements if capacity is exceeded
             self._buffer = combined[-self.max_buffer_capacity :]
 
+    def flush(self) -> None:
+        """Synchronously flush currently buffered events without shutting down."""
+        self._flush_buffer()
+
     def flush_sync(self) -> None:
         """Synchronously flush remaining events. Useful for shutdown operations."""
+        if self._stop_event.is_set():
+            return
+
         self._stop_event.set()
         self._flush_event.set()
+
         if self._worker_thread.is_alive():
             self._worker_thread.join(timeout=self.flush_interval_seconds + 1.0)
-        self._flush_buffer()
-        self._http_client.close()
-        self._management_client.close()
+
+        # Perform final flush (safe due to lock) if thread didn't drain buffer completely
+        with contextlib.suppress(Exception):
+            self._flush_buffer()
+
+        with contextlib.suppress(Exception):
+            self._http_client.close()
+
+        with contextlib.suppress(Exception):
+            self._management_client.close()

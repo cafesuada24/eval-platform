@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from .client import get_default_client
+from .management import current_evaluation_runtimes
 from .models import RuntimeEvent, RuntimeState
 
 
@@ -15,6 +16,12 @@ from .models import RuntimeEvent, RuntimeState
 def trace(trace_id: str | None = None) -> Generator[RuntimeState, None, None]:
     """Context manager to trace execution, calculate latency, and automatically log a terminal RuntimeEvent on exit."""
     trace_id = trace_id or str(uuid.uuid4())
+
+    # Automatically track runtime for Evaluation if within an active evaluation track_case context
+    runtimes = current_evaluation_runtimes.get()
+    if runtimes is not None:
+        runtimes.append(trace_id)
+
     state = RuntimeState(trace_id=trace_id)
 
     start_time = time.perf_counter()
@@ -42,8 +49,20 @@ def capture_trace(func: Callable[..., Any]) -> Callable[..., Any]:
     """Decorator to wrap an AI generation function. Automatically captures
     kwargs, times the execution, captures the output, and sends it to the client.
     """
-    if inspect.iscoroutinefunction(func):
+    if inspect.isasyncgenfunction(func):
+        @functools.wraps(func)
+        async def async_gen_wrapper(*args: Any, **kwargs: Any) -> Any:
+            trace_id = kwargs.pop('trace_id', str(uuid.uuid4()))
+            with trace(trace_id=trace_id) as state:
+                _populate_state_inputs(state, kwargs)
+                result_chunks = []
+                async for chunk in func(*args, **kwargs):
+                    result_chunks.append(str(chunk))
+                    yield chunk
+                _populate_state_outputs(state, "".join(result_chunks))
+        return async_gen_wrapper
 
+    elif inspect.iscoroutinefunction(func):
         @functools.wraps(func)
         async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
             trace_id = kwargs.pop('trace_id', str(uuid.uuid4()))
@@ -52,19 +71,31 @@ def capture_trace(func: Callable[..., Any]) -> Callable[..., Any]:
                 result = await func(*args, **kwargs)
                 _populate_state_outputs(state, result)
                 return result
-
         return async_wrapper
 
-    @functools.wraps(func)
-    def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
-        trace_id = kwargs.pop('trace_id', str(uuid.uuid4()))
-        with trace(trace_id=trace_id) as state:
-            _populate_state_inputs(state, kwargs)
-            result = func(*args, **kwargs)
-            _populate_state_outputs(state, result)
-            return result
+    elif inspect.isgeneratorfunction(func):
+        @functools.wraps(func)
+        def sync_gen_wrapper(*args: Any, **kwargs: Any) -> Any:
+            trace_id = kwargs.pop('trace_id', str(uuid.uuid4()))
+            with trace(trace_id=trace_id) as state:
+                _populate_state_inputs(state, kwargs)
+                result_chunks = []
+                for chunk in func(*args, **kwargs):
+                    result_chunks.append(str(chunk))
+                    yield chunk
+                _populate_state_outputs(state, "".join(result_chunks))
+        return sync_gen_wrapper
 
-    return sync_wrapper
+    else:
+        @functools.wraps(func)
+        def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
+            trace_id = kwargs.pop('trace_id', str(uuid.uuid4()))
+            with trace(trace_id=trace_id) as state:
+                _populate_state_inputs(state, kwargs)
+                result = func(*args, **kwargs)
+                _populate_state_outputs(state, result)
+                return result
+        return sync_wrapper
 
 
 def _populate_state_inputs(state: RuntimeState, kwargs: dict[str, Any]) -> None:

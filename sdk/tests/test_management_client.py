@@ -72,17 +72,58 @@ def test_dataset_upload_csv():
         os.unlink(temp_path)
 
 
-def test_pipeline_evaluate_batch():
+def test_pipeline_start_evaluation():
     mock_client = Mock()
     mock_response = Mock(spec=Response)
-    mock_response.json.return_value = {"job_id": "job123", "status": "PENDING"}
+    mock_response.json.return_value = {"evaluation_id": "eval123"}
     mock_client.post.return_value = mock_response
 
     pipeline_client = PipelineClient(client=mock_client, base_url="http://test")
-    result = pipeline_client.evaluate_batch("pipeline_1", "dataset_1")
+    eval_job = pipeline_client.start_evaluation("pipeline_1", "dataset_1")
 
-    assert result == {"job_id": "job123", "status": "PENDING"}
+    assert eval_job.evaluation_id == "eval123"
     mock_client.post.assert_called_once_with(
-        "http://test/v1/configs/pipelines/pipeline_1/run_batch",
-        json={"dataset_id": "dataset_1"}
+        "http://test/v1/evaluations",
+        json={"pipeline_id": "pipeline_1", "dataset_id": "dataset_1"}
     )
+
+
+def test_evaluation_context_manager():
+    mock_client = Mock()
+    mock_response = Mock(spec=Response)
+    mock_response.json.return_value = {"status": "completed"}
+    mock_client.post.return_value = mock_response
+
+    from evalplatform_sdk.management import Evaluation
+    eval_job = Evaluation(evaluation_id="eval123", client=mock_client, base_url="http://test")
+    
+    with eval_job as e:
+        assert e is eval_job
+        
+    mock_client.post.assert_called_once_with(
+        "http://test/v1/evaluations/eval123/complete"
+    )
+
+@patch("evalplatform_sdk.client.get_default_client")
+def test_evaluation_track_case(mock_get_client):
+    mock_client = Mock()
+    mock_response = Mock(spec=Response)
+    mock_response.json.return_value = {"status": "success"}
+    mock_client.post.return_value = mock_response
+    
+    mock_eval_client = Mock()
+    mock_get_client.return_value = mock_eval_client
+
+    from evalplatform_sdk.management import Evaluation, current_evaluation_runtimes
+    eval_job = Evaluation(evaluation_id="eval123", client=mock_client, base_url="http://test")
+    
+    with eval_job.track_case("testcase_1"):
+        runtimes = current_evaluation_runtimes.get()
+        assert runtimes == []
+        runtimes.append("runtime123")
+        
+    mock_client.post.assert_called_once_with(
+        "http://test/v1/evaluations/eval123/testcases/testcase_1/submit",
+        json={"runtime_ids": ["runtime123"]}
+    )
+    mock_eval_client.flush.assert_called_once()
