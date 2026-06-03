@@ -1,26 +1,29 @@
 import atexit
 import logging
 import threading
-from typing import Any
 
 import httpx
 
+from .management import DatasetClient, PipelineClient
 from .models import RuntimeEvent
 
 logger = logging.getLogger(__name__)
 
 _default_client = None
 
-def get_default_client() -> "EvalClient":
+
+def get_default_client() -> 'EvalClient':
     """Retrieves the default initialized EvalClient instance."""
     if _default_client is None:
-        raise RuntimeError("EvalPlatform SDK is not initialized. Create an EvalClient first.")
+        raise RuntimeError(
+            'EvalPlatform SDK is not initialized. Create an EvalClient first.'
+        )
     return _default_client
 
 
 class EvalClient:
-    """
-    Non-blocking HTTP client for pushing telemetry data to EvalPlatform.
+    """Non-blocking HTTP client for pushing telemetry data to EvalPlatform.
+
     Events are batched in memory and flushed asynchronously in a background thread.
     """
 
@@ -37,7 +40,7 @@ class EvalClient:
             _default_client = self
 
         self.api_key = api_key
-        self.base_url = base_url.rstrip("/")
+        self.base_url = base_url.rstrip('/')
         self.flush_interval_seconds = flush_interval_seconds
         self.max_buffer_size = max_buffer_size
         self.max_buffer_capacity = max_buffer_capacity
@@ -50,8 +53,16 @@ class EvalClient:
         # Configured for graceful degradation - short timeout to not block connection pool.
         self._http_client = httpx.Client(
             timeout=2.0,
-            headers={"Authorization": f"Bearer {self.api_key}"},
+            headers={'Authorization': f'Bearer {self.api_key}'},
         )
+
+        # Dedicated client for management API calls
+        self._management_client = httpx.Client(
+            timeout=30.0,
+            headers={'Authorization': f'Bearer {self.api_key}'},
+        )
+        self.datasets = DatasetClient(self._management_client, self.base_url)
+        self.pipelines = PipelineClient(self._management_client, self.base_url)
 
         self._worker_thread = threading.Thread(
             target=self._background_loop, daemon=True
@@ -66,7 +77,7 @@ class EvalClient:
         with self._lock:
             if len(self._buffer) >= self.max_buffer_capacity:
                 logger.warning(
-                    "EvalPlatform client buffer is full (%d). Dropping event.",
+                    'EvalPlatform client buffer is full (%d). Dropping event.',
                     self.max_buffer_capacity,
                 )
                 return
@@ -86,12 +97,12 @@ class EvalClient:
             wait_time = self.flush_interval_seconds
             if consecutive_failures > 0:
                 # Exponential backoff up to ~60 seconds
-                wait_time = min(60.0, base_backoff ** consecutive_failures)
+                wait_time = min(60.0, base_backoff**consecutive_failures)
 
             # Wait until either the flush interval passes or flush is triggered
             self._flush_event.wait(wait_time)
             self._flush_event.clear()
-            
+
             success = self._flush_buffer()
             if success:
                 consecutive_failures = 0
@@ -99,8 +110,8 @@ class EvalClient:
                 consecutive_failures += 1
 
     def _flush_buffer(self) -> bool:
-        """
-        Safely extracts batch from buffer and dispatches them via HTTP.
+        """Safely extracts batch from buffer and dispatches them via HTTP.
+
         Returns True on success or empty, False on network/5xx errors to trigger backoff.
         """
         with self._lock:
@@ -108,29 +119,32 @@ class EvalClient:
                 return True
 
             # Extract batch and clear from buffer
-            payload_events = self._buffer[:self.max_buffer_size]
-            del self._buffer[:self.max_buffer_size]
+            payload_events = self._buffer[: self.max_buffer_size]
+            del self._buffer[: self.max_buffer_size]
 
-        payload = [event.model_dump(mode="json") for event in payload_events]
+        payload = [event.model_dump(mode='json') for event in payload_events]
 
         try:
             # Wrap in try/except to ensure network failures don't crash the host
             response = self._http_client.post(
-                f"{self.base_url}/v1/events", json={"events": payload}
+                f'{self.base_url}/v1/events',
+                json={'events': payload},
             )
             response.raise_for_status()
             return True
         except httpx.HTTPStatusError as e:
             if e.response.status_code >= 500:
-                logger.warning("EvalPlatform backend error (%d). Re-queueing events.", e.response.status_code)
+                logger.warning(
+                    'EvalPlatform backend error (%d). Re-queueing events.',
+                    e.response.status_code,
+                )
                 self._requeue_events(payload_events)
                 return False
-            else:
-                # 4xx errors mean bad data, we shouldn't retry
-                logger.warning("EvalPlatform rejected telemetry data: %s", e)
-                return True
+            # 4xx errors mean bad data, we shouldn't retry
+            logger.warning('EvalPlatform rejected telemetry data: %s', e)
+            return True
         except Exception as e:
-            logger.warning("Failed to flush telemetry events to EvalPlatform: %s", e)
+            logger.warning('Failed to flush telemetry events to EvalPlatform: %s', e)
             self._requeue_events(payload_events)
             return False
 
@@ -139,7 +153,7 @@ class EvalClient:
         with self._lock:
             combined = events + self._buffer
             # Keep newest elements if capacity is exceeded
-            self._buffer = combined[-self.max_buffer_capacity:]
+            self._buffer = combined[-self.max_buffer_capacity :]
 
     def flush_sync(self) -> None:
         """Synchronously flush remaining events. Useful for shutdown operations."""
@@ -149,3 +163,4 @@ class EvalClient:
             self._worker_thread.join(timeout=self.flush_interval_seconds + 1.0)
         self._flush_buffer()
         self._http_client.close()
+        self._management_client.close()
