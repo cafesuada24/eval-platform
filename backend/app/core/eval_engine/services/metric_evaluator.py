@@ -1,13 +1,14 @@
 """Metric evaluator service."""
+
 from app.core.eval_engine.extractors.runtime_state_extractor import (
     RuntimeStateExtractorService,
 )
 from app.core.eval_engine.models import (
     AssertionStatus,
+    EvaluationContext,
     Metric,
     MetricRunResult,
     MetricThreshold,
-    EvaluationContext,
 )
 from app.core.eval_engine.ports import AIJudgeService
 from app.core.eval_engine.services.formula_evaluator import FormulaEvaluatorService
@@ -89,7 +90,7 @@ class MetricEvaluatorService:
                     ) from e
             else:
                 resolved_bindings[var] = resolved_var
-                
+
         return resolved_bindings
 
     def __evaluate_primitive_metric(
@@ -124,6 +125,7 @@ class MetricEvaluatorService:
             metric_id=metric.id,
             score=score,
             justification=justification,
+            evidence=None,
             assertion_status=assertion_status,
         )
 
@@ -131,15 +133,20 @@ class MetricEvaluatorService:
         self,
         metric: Metric,
         context: EvaluationContext,
+        building_mode: bool,
         threshold: MetricThreshold | None = None,
     ) -> MetricRunResult:
         if not metric.prompt_template:
             raise ValueError(
                 f"AI-judge metric '{metric.name}' must have a prompt_template.",
             )
-        bindings = self.__resolve_bindings(metric.required_inputs, context, as_float=False)
+        bindings = self.__resolve_bindings(
+            metric.required_inputs,
+            context,
+            as_float=False,
+        )
         prompt = self.__format_prompt(metric.prompt_template, bindings)
-        judge_output = await self.__ai_judge_serivce.evaluate(metric, prompt)
+        judge_output = await self.__ai_judge_serivce.evaluate(metric, prompt, building_mode=building_mode)
         assertion_status = self.__evaluate_threshold(
             judge_output.score,
             threshold,
@@ -148,7 +155,9 @@ class MetricEvaluatorService:
         return MetricRunResult(
             metric_id=metric.id,
             score=judge_output.score,
-            justification=judge_output.justification,
+            justification='\n'.join(judge_output.justification),
+            evidence='\n'.join(judge_output.evidence),
+            improvements='\n'.join(judge_output.improvements) if judge_output.improvements else None,
             assertion_status=assertion_status,
         )
 
@@ -157,6 +166,7 @@ class MetricEvaluatorService:
         metric: Metric,
         context: EvaluationContext,
         threshold: MetricThreshold | None = None,
+        building_mode: bool = False,
     ) -> MetricRunResult:
         """Evaluate a metric against a runtime state."""
         if metric.type == 'primitive':
@@ -170,4 +180,5 @@ class MetricEvaluatorService:
             metric=metric,
             context=context,
             threshold=threshold,
+            building_mode=building_mode,
         )

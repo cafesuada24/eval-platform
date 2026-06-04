@@ -16,17 +16,26 @@ from app.core.eval_engine.extractors.runtime_state_extractor import (
 )
 from app.core.eval_engine.ports import (
     AIJudgeService,
+    BatchResultRepository,
+    DatasetRepository,
     MetricRepository,
     PipelineRepository,
 )
+from app.core.eval_engine.services.dataset_parser import DatasetParserService
+from app.core.eval_engine.services.evaluation_orchestrator import EvaluationOrchestratorService
 from app.core.eval_engine.services.formula_evaluator import FormulaEvaluatorService
 from app.core.eval_engine.services.metric_evaluator import MetricEvaluatorService
+from app.core.eval_engine.services.pipeline_evaluator import PipelineEvaluatorService
 from app.core.kernel.ports import RuntimeStateRepository
 from app.core.vector_storage.ports import VectorStoragePort
 from app.infra.agents.metric_helper_agent import GeminiMetricHelper
+from app.infra.repositories.json_batch_result_repository import (
+    LocalJsonBatchResultRepository,
+)
 from app.infra.repositories.json_chat_session_repository import (
     LocalJsonChatSessionRepository,
 )
+from app.infra.repositories.json_dataset_repository import LocalJsonDatasetRepository
 from app.infra.repositories.json_document_repository import LocalJsonDocumentRepository
 from app.infra.repositories.yaml_metric_repository import YamlMetricRepository
 from app.infra.repositories.yaml_pipeline_repository import YamlPipelineRepository
@@ -59,6 +68,16 @@ def get_runtime_state_repo() -> RuntimeStateRepository:
 def get_chat_session_repo() -> ChatSessionRepository:
     """Get the chat session repository singleton."""
     return LocalJsonChatSessionRepository(settings.sessions_dir)
+
+@lru_cache
+def get_dataset_repo() -> DatasetRepository:
+    """Get the dataset repository singleton."""
+    return LocalJsonDatasetRepository(settings.datasets_dir)
+
+@lru_cache
+def get_batch_result_repo() -> BatchResultRepository:
+    """Get the batch result repository singleton."""
+    return LocalJsonBatchResultRepository(settings.batch_results_dir)
 
 @lru_cache
 def get_document_repo() -> DocumentRepository:
@@ -95,6 +114,37 @@ def get_metric_evaluator(
         formula_evaluator=FormulaEvaluatorService(),
         ai_judge_service=ai_judge,
     )
+
+
+def get_pipeline_evaluator(
+    metric_evaluator: Annotated[MetricEvaluatorService, Depends(get_metric_evaluator)],
+    metric_repo: Annotated[MetricRepository, Depends(get_metric_repo)],
+) -> PipelineEvaluatorService:
+    """Get the pipeline evaluator service."""
+    return PipelineEvaluatorService(
+        metric_eval_srv=metric_evaluator,
+        metric_repo=metric_repo,
+    )
+
+
+def get_evaluation_orchestrator(
+    batch_result_repo: Annotated[BatchResultRepository, Depends(get_batch_result_repo)],
+    pipeline_eval_srv: Annotated[PipelineEvaluatorService, Depends(get_pipeline_evaluator)],
+    runtime_state_repo: Annotated[RuntimeStateRepository, Depends(get_runtime_state_repo)],
+    dataset_repo: Annotated[DatasetRepository, Depends(get_dataset_repo)],
+) -> EvaluationOrchestratorService:
+    """Get the evaluation orchestrator service."""
+    return EvaluationOrchestratorService(
+        batch_result_repo=batch_result_repo,
+        pipeline_eval_srv=pipeline_eval_srv,
+        runtime_state_repo=runtime_state_repo,
+        dataset_repo=dataset_repo,
+    )
+
+
+def get_dataset_parser() -> DatasetParserService:
+    """Get the dataset parser service."""
+    return DatasetParserService()
 
 
 def get_agentic_helper(

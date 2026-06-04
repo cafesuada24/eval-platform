@@ -3,7 +3,13 @@
 from typing import Protocol
 from uuid import UUID
 
-from app.core.eval_engine.models import JudgeResult, Metric, Pipeline
+from app.core.eval_engine.models import (
+    BatchRunResult,
+    Dataset,
+    JudgeResult,
+    Metric,
+    Pipeline,
+)
 
 
 class MetricRepository(Protocol):
@@ -37,6 +43,10 @@ class MetricRepository(Protocol):
 
     def save(self, metric: Metric) -> None:
         """Save a metric configuration."""
+        ...
+
+    def delete(self, metric_id: UUID) -> None:
+        """Delete a metric configuration."""
         ...
 
 
@@ -74,6 +84,38 @@ class PipelineRepository(Protocol):
 class AIJudgeService(Protocol):
     """AI as a judge."""
 
-    async def evaluate(self, metric: Metric, prompt: str) -> JudgeResult:
+    async def evaluate(self, metric: Metric, prompt: str, building_mode: bool = False) -> JudgeResult:
         """Evaluate a metric based on a runtime state."""
         ...
+
+class DatasetRepository(Protocol):
+    """Dataset repository."""
+
+    def get_by_id(self, dataset_id: UUID) -> Dataset:
+        """Get a dataset by id."""
+        ...
+
+    def save(self, dataset: Dataset) -> None:
+        """Save a dataset."""
+        ...
+
+    def list_all(self) -> list[Dataset]:
+        """List all datasets."""
+        ...
+
+
+class BatchResultRepository(Protocol):
+    """Batch result repository."""
+
+    def get_by_id(self, job_id: UUID) -> BatchRunResult:
+        """Get a batch run result by job_id."""
+        ...
+
+    def save(self, result: BatchRunResult) -> None:
+        """Save a batch run result."""
+        ...
+
+    def list_all(self) -> list[BatchRunResult]:
+        """List all batch run results."""
+        ...
+

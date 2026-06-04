@@ -115,6 +115,31 @@ interface HTTPValidationError {
 }
 ```
 
+### Datasets & Batch Processing
+```typescript
+interface TestCase {
+  id: string; // UUID
+  input_text: string;
+  input_files: string[];
+  expected_output?: string | null;
+  metadata: Record<string, any>;
+}
+
+interface Dataset {
+  id: string; // UUID
+  name: string;
+  cases: TestCase[];
+}
+
+interface BatchRunResult {
+  job_id: string; // UUID
+  pipeline_id: string; // UUID
+  dataset_id: string; // UUID
+  status: "PENDING" | "COMPLETED" | "FAILED";
+  pipeline_run_results: any[]; 
+}
+```
+
 ---
 
 ## 3. Integration Workflows (Implementation Guides)
@@ -157,6 +182,13 @@ When building the chat interface for the AI Metric Builder, follow this state fl
 - `POST /v1/configs/pipelines` → Create a Pipeline (attach existing metrics).
 - `GET /v1/configs/pipelines/{pipeline_id}` → Get Pipeline details.
 - `PUT /v1/configs/pipelines/{pipeline_id}` → Update Pipeline.
+- `POST /v1/configs/pipelines/{pipeline_id}/run_batch` → Initiates the offline batch execution via background tasks (Accepts JSON `{ "dataset_id": "uuid" }`). Returns `{ "job_id": "uuid", "status": "PENDING" }`.
+- `GET /v1/configs/pipelines/batch_results/{job_id}` → Polls for the final `BatchRunResult` containing metrics for each test case.
+
+### 📦 Datasets & Batch Evaluation
+- `POST /v1/datasets/` → Upload a dataset (JSON or CSV). (FormData: `file`).
+- `GET /v1/datasets/` → List all parsed datasets.
+- `GET /v1/datasets/{dataset_id}` → Get a specific dataset by ID.
 
 ### 📄 Document Knowledge Base (RAG)
 - `POST /v1/documents/upload` → Upload a file (txt, pdf, image) and embed it. (FormData: `file`).

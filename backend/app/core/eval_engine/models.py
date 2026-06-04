@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from enum import IntEnum
+from enum import Enum, IntEnum
 from typing import TYPE_CHECKING, Any, Literal
 from uuid import UUID, uuid4
 
@@ -15,6 +15,13 @@ if TYPE_CHECKING:
 
 # --- VALUE OBJECTS ---
 
+class BatchRunStatus(str, Enum):
+    """Batch run status."""
+
+    PENDING = 'PENDING'
+    IN_PROGRESS = 'IN_PROGRESS'
+    COMPLETED = 'COMPLETED'
+    FAILED = 'FAILED'
 
 class AssertionStatus(IntEnum):
     """Assertion status."""
@@ -111,7 +118,9 @@ class MetricRunResult:
     metric_id: UUID
     score: float
     justification: str
+    evidence: str | None
     assertion_status: AssertionStatus
+    improvements: str | None = None
     run_id: UUID = field(default_factory=uuid4)
 
 
@@ -132,7 +141,18 @@ class PipelineRunResult:
     pipeline_id: UUID
     overall_status: AssertionStatus
     metric_results: list[MetricRunResult]
+    testcase_id: UUID | None = None
     run_id: UUID = field(default_factory=uuid4)
+
+@dataclass(slots=True)
+class BatchRunResult:
+    """A batch run result."""
+
+    job_id: UUID
+    pipeline_id: UUID
+    dataset_id: UUID
+    status: BatchRunStatus
+    pipeline_run_results: list[PipelineRunResult] = field(default_factory=list[PipelineRunResult])
 
 @dataclass(slots=True)
 class TestCase:
@@ -159,7 +179,7 @@ class EvaluationContext:
         events_dict: dict[str, list[RuntimeEvent]] = defaultdict(list[RuntimeEvent])
         for state in self.runtime_states:
             for event in state.events:
-                events_dict[event.event_type].append(event)
+                events_dict[event.payload.event_type].append(event)
         self.events_by_type = dict(events_dict)
 
     @property
@@ -171,4 +191,6 @@ class EvaluationContext:
 class JudgeResult:
     """An ai judge result."""
     score: float
-    justification: str
+    justification: list[str]
+    evidence: list[str]
+    improvements: list[str] | None = None

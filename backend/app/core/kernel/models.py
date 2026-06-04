@@ -2,20 +2,69 @@
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
-from typing import Any
+from enum import StrEnum
+from typing import Annotated, Any, Literal, TypedDict
 from uuid import UUID, uuid4
 
+from pydantic import Discriminator
 
-class RuntimeEventType(str, Enum):
-    """Types of runtime events."""
+# --- VALUE OBJECTS ---
 
-    GENERATION_STARTED = 'generation.started'
-    GENERATION_START = 'generation.start'
-    GENERATION_COMPLETED = 'generation.completed'
-    GENERATION_END = 'generation.end'
-    RETRIEVAL_COMPLETED = 'retrieval.completed'
-    OCR_COMPLETED = 'ocr.completed'
+class RuntimeEventType(StrEnum):
+    GENERATION = 'generation'
+    RETRIEVAL = 'retrieval'
+    FILE_PROCESSED = 'file_processed'
+
+
+@dataclass(slots=True, frozen=True)
+class GenerationPayload:
+    provider: str
+    model: str
+
+    input_text: str
+    prompt: str
+    output_text: str
+
+    latency_ms: int
+    input_tokens: int
+    output_tokens: int
+
+    event_type: Literal[RuntimeEventType.GENERATION] = RuntimeEventType.GENERATION
+
+
+class RetrievedChunk(TypedDict):
+    document: str
+    content: str
+    confidence: float
+
+
+@dataclass(slots=True, frozen=True)
+class RetrievalPayload:
+    query: str
+    chunks: list[RetrievedChunk]
+    latency_ms: int
+
+    event_type: Literal[RuntimeEventType.RETRIEVAL] = RuntimeEventType.RETRIEVAL
+
+
+@dataclass(slots=True, frozen=True)
+class FileProcessedPayload:
+    file_name: str
+    processor: Literal['ocr', 'file_reader']
+
+    content: str
+    latency_ms: int
+
+    event_type: Literal[RuntimeEventType.FILE_PROCESSED] = RuntimeEventType.FILE_PROCESSED
+
+
+type RuntimeEventPayload = Annotated[
+    GenerationPayload | RetrievalPayload | FileProcessedPayload,
+    Discriminator(discriminator='event_type'),
+]
+
+
+# --- ENTITIES ---
 
 
 @dataclass(slots=True)
@@ -37,10 +86,10 @@ class RuntimeEvent:
     """
 
     runtime_id: UUID  # The trace id
-    event_type: str
-    payload: dict[str, Any]
+    payload: RuntimeEventPayload
     timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     metadata: dict[str, Any] | None = None
+    event_id: UUID = field(default_factory=uuid4)
 
 
 @dataclass(slots=True)
@@ -55,5 +104,5 @@ class RuntimeState:
     events: list[RuntimeEvent] = field(default_factory=list[RuntimeEvent])
     resource_usage: ResourceUsage = field(default_factory=ResourceUsage)
 
-    artifacts: list[dict[str, Any]] | None = None
+    # artifacts: list[dict[str, Any]] | None = None
     metadata: dict[str, Any] | None = None

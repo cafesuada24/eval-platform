@@ -14,10 +14,12 @@ from app.core.agents.metric_helper.models import (
 )
 from app.core.agents.metric_helper.utils import thread_to_prompt
 from app.core.config import settings
+from app.core.documents.ports import DocumentRepository
 from app.core.eval_engine.extractors.runtime_state_extractor import (
     RuntimeStateExtractorService,
 )
 from app.core.kernel.builders.runtime_builder import RuntimeStateBuilder
+from app.core.kernel.models import GenerationPayload, RetrievalPayload
 from app.core.kernel.ports import RuntimeStateRepository
 from app.core.vector_storage.models import QueryResult, RAGParameters
 from app.core.vector_storage.ports import VectorStoragePort
@@ -43,7 +45,7 @@ def format_query_results(results: list[QueryResult]) -> str:
 
 SYS_INSTRUCTION_TEMPLATE = Template(
     """<instruction>
-You are an expert AI Metric Builder.
+You are an expert AI Metric Builder, who helps user build metrics based on their preference.
 </instruction>
 
 <allowed_variables>
@@ -62,9 +64,6 @@ $allowed_variables
 </rules>
 """,
 )
-
-
-from app.core.documents.ports import DocumentRepository
 
 
 class GeminiMetricHelper:
@@ -133,11 +132,11 @@ class GeminiMetricHelper:
             response_schema=ta.json_schema(),
         )
 
-        formatted_contents: list[types.Content] = [
-            types.Content(
-                role=msg.role,
-                parts=[types.Part.from_text(text=msg.content)],
-            )
+        formatted_contents: list[types.ContentDict] = [
+            {
+                'role': msg.role,
+                'parts': [{'text': msg.content}],
+            }
             for msg in messages
         ]
 
@@ -150,14 +149,7 @@ class GeminiMetricHelper:
             ],
         )
 
-        runtime_builder.event(
-            'generation.started',
-            payload={
-                'provider': 'google',
-                'model': self.__model,
-                'input_text': messages[-1].content,
-            },
-        )
+        original_user_input: str = messages[-1].content
 
         response_text: str
         metric_draft: MetricDraft | None = None
@@ -178,18 +170,19 @@ class GeminiMetricHelper:
                 "What's the next step?"
             )
 
-            print(msg)
+            formatted_contents[-1] = {
+                'role': 'user',
+                'parts': [{'text': msg}],
+            }
 
-            formatted_contents[-1] = types.Content(
-                role='user',
-                parts=[types.Part.from_text(text=msg)],
-            )
-
+            response_time_start = time.perf_counter()
             response = await self.__client.aio.models.generate_content(
                 model=self.__model,
                 contents=formatted_contents,
                 config=config,
             )
+            response_time_fin = time.perf_counter()
+
             if response.usage_metadata is not None:
                 input_tokens += response.usage_metadata.prompt_token_count or 0
                 output_tokens += response.usage_metadata.candidates_token_count or 0
@@ -203,8 +196,22 @@ class GeminiMetricHelper:
                 # TODO: do some useful things
                 raise
 
+            runtime_builder.event(
+                GenerationPayload(
+                    provider='google',
+                    model=self.__model,
+                    input_text=original_user_input,
+                    prompt=msg,
+                    output_text=ev.response or '',
+                    latency_ms=int(
+                        (response_time_fin - response_time_start) * 1000,
+                    ),
+                    input_tokens=response.usage_metadata.prompt_token_count or 0,
+                    output_tokens=response.usage_metadata.candidates_token_count or 0,
+                ),
+            )
+
             if ev.type == 'response':
-                print(ev.response)
                 assert ev.response is not None
                 response_text = ev.response
                 break
@@ -217,8 +224,6 @@ class GeminiMetricHelper:
 
             if ev.type == 'query_documents':
                 assert ev.query is not None
-                runtime_builder.event('retrieval.started', {'query': ev.query})
-
                 query_result_str = 'Vector storage is not configured.'
                 results = []
                 retrieval_latency_ms = 0
@@ -230,13 +235,10 @@ class GeminiMetricHelper:
                     )
                     retrieval_start = time.perf_counter()
                     results = self.__vector_storage.query(ev.query, rag_params)
-                    retrieval_latency_ms = int((time.perf_counter() - retrieval_start) * 1000)
+                    retrieval_latency_ms = int(
+                        (time.perf_counter() - retrieval_start) * 1000,
+                    )
                     query_result_str = format_query_results(results)
-
-                runtime_builder.event(
-                    'retrieval.completed', 
-                    {'query': ev.query, 'chunks': results, 'latency_ms': retrieval_latency_ms}
-                )
 
                 thread.events.append(
                     AgentEvent(
@@ -245,12 +247,23 @@ class GeminiMetricHelper:
                     ),
                 )
 
+                runtime_builder.event(
+                    RetrievalPayload(
+                        query=ev.query,
+                        chunks=[
+                            {
+                                'document': chunk.document.metadata.get('filename', chunk.document.id) or 'unknown',
+                                'content': chunk.document.text,
+                                'confidence': chunk.score,
+                            } for chunk in results
+
+                        ],
+                        latency_ms=retrieval_latency_ms,
+                    ),
+                )
+
         delta = time.perf_counter() - start
 
-        runtime_builder.event(
-            'generation.completed',
-            {'output_text': response_text, 'steps': steps},
-        )
         runtime_builder.token_usage(
             input_tokens=input_tokens,
             output_tokens=output_tokens,

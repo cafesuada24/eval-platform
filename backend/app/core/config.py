@@ -51,6 +51,14 @@ class Settings(BaseSettings):
     def chromadb_dir(self) -> Path:
         return self.fixtures_dir / 'chromadb'
 
+    @property
+    def datasets_dir(self) -> Path:
+        return self.fixtures_dir / 'datasets'
+
+    @property
+    def batch_results_dir(self) -> Path:
+        return self.fixtures_dir / 'batch_results'
+
 
 # Global settings instance
 settings = Settings()

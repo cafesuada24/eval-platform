@@ -5,14 +5,15 @@ required_inputs:
 - input_text
 - retrieved_context
 scoring_scale:
-  min: 1.0
-  max: 5.0
-  data_type: integer
+  min: 0.0
+  max: 1.0
+  data_type: float
 model_configuration:
   provider: google
   model: gemini-3.1-flash-lite
   temperature: 0.0
 prompt_template: 'Evaluate the relevance of the retrieved context to the user input.
   Input: {{ input_text }}. Context: {{ retrieved_context }}. Provide a score between
-  1 and 5 where 5 is highly relevant and 1 is not relevant at all.'
+  0 and 1.'
 id: a1281495-62c3-4d9b-9224-89af5864f621
+is_system_default: false

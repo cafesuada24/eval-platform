@@ -1,9 +1,17 @@
 from typing import Annotated
 from uuid import UUID
 
-from app.api.dependencies import get_metric_repo, get_pipeline_repo
+from app.api.dependencies import (
+    get_chat_session_repo,
+    get_metric_repo,
+    get_pipeline_repo,
+)
+from app.core.agents.metric_helper.ports import ChatSessionRepository
 from app.core.eval_engine.models import Metric, Pipeline
-from app.core.eval_engine.ports import MetricRepository, PipelineRepository
+from app.core.eval_engine.ports import (
+    MetricRepository,
+    PipelineRepository,
+)
 from fastapi import APIRouter, Depends, HTTPException
 
 router = APIRouter()
@@ -57,6 +65,18 @@ def update_metric(
     return metric
 
 
+@router.delete('/metrics/{metric_id}', status_code=204)
+def delete_metric(
+    metric_id: UUID,
+    metric_repo: Annotated[MetricRepository, Depends(get_metric_repo)],
+    chat_session_repo: Annotated[ChatSessionRepository, Depends(get_chat_session_repo)],
+) -> None:
+    if not metric_repo.find_by_id(metric_id):
+        raise HTTPException(status_code=404, detail='Metric not found')
+    metric_repo.delete(metric_id)
+    chat_session_repo.delete(metric_id=metric_id)
+
+
 # Pipelines
 
 
@@ -90,7 +110,7 @@ def create_pipeline(
     for pm in pipeline.metrics:
         if not metric_repo.find_by_id(pm.metric_id):
             raise HTTPException(
-                status_code=400, detail=f'Metric {pm.metric_id} does not exist'
+                status_code=400, detail=f'Metric {pm.metric_id} does not exist',
             )
 
     pipeline_repo.save(pipeline)
@@ -118,3 +138,4 @@ def update_pipeline(
 
     pipeline_repo.save(pipeline)
     return pipeline
+

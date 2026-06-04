@@ -1,8 +1,7 @@
 import logging
 import uuid
-import yaml
-from pydantic import TypeAdapter
 
+import yaml
 from app.api.v1.schemas.agent_dtos import ChatRequest
 from app.core.agents.metric_helper.models import (
     ChatMessage,
@@ -15,6 +14,7 @@ from app.core.agents.metric_helper.ports import (
 )
 from app.core.eval_engine.models import Metric
 from app.core.eval_engine.ports import MetricRepository
+from pydantic import TypeAdapter
 
 logger = logging.getLogger(__name__)
 

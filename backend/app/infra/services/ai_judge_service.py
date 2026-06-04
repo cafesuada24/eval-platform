@@ -2,7 +2,6 @@
 
 import litellm
 from app.core.eval_engine.models import JudgeResult, Metric
-from app.core.eval_engine.ports import AIJudgeService
 from pydantic import TypeAdapter
 
 
@@ -20,20 +19,38 @@ def _get_litellm_model_name(config: Metric) -> str:
     return f'{provider}/{model}'
 
 
-class LiteLLMAIJudge(AIJudgeService):
+class LiteLLMAIJudge:
     """AI judge backed by LiteLLM."""
 
-    async def evaluate(self, metric: Metric, prompt: str) -> JudgeResult:
+    async def evaluate(
+        self,
+        metric: Metric,
+        prompt: str,
+        building_mode: bool = False,
+    ) -> JudgeResult:
         """Call agent to judge against a well formatted prompt."""
         assert metric.type == 'ai-judge'
-        sys_instruct = (
-            'You are an objective AI evaluation judge. You must evaluate the prompt according to the given criteria.\n'
-            'You must return your output ONLY as a JSON object with two fields:\n'
-            f'- "score": A numeric value representing the score. This value MUST be a {metric.scoring_scale.data_type}'
-            f' between {metric.scoring_scale.min} and {metric.scoring_scale.max} (inclusive).\n'
-            '- "justification": A clear, concise text justification explaining why you gave this score.\n'
-            'Do not include any markdown styling, conversational filler, or extra text. Output ONLY the raw valid JSON.'
+        improvement = (
+            '* **"improvements"**: Actionable and specific suggestions on how the user can refine their evaluation prompt to achieve higher aligment with there intent.'
+            if building_mode
+            else ''
         )
+        sys_instruct = f"""<role>
+You are an **objective AI evaluation judge**. Your task is to evaluate the provided input strictly according to the given criteria.
+</role>
+
+<instructions>
+To ensure a rigorous and detailed evaluation, you must follow a step-by-step reasoning process **BEFORE** assigning a score.
+You must return your output ONLY as a JSON object. Do not include any markdown styling for the code block (such as ```json), conversational filler, or extra text. Output ONLY the raw, valid JSON.
+</instructions>
+
+<output_contract>
+The JSON object MUST contain exactly these four fields in this EXACT order:
+* **"evidence"**: Bullet points quoting specific parts of the evaluated text that directly relate to the criteria.
+* **"justification"**: Bullet points detailed, step-by-step reasoning explaining how the extracted evidence aligns or fails to align with the criteria.
+* **"score"**: A numeric value representing the final score. This value MUST be a {metric.scoring_scale.data_type} between {metric.scoring_scale.min} and {metric.scoring_scale.max} (inclusive).
+{improvement}
+</output_contract>"""
 
         model_name = _get_litellm_model_name(metric)
         temperature = metric.model_configuration.temperature
@@ -44,10 +61,13 @@ class LiteLLMAIJudge(AIJudgeService):
         ]
 
         ta = TypeAdapter(JudgeResult)
+        print(ta.json_schema())
+
 
         response = await litellm.acompletion(
             model=model_name,
             messages=messages,
+            reasoning_effort='high',
             response_format={
                 'type': 'json_schema',
                 'json_schema': ta.json_schema(),
@@ -57,5 +77,6 @@ class LiteLLMAIJudge(AIJudgeService):
         )
 
         content = response.choices[0].message.content
+        print(content)
 
         return ta.validate_json(content)

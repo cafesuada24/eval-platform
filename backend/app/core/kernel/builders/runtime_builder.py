@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from app.core.kernel.models import RuntimeEvent, RuntimeState
+from app.core.kernel.models import RuntimeEvent, RuntimeEventPayload, RuntimeState
 
 
 class RuntimeStateBuilder:
@@ -12,22 +12,20 @@ class RuntimeStateBuilder:
         """Initialize a builder."""
         self.__runtime = RuntimeState()
 
-    def artifact(self, artifact: dict[str, Any]) -> None:
-        """Add an artifact."""
-        if self.__runtime.artifacts is None:
-            self.__runtime.artifacts = []
-        self.__runtime.artifacts.append(artifact)
+    # def artifact(self, artifact: dict[str, Any]) -> None:
+    #     """Add an artifact."""
+    #     if self.__runtime.artifacts is None:
+    #         self.__runtime.artifacts = []
+    #     self.__runtime.artifacts.append(artifact)
 
     def event(
         self,
-        event_type: str,
-        payload: dict[str, Any],
+        payload: RuntimeEventPayload,
         metadata: dict[str, Any] | None = None,
     ) -> None:
         """Add a runtime event."""
         self.__runtime.events.append(RuntimeEvent(
             runtime_id=self.__runtime.runtime_id,
-            event_type=event_type,
             payload=payload,
             metadata=metadata,
         ))

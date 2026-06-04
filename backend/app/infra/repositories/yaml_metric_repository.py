@@ -80,3 +80,9 @@ class YamlMetricRepository:
         data = self.adapter.dump_python(metric, mode='json', exclude_none=True)
         with file_path.open('w', encoding='utf-8') as f:
             yaml.safe_dump(data, f, sort_keys=False)
+
+    def delete(self, metric_id: UUID) -> None:
+        """Delete a metric configuration YAML file."""
+        file_path = self.fixtures_dir / f'{metric_id}.yaml'
+        if file_path.exists():
+            file_path.unlink()

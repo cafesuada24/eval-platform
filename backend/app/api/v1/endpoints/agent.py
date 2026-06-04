@@ -1,20 +1,16 @@
-import uuid
 from typing import Annotated
 from uuid import UUID
 
-import yaml
 from app.api.dependencies import (
     get_chat_session_repo,
     get_metric_helper_app_service,
 )
 from app.api.v1.schemas.agent_dtos import ChatRequest, SaveSessionRequest
 from app.core.agents.metric_helper.models import (
-    ChatMessage,
     ChatSession,
     MetricHelperResponse,
 )
 from app.core.agents.metric_helper.ports import (
-    AgenticMetricHelper,
     ChatSessionRepository,
 )
 from app.core.agents.metric_helper.services import MetricHelperAppService
@@ -83,6 +79,6 @@ async def chat_with_agent(
     try:
         return await app_service.chat(request)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An error occurred during chat: {str(e)}") from e
