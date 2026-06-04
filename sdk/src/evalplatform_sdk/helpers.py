@@ -1,120 +1,37 @@
-import functools
-import inspect
 import time
 import uuid
-from collections.abc import Callable, Generator
+from collections.abc import Generator
 from contextlib import contextmanager
-from datetime import UTC, datetime
-from typing import Any
 
 from .client import get_default_client
-from .management import current_evaluation_runtimes
-from .models import RuntimeEvent, RuntimeState
+from .management import CaseTracker
+from .models import RuntimeState
 
 
 @contextmanager
-def trace(trace_id: str | None = None) -> Generator[RuntimeState, None, None]:
-    """Context manager to trace execution, calculate latency, and automatically log a terminal RuntimeEvent on exit."""
-    trace_id = trace_id or str(uuid.uuid4())
+def trace(
+    runtime_id: str | None = None,
+    eval_tracker: CaseTracker | None = None,
+) -> Generator[RuntimeState, None, None]:
+    """Context manager to trace execution, calculate latency, and automatically log a RuntimeState on exit.
 
-    # Automatically track runtime for Evaluation if within an active evaluation track_case context
-    runtimes = current_evaluation_runtimes.get()
-    if runtimes is not None:
-        runtimes.append(trace_id)
+    If eval_tracker is provided, the trace will be attached to that testcase evaluation.
+    """
+    if runtime_id is None:
+        runtime_id = str(uuid.uuid4())
+        
+    if eval_tracker is not None:
+        eval_tracker.add_runtime(runtime_id)
 
-    state = RuntimeState(trace_id=trace_id)
+    state = RuntimeState(runtime_id=runtime_id)
 
     start_time = time.perf_counter()
-    start_timestamp = datetime.now(UTC)
 
     try:
         yield state
     finally:
-        latency_ms = (time.perf_counter() - start_time) * 1000.0
-        state.resource_usage['latency_ms'] = latency_ms
-
-        event = RuntimeEvent(
-            event_id=str(uuid.uuid4()),
-            trace_id=trace_id,
-            event_type='trace.completed',
-            timestamp=start_timestamp,
-            payload=state.model_dump(mode='json'),
-        )
+        latency_ms = int((time.perf_counter() - start_time) * 1000.0)
+        state.usage.latency_ms = latency_ms
 
         client = get_default_client()
-        client.log_event(event)
-
-
-def capture_trace(func: Callable[..., Any]) -> Callable[..., Any]:
-    """Decorator to wrap an AI generation function. Automatically captures
-    kwargs, times the execution, captures the output, and sends it to the client.
-    """
-    if inspect.isasyncgenfunction(func):
-        @functools.wraps(func)
-        async def async_gen_wrapper(*args: Any, **kwargs: Any) -> Any:
-            trace_id = kwargs.pop('trace_id', str(uuid.uuid4()))
-            with trace(trace_id=trace_id) as state:
-                _populate_state_inputs(state, kwargs)
-                result_chunks = []
-                async for chunk in func(*args, **kwargs):
-                    result_chunks.append(str(chunk))
-                    yield chunk
-                _populate_state_outputs(state, "".join(result_chunks))
-        return async_gen_wrapper
-
-    elif inspect.iscoroutinefunction(func):
-        @functools.wraps(func)
-        async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
-            trace_id = kwargs.pop('trace_id', str(uuid.uuid4()))
-            with trace(trace_id=trace_id) as state:
-                _populate_state_inputs(state, kwargs)
-                result = await func(*args, **kwargs)
-                _populate_state_outputs(state, result)
-                return result
-        return async_wrapper
-
-    elif inspect.isgeneratorfunction(func):
-        @functools.wraps(func)
-        def sync_gen_wrapper(*args: Any, **kwargs: Any) -> Any:
-            trace_id = kwargs.pop('trace_id', str(uuid.uuid4()))
-            with trace(trace_id=trace_id) as state:
-                _populate_state_inputs(state, kwargs)
-                result_chunks = []
-                for chunk in func(*args, **kwargs):
-                    result_chunks.append(str(chunk))
-                    yield chunk
-                _populate_state_outputs(state, "".join(result_chunks))
-        return sync_gen_wrapper
-
-    else:
-        @functools.wraps(func)
-        def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
-            trace_id = kwargs.pop('trace_id', str(uuid.uuid4()))
-            with trace(trace_id=trace_id) as state:
-                _populate_state_inputs(state, kwargs)
-                result = func(*args, **kwargs)
-                _populate_state_outputs(state, result)
-                return result
-        return sync_wrapper
-
-
-def _populate_state_inputs(state: RuntimeState, kwargs: dict[str, Any]) -> None:
-    if 'input_text' in kwargs:
-        state.input_text = kwargs['input_text']
-
-    metadata = {}
-    for k, v in kwargs.items():
-        if k != 'input_text':
-            metadata[k] = v
-
-    if metadata:
-        state.metadata = state.metadata or {}
-        state.metadata.update(metadata)
-
-
-def _populate_state_outputs(state: RuntimeState, result: Any) -> None:
-    if isinstance(result, str):
-        state.output_text = result
-    else:
-        state.metadata = state.metadata or {}
-        state.metadata['output'] = str(result)
+        client.log_runtime(state)

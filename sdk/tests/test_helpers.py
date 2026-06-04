@@ -23,7 +23,7 @@ def test_client():
 
 
 def test_trace_context_manager(test_client):
-    with trace(trace_id="test-trace-1") as state:
+    with trace(runtime_id="test-trace-1") as state:
         state.input_text = "hello"
         time.sleep(0.01)
         state.output_text = "world"
@@ -31,7 +31,7 @@ def test_trace_context_manager(test_client):
     assert len(test_client._buffer) == 1
     event = test_client._buffer[0]
     
-    assert event.trace_id == "test-trace-1"
+    assert event.runtime_id == "test-trace-1"
     assert event.event_type == "trace.completed"
     
     payload = event.payload
@@ -47,13 +47,13 @@ def test_capture_trace_sync(test_client):
         time.sleep(0.01)
         return f"Response to: {input_text}"
 
-    result = generate_text(input_text="Hi there", temperature=0.7, trace_id="trace-sync")
+    result = generate_text(input_text="Hi there", temperature=0.7, runtime_id="trace-sync")
     
     assert result == "Response to: Hi there"
     assert len(test_client._buffer) == 1
     
     event = test_client._buffer[0]
-    assert event.trace_id == "trace-sync"
+    assert event.runtime_id == "trace-sync"
     
     payload = event.payload
     assert payload["input_text"] == "Hi there"
@@ -69,13 +69,13 @@ async def test_capture_trace_async(test_client):
         await asyncio.sleep(0.01)
         return {"answer": f"Async response to: {input_text}"}
 
-    result = await async_generate(input_text="Hello async", model="gpt-4", trace_id="trace-async")
+    result = await async_generate(input_text="Hello async", model="gpt-4", runtime_id="trace-async")
     
     assert result["answer"] == "Async response to: Hello async"
     assert len(test_client._buffer) == 1
     
     event = test_client._buffer[0]
-    assert event.trace_id == "trace-async"
+    assert event.runtime_id == "trace-async"
     
     payload = event.payload
     assert payload["input_text"] == "Hello async"

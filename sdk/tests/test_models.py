@@ -14,22 +14,20 @@ def test_artifact_creation():
 def test_runtime_event_creation():
     now = datetime.now(timezone.utc)
     event = RuntimeEvent(
-        event_id="e1",
-        trace_id="t1",
+        runtime_id="t1",
         event_type="generation.start",
         timestamp=now,
         payload={"foo": "bar"}
     )
-    assert event.event_id == "e1"
-    assert event.trace_id == "t1"
+    assert event.runtime_id == "t1"
     assert event.event_type == "generation.start"
     assert event.timestamp == now
     assert event.payload == {"foo": "bar"}
     assert event.metadata is None
 
 def test_runtime_state_defaults():
-    state = RuntimeState(trace_id="t1")
-    assert state.trace_id == "t1"
+    state = RuntimeState(runtime_id="t1")
+    assert state.runtime_id == "t1"
     assert state.input_text is None
     assert state.output_text is None
     assert state.artifacts == []
@@ -38,7 +36,7 @@ def test_runtime_state_defaults():
     assert state.metadata is None
 
 def test_track_generation():
-    state = RuntimeState(trace_id="t1")
+    state = RuntimeState(runtime_id="t1")
     with state.track_generation(model="gpt-4", custom_meta="foo") as gen:
         gen.input_tokens = 10
         gen.output_tokens = 20

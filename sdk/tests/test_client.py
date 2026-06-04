@@ -9,8 +9,7 @@ from evalplatform_sdk.models import RuntimeEvent
 @pytest.fixture
 def mock_event():
     return RuntimeEvent(
-        event_id="e1",
-        trace_id="t1",
+        runtime_id="t1",
         event_type="test",
         timestamp=datetime.now(timezone.utc),
         payload={"key": "value"}

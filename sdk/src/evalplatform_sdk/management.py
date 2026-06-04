@@ -1,49 +1,78 @@
+"""Management clients for datasets, pipelines, and evaluations."""
+
 import contextvars
+import logging
 import os
+import threading
 import warnings
+from collections.abc import Generator, Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
-from typing import Any
+from typing import Any, Final, Self
 
 import httpx
 
-from .client import get_default_client
+# We use strings for runtime_ids to avoid continuous UUID parsing overhead.
+type RuntimeId = str
 
-current_evaluation_runtimes = contextvars.ContextVar(
-    'current_evaluation_runtimes',
-    default=None,
-)
+
+
+logger: Final = logging.getLogger(__name__)
 
 
 class DatasetClient:
     """Client for managing datasets."""
 
     def __init__(self, client: httpx.Client, base_url: str) -> None:
+        """Initialize the DatasetClient.
+
+        Args:
+            client: The HTTP client to use for requests.
+            base_url: The base URL of the EvalPlatform API.
+        """
         self._client = client
         self._base_url = base_url.rstrip('/')
 
-    def upload_json(self, name: str, file_path: str) -> dict[str, Any]:
-        """Uploads a JSON dataset."""
+    def upload_json(self, name: str, file_path: str) -> Mapping[str, Any]:
+        """Uploads a JSON dataset.
+
+        Args:
+            name: The name of the dataset.
+            file_path: The path to the JSON file.
+
+        Returns:
+            The API response JSON.
+        """
+        return self._upload_file(name, file_path, 'application/json')
+
+    def upload_csv(self, name: str, file_path: str) -> Mapping[str, Any]:
+        """Uploads a CSV dataset.
+
+        Args:
+            name: The name of the dataset.
+            file_path: The path to the CSV file.
+
+        Returns:
+            The API response JSON.
+        """
+        return self._upload_file(name, file_path, 'text/csv')
+
+    def _upload_file(
+        self,
+        name: str,
+        file_path: str,
+        content_type: str,
+    ) -> Mapping[str, Any]:
         if not os.path.exists(file_path):
             raise FileNotFoundError(f'Dataset file not found: {file_path}')
 
         with open(file_path, 'rb') as f:
-            files = {'file': (name, f, 'application/json')}
+            files = {'file': (name, f, content_type)}
             response = self._client.post(f'{self._base_url}/v1/datasets/', files=files)
             response.raise_for_status()
             return response.json()
 
-    def upload_csv(self, name: str, file_path: str) -> dict[str, Any]:
-        """Uploads a CSV dataset."""
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(f'Dataset file not found: {file_path}')
-
-        with open(file_path, 'rb') as f:
-            files = {'file': (name, f, 'text/csv')}
-            response = self._client.post(f'{self._base_url}/v1/datasets/', files=files)
-            response.raise_for_status()
-            return response.json()
-
-    def get_cases(self, dataset_id: str) -> list[dict[str, Any]]:
+    def get_cases(self, dataset_id: str) -> list[Mapping[str, Any]]:
         """Retrieves test cases for a given dataset."""
         response = self._client.get(f'{self._base_url}/v1/datasets/{dataset_id}')
         response.raise_for_status()
@@ -54,74 +83,143 @@ class DatasetClient:
 class Evaluation:
     """Represents a stateful evaluation job."""
 
-    def __init__(self, evaluation_id: str, client: httpx.Client, base_url: str):
+    def __init__(self, evaluation_id: str, client: httpx.Client, base_url: str) -> None:
+        """Initialize an Evaluation instance.
+
+        Args:
+            evaluation_id: The unique ID of the evaluation job.
+            client: The HTTP client for API requests.
+            base_url: The base URL of the EvalPlatform API.
+        """
         self.evaluation_id = evaluation_id
         self._client = client
         self._base_url = base_url
+        self._active_cases: dict[str, 'CaseTracker'] = {}
+        # Single responsibility: use a dedicated thread pool for non-blocking submissions.
+        self._executor = ThreadPoolExecutor(thread_name_prefix=f'Eval-{evaluation_id}')
 
     def submit_testcase(
         self,
         testcase_id: str,
-        runtime_ids: list[str],
-    ) -> dict[str, Any]:
-        """Submits the execution telemetry for a specific test case to be evaluated."""
+        runtime_ids: Sequence[RuntimeId],
+        block: bool = False,
+    ) -> Mapping[str, Any] | None:
+        """Submits the execution telemetry for a specific test case to be evaluated.
+
+        Args:
+            testcase_id: The ID of the testcase.
+            runtime_ids: The sequence of runtime trace IDs.
+            block: If True, blocks until the submission completes.
+                   If False, sends the request in the background.
+        """
+        if not block:
+
+            def background_submit() -> None:
+                try:
+                    from .client import get_default_client
+
+                    client = get_default_client()
+                    if hasattr(client, 'flush'):
+                        client.flush()
+                    self.submit_testcase(testcase_id, runtime_ids, block=True)
+                except Exception:
+                    logger.warning('Failed to submit testcase %s', testcase_id)
+
+            self._executor.submit(background_submit)
+            return None
+
         response = self._client.post(
             f'{self._base_url}/v1/evaluations/{self.evaluation_id}/testcases/{testcase_id}/submit',
-            json={'runtime_ids': runtime_ids},
+            json={'runtime_ids': list(runtime_ids)},
         )
         response.raise_for_status()
         return response.json()
 
-    def complete(self) -> dict[str, Any]:
-        """Marks the evaluation job as complete."""
+    def complete(self, block: bool = True) -> Mapping[str, Any] | None:
+        """Marks the evaluation job as complete.
+
+        Args:
+            block: If True, blocks until the completion request finishes.
+                   If False, sends the request in the background.
+        """
+        if not block:
+
+            def background_complete() -> None:
+                try:
+                    self.complete(block=True)
+                except Exception:
+                    logger.warning(
+                        'Failed to complete evaluation %s', self.evaluation_id
+                    )
+
+            threading.Thread(target=background_complete, daemon=True).start()
+            return None
+
+        # Fix hidden bug: Wait for all pending test case submissions before marking evaluation as complete.
+        self._executor.shutdown(wait=True)
+
         response = self._client.post(
             f'{self._base_url}/v1/evaluations/{self.evaluation_id}/complete'
         )
         response.raise_for_status()
         return response.json()
 
-    def __enter__(self) -> 'Evaluation':
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        import threading
-        def background_complete():
-            try:
-                self.complete()
-            except Exception:
-                import logging
-                logging.getLogger(__name__).warning("Failed to complete evaluation %s", self.evaluation_id)
-        threading.Thread(target=background_complete, daemon=True).start()
+        self.complete(block=False)
+
+    def start_case(self, testcase_id: str) -> 'CaseTracker':
+        """Starts tracking a test case explicitly without a context manager."""
+        tracker = CaseTracker(testcase_id, self)
+        self._active_cases[testcase_id] = tracker
+        return tracker
+
+    def complete_case(self, testcase_id: str) -> None:
+        """Completes tracking a test case and submits it in the background."""
+        tracker = self._active_cases.pop(testcase_id, None)
+        if tracker and tracker.runtimes:
+            self.submit_testcase(testcase_id, tracker.runtimes, block=False)
 
     @contextmanager
-    def track_case(self, testcase_id: str):
-        """Context manager that automatically tracks generated trace_ids and submits the testcase."""
-        runtimes = []
-        token = current_evaluation_runtimes.set(runtimes)
+    def track_case(self, testcase_id: str) -> Generator['CaseTracker', None, None]:
+        """Context manager that yields a CaseTracker and submits the testcase on exit."""
+        tracker = self.start_case(testcase_id)
         try:
-            yield
+            yield tracker
         finally:
-            current_evaluation_runtimes.reset(token)
+            self.complete_case(testcase_id)
 
-            if runtimes:
-                import threading
-                def background_submit():
-                    try:
-                        client = get_default_client()
-                        if hasattr(client, 'flush'):
-                            client.flush()
-                        self.submit_testcase(testcase_id, runtimes)
-                    except Exception:
-                        import logging
-                        logging.getLogger(__name__).warning("Failed to submit testcase %s", testcase_id)
-                        
-                threading.Thread(target=background_submit, daemon=True).start()
+
+class CaseTracker:
+    """Explicit tracker for a test case."""
+
+    def __init__(self, testcase_id: str, evaluation: Evaluation) -> None:
+        """Initialize the CaseTracker."""
+        self.testcase_id = testcase_id
+        self.evaluation = evaluation
+        self.runtimes: list[RuntimeId] = []
+
+    def add_runtime(self, runtime_id: RuntimeId) -> None:
+        """Add a runtime ID to this test case."""
+        self.runtimes.append(runtime_id)
+
+    def complete(self) -> None:
+        """Complete the test case and submit runtimes."""
+        self.evaluation.complete_case(self.testcase_id)
 
 
 class PipelineClient:
     """Client for managing pipelines and batch evaluation."""
 
-    def __init__(self, client: httpx.Client, base_url: str):
+    def __init__(self, client: httpx.Client, base_url: str) -> None:
+        """Initialize the PipelineClient.
+
+        Args:
+            client: The HTTP client for API requests.
+            base_url: The base URL of the EvalPlatform API.
+        """
         self._client = client
         self._base_url = base_url.rstrip('/')
 
@@ -134,19 +232,19 @@ class PipelineClient:
         response.raise_for_status()
         eval_id = response.json().get('evaluation_id')
         return Evaluation(
-            evaluation_id=eval_id, client=self._client, base_url=self._base_url
+            evaluation_id=eval_id,
+            client=self._client,
+            base_url=self._base_url,
         )
 
-    def evaluate_batch(self, pipeline_id: str, dataset_id: str) -> dict[str, Any]:
+    def evaluate_batch(self, pipeline_id: str, dataset_id: str) -> Mapping[str, Any]:
         """[DEPRECATED] Use start_evaluation() instead."""
-
         warnings.warn(
             'evaluate_batch is deprecated. Use start_evaluation() for client-driven iteration.',
             DeprecationWarning,
+            stacklevel=2,
         )
 
-        # We can still provide a thin wrapper just in case.
-        # But this method requires the client to run things now.
         raise NotImplementedError(
             'evaluate_batch is deprecated. Please migrate to start_evaluation and manage the evaluation loop.'
         )

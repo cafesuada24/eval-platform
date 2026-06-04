@@ -8,7 +8,7 @@ import threading
 import httpx
 
 from .management import DatasetClient, PipelineClient
-from .models import RuntimeEvent
+from .models import RuntimeState
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class NullClient:
     """A no-op client returned when the SDK is uninitialized to prevent crashes."""
 
-    def log_event(self, event: RuntimeEvent) -> None:
+    def log_runtime(self, runtime: RuntimeState) -> None:
         pass
 
     def flush(self) -> None:
@@ -63,7 +63,7 @@ class EvalClient:
         self.max_buffer_size = max_buffer_size
         self.max_buffer_capacity = max_buffer_capacity
 
-        self._buffer: list[RuntimeEvent] = []
+        self._buffer: list[RuntimeState] = []
         self._lock = threading.Lock()
         self._flush_event = threading.Event()
         self._stop_event = threading.Event()
@@ -91,17 +91,17 @@ class EvalClient:
         # Register cleanup hook to flush remaining items before process termination
         atexit.register(self.flush_sync)
 
-    def log_event(self, event: RuntimeEvent) -> None:
-        """Appends the event to the internal buffer and triggers flush if full."""
+    def log_runtime(self, runtime: RuntimeState) -> None:
+        """Appends the runtime to the internal buffer and triggers flush if full."""
         with self._lock:
             if len(self._buffer) >= self.max_buffer_capacity:
                 logger.warning(
-                    'EvalPlatform client buffer is full (%d). Dropping event.',
+                    'EvalPlatform client buffer is full (%d). Dropping runtime.',
                     self.max_buffer_capacity,
                 )
                 return
 
-            self._buffer.append(event)
+            self._buffer.append(runtime)
             should_flush = len(self._buffer) >= self.max_buffer_size
 
         if should_flush:
@@ -138,48 +138,48 @@ class EvalClient:
                 return True
 
             # Extract batch and clear from buffer
-            payload_events = self._buffer[: self.max_buffer_size]
+            payload_runtimes = self._buffer[: self.max_buffer_size]
             del self._buffer[: self.max_buffer_size]
 
-        payload = [event.model_dump(mode='json') for event in payload_events]
+        payload = [runtime.model_dump(mode='json') for runtime in payload_runtimes]
 
         try:
             # Wrap in try/except to ensure network failures don't crash the host
             response = self._http_client.post(
-                f'{self.base_url}/v1/events',
-                json={'events': payload},
+                f'{self.base_url}/v1/runtimes',
+                json=payload,
             )
             response.raise_for_status()
             return True
         except httpx.HTTPStatusError as e:
             if e.response.status_code >= 500:
                 logger.warning(
-                    'EvalPlatform backend error (%d). Re-queueing events.',
+                    'EvalPlatform backend error (%d). Re-queueing runtimes.',
                     e.response.status_code,
                 )
-                self._requeue_events(payload_events)
+                self._requeue_runtimes(payload_runtimes)
                 return False
             # 4xx errors mean bad data, we shouldn't retry
             logger.warning('EvalPlatform rejected telemetry data: %s', e)
             return True
         except Exception as e:
-            logger.warning('Failed to flush telemetry events to EvalPlatform: %s', e)
-            self._requeue_events(payload_events)
+            logger.warning('Failed to flush telemetry runtimes to EvalPlatform: %s', e)
+            self._requeue_runtimes(payload_runtimes)
             return False
 
-    def _requeue_events(self, events: list[RuntimeEvent]) -> None:
-        """Pushes events back into the front of the buffer, respecting max capacity."""
+    def _requeue_runtimes(self, runtimes: list[RuntimeState]) -> None:
+        """Pushes runtimes back into the front of the buffer, respecting max capacity."""
         with self._lock:
-            combined = events + self._buffer
+            combined = runtimes + self._buffer
             # Keep newest elements if capacity is exceeded
             self._buffer = combined[-self.max_buffer_capacity :]
 
     def flush(self) -> None:
-        """Synchronously flush currently buffered events without shutting down."""
+        """Synchronously flush currently buffered runtimes without shutting down."""
         self._flush_buffer()
 
     def flush_sync(self) -> None:
-        """Synchronously flush remaining events. Useful for shutdown operations."""
+        """Synchronously flush remaining runtimes. Useful for shutdown operations."""
         if self._stop_event.is_set():
             return
 
