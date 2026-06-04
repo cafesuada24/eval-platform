@@ -2,33 +2,15 @@ import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { PipelineEditor } from "@/components/pipelines/PipelineEditor"
 
+export const dynamic = "force-dynamic";
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-interface ThresholdConfig {
-  fail_over?: number;
-  fail_below?: number;
-  warning_over?: number;
-  warning_below?: number;
-}
-
-interface PipelineMetric {
-  metric_name: string;
-  threshold?: ThresholdConfig;
-}
-
-interface Pipeline {
-  name: string;
-  metrics: PipelineMetric[];
-}
-
-interface Metric {
-  name: string;
-  type: string;
-}
+import { Pipeline, Metric } from "@/lib/types"
 
 async function getPipeline(id: string): Promise<Pipeline | null> {
   try {
-    const res = await fetch(`${API_BASE_URL}/v1/pipelines/${id}`, { cache: 'no-store' });
+    const res = await fetch(`${API_BASE_URL}/v1/configs/pipelines/${id}`, { cache: 'no-store' });
     if (!res.ok) return null;
     return res.json();
   } catch (error) {
@@ -39,7 +21,7 @@ async function getPipeline(id: string): Promise<Pipeline | null> {
 
 async function getMetrics(): Promise<Metric[]> {
   try {
-    const res = await fetch(`${API_BASE_URL}/v1/metrics`, { cache: 'no-store' });
+    const res = await fetch(`${API_BASE_URL}/v1/configs/metrics`, { cache: 'no-store' });
     if (!res.ok) return [];
     return res.json();
   } catch (error) {
@@ -51,12 +33,14 @@ async function getMetrics(): Promise<Metric[]> {
 export default async function PipelineDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   
+  const isNew = id === "new";
+  
   const [pipeline, metrics] = await Promise.all([
-    getPipeline(id),
+    isNew ? Promise.resolve({ id: "", name: "New Pipeline", metrics: [] }) : getPipeline(id),
     getMetrics()
   ]);
 
-  if (!pipeline) {
+  if (!pipeline && !isNew) {
     return (
       <div className="p-8 max-w-5xl mx-auto space-y-8 flex flex-col items-center justify-center min-h-[50vh]">
         <h1 className="text-2xl font-bold">Pipeline not found</h1>
@@ -74,7 +58,7 @@ export default async function PipelineDetailPage({ params }: { params: Promise<{
         </Link>
       </div>
 
-      <PipelineEditor initialPipeline={pipeline} availableMetrics={metrics} />
+      <PipelineEditor key={pipeline?.id || "new"} initialPipeline={pipeline as Pipeline} availableMetrics={metrics} />
     </div>
   )
 }

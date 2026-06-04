@@ -1,4 +1,4 @@
-import { GalleryVerticalEnd, ListTree, Activity, Bot } from "lucide-react"
+import { GalleryVerticalEnd, ListTree, Activity, Bot, Database } from "lucide-react"
 
 import {
   Sidebar,
@@ -28,6 +28,21 @@ const data = {
         {
           title: "Metrics",
           url: "/metrics",
+          icon: Activity,
+        },
+        {
+          title: "Datasets",
+          url: "/datasets",
+          icon: Database,
+        },
+        {
+          title: "Evaluations",
+          url: "/evaluations",
+          icon: Activity,
+        },
+        {
+          title: "Runtimes",
+          url: "/runtimes",
           icon: Activity,
         },
         {

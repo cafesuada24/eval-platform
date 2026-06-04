@@ -3,8 +3,9 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { messages, message, data, metric_name: providedMetricName } = body;
+    const { messages, message, data, metric_id: providedMetricId, metric_name: providedMetricName } = body;
     
+    let metric_id = providedMetricId;
     let metric_name = providedMetricName;
     let yamlConfigStr = undefined;
 
@@ -24,12 +25,18 @@ export async function POST(req: Request) {
        } catch(e) {}
     }
     
+    // Sanitize messages for backend: keep only 'role' and 'content'
+    const sanitizedMessages = (messages || []).map((msg: any) => ({
+      role: msg.role,
+      content: msg.content
+    }));
+
     const response = await fetch(`${API_BASE_URL}/v1/agent/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ message, messages, metric_name }),
+      body: JSON.stringify({ messages: sanitizedMessages, metric_id }),
     });
 
     if (!response.ok) {

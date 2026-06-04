@@ -2,66 +2,76 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Save, Play } from "lucide-react"
+import { Save, Play, X } from "lucide-react"
 import { PipelineMetricCard } from "@/components/pipelines/PipelineMetricCard"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { toast } from "sonner"
 
-interface ThresholdConfig {
-  fail_over?: number;
-  fail_below?: number;
-  warning_over?: number;
-  warning_below?: number;
-}
-
-interface PipelineMetric {
-  metric_name: string;
-  threshold?: ThresholdConfig;
-}
-
-interface Pipeline {
-  name: string;
-  metrics: PipelineMetric[];
-}
-
-interface Metric {
-  name: string;
-  type: string;
-}
+import { Pipeline, Metric } from "@/lib/types"
 
 interface Props {
   initialPipeline: Pipeline;
   availableMetrics: Metric[];
 }
 
+import { useRouter } from "next/navigation"
+
 export function PipelineEditor({ initialPipeline, availableMetrics }: Props) {
+  const router = useRouter();
   const [pipeline, setPipeline] = useState<Pipeline>(initialPipeline);
   const [isSaving, setIsSaving] = useState(false);
 
   const addMetric = (metricName: string) => {
-    if (pipeline.metrics.some(m => m.metric_name === metricName)) {
+    const selectedMetric = availableMetrics.find(m => m.name === metricName);
+    if (!selectedMetric) return;
+
+    if (pipeline.metrics.some(m => m.metric_id === selectedMetric.id)) {
       toast.error(`Metric ${metricName} is already in the pipeline`);
       return;
     }
     
     setPipeline({
       ...pipeline,
-      metrics: [...pipeline.metrics, { metric_name: metricName, threshold: {} }]
+      metrics: [...pipeline.metrics, { metric_id: selectedMetric.id, threshold: {} }]
     });
     toast.success(`Added ${metricName} to pipeline`);
+  }
+
+  const removeMetric = (index: number) => {
+    const newMetrics = [...pipeline.metrics];
+    newMetrics.splice(index, 1);
+    setPipeline({
+      ...pipeline,
+      metrics: newMetrics
+    });
   }
   
   const savePipeline = async () => {
     setIsSaving(true);
     try {
+      const isNew = !pipeline.id;
       const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      const res = await fetch(`${API_BASE_URL}/v1/pipelines/${pipeline.name}`, {
-        method: 'PUT',
+      
+      const url = isNew 
+        ? `${API_BASE_URL}/v1/configs/pipelines`
+        : `${API_BASE_URL}/v1/configs/pipelines/${pipeline.id}`;
+        
+      const payload: any = { ...pipeline };
+      if (isNew) delete payload.id;
+
+      const res = await fetch(url, {
+        method: isNew ? 'POST' : 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(pipeline)
+        body: JSON.stringify(payload)
       });
       if (!res.ok) throw new Error("Failed to save pipeline");
+      
+      const saved = await res.json();
       toast.success("Pipeline saved successfully");
+      
+      if (isNew && saved.id) {
+        router.replace(`/pipelines/${saved.id}`);
+      }
     } catch (error) {
       toast.error("Failed to save pipeline");
     } finally {
@@ -72,9 +82,15 @@ export function PipelineEditor({ initialPipeline, availableMetrics }: Props) {
   return (
     <>
       <div className="flex items-start justify-between">
-        <div className="space-y-2">
-          <h1 className="text-4xl font-bold tracking-tight text-foreground">{pipeline.name}</h1>
-          <p className="text-muted-foreground text-lg max-w-2xl">
+        <div className="space-y-2 w-full max-w-2xl mr-4">
+          <input
+            type="text"
+            className="text-4xl font-bold tracking-tight text-foreground bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-primary/50 rounded-md px-2 -ml-2 w-full"
+            value={pipeline.name}
+            onChange={(e) => setPipeline({ ...pipeline, name: e.target.value })}
+            placeholder="Pipeline Name"
+          />
+          <p className="text-muted-foreground text-lg ml-1">
             Pipeline Configuration
           </p>
         </div>
@@ -112,14 +128,28 @@ export function PipelineEditor({ initialPipeline, availableMetrics }: Props) {
         </div>
 
         <div className="grid gap-6">
-          {pipeline.metrics.map((metric, index) => (
-            <PipelineMetricCard
-              key={`${metric.metric_name}-${index}`}
-              name={metric.metric_name}
-              description={`Semantic thresholds applied for ${metric.metric_name}`}
-              type="custom"
-            />
-          ))}
+          {pipeline.metrics.map((item, index) => {
+            const metricDetails = availableMetrics.find(m => m.id === item.metric_id);
+            if (!metricDetails) return null;
+            return (
+              <div key={`${metricDetails.name}-${index}`} className="relative group">
+                <PipelineMetricCard
+                  name={metricDetails.name}
+                  description={`Semantic thresholds applied for ${metricDetails.name}`}
+                  type={metricDetails.type === "ai-judge" ? "custom" : metricDetails.type}
+                />
+                <Button 
+                  variant="destructive" 
+                  size="icon" 
+                  className="absolute -top-3 -right-3 h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                  onClick={() => removeMetric(index)}
+                  title="Remove metric"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            );
+          })}
           {pipeline.metrics.length === 0 && (
             <div className="text-center p-8 border border-dashed border-border/50 rounded-lg text-muted-foreground bg-card/10">
               No metrics added yet. Click "+ Add Metric" to start building your pipeline.

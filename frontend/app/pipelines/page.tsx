@@ -3,16 +3,15 @@ import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ListTree, Plus } from "lucide-react"
 
+export const dynamic = "force-dynamic";
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-interface Pipeline {
-  name: string;
-  metrics?: any[];
-}
+import { Pipeline } from "@/lib/types"
 
 async function getPipelines(): Promise<Pipeline[]> {
   try {
-    const res = await fetch(`${API_BASE_URL}/v1/pipelines`, { cache: 'no-store' });
+    const res = await fetch(`${API_BASE_URL}/v1/configs/pipelines`, { cache: 'no-store' });
     if (!res.ok) return [];
     return res.json();
   } catch (error) {
@@ -32,10 +31,12 @@ export default async function PipelinesPage() {
             Configure automated evaluation rulesets and thresholds.
           </p>
         </div>
-        <Button>
-          <Plus className="w-4 h-4 mr-2" />
-          New Pipeline
-        </Button>
+        <Link href="/pipelines/new">
+          <Button>
+            <Plus className="w-4 h-4 mr-2" />
+            New Pipeline
+          </Button>
+        </Link>
       </div>
 
       {pipelines.length === 0 ? (
@@ -45,12 +46,14 @@ export default async function PipelinesPage() {
           <p className="text-sm text-muted-foreground mt-1 mb-4 text-center max-w-md">
             Create your first observability pipeline to start evaluating traces and tracking semantic thresholds over time.
           </p>
-          <Button variant="outline">Create Pipeline</Button>
+          <Link href="/pipelines/new">
+            <Button variant="outline">Create Pipeline</Button>
+          </Link>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {pipelines.map((pipeline, index) => (
-            <Link key={`${pipeline.name}-${index}`} href={`/pipelines/${pipeline.name}`}>
+            <Link key={`${pipeline.id || pipeline.name}-${index}`} href={`/pipelines/${pipeline.id || pipeline.name}`}>
               <Card className="hover:border-primary/50 transition-colors bg-card/50 backdrop-blur-sm cursor-pointer group">
                 <CardHeader>
                   <CardTitle className="group-hover:text-primary transition-colors flex items-center justify-between">

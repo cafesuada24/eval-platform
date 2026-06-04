@@ -1,5 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
+
+import React from "react"
 import { Info, CheckCircle2, Plus, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -8,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { UseFormReturn, useFieldArray } from "react-hook-form"
+import { UseFormReturn } from "react-hook-form"
 import { MetricConfig } from "@/app/playground/page"
 import { Button } from "@/components/ui/button"
 
@@ -21,14 +24,14 @@ interface MetricConfiguratorProps {
   onSelectMetric: (val: string) => void
 }
 
-export function MetricConfigurator({ form, metricsList, selectedMetric, onSelectMetric }: MetricConfiguratorProps) {
-  const { fields, append, remove } = useFieldArray({
-    control: form.control,
-    name: "required_inputs" as never, // react-hook-form type workaround for string[]
-  });
-
-  // Since required_inputs is an array of strings, we handle it manually
-  const requiredInputs = form.watch("required_inputs");
+export function MetricConfigurator({ 
+  form, 
+  metricsList, 
+  selectedMetric, 
+  onSelectMetric
+}: MetricConfiguratorProps) {
+  // Required inputs from the active form state
+  const requiredInputs = form.watch("required_inputs") || [];
 
   const addRequiredInput = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && e.currentTarget.value.trim()) {
@@ -46,10 +49,9 @@ export function MetricConfigurator({ form, metricsList, selectedMetric, onSelect
     newInputs.splice(index, 1);
     form.setValue("required_inputs", newInputs, { shouldDirty: true, shouldValidate: true });
   }
-
   return (
     <Form {...form}>
-      <form className="flex flex-col h-full bg-card/30 overflow-hidden">
+      <form className="flex flex-col h-full bg-card/30 overflow-hidden" onSubmit={(e) => e.preventDefault()}>
         <div className="px-6 py-3 flex items-center justify-between border-b border-border/50 bg-background/50 shrink-0">
           <h2 className="text-sm font-semibold tracking-tight text-muted-foreground">Active Metric</h2>
           <Select value={selectedMetric} onValueChange={(val) => val && onSelectMetric(val)}>
@@ -298,6 +300,8 @@ export function MetricConfigurator({ form, metricsList, selectedMetric, onSelect
               />
             </div>
           </TabsContent>
+
+
         </Tabs>
       </form>
     </Form>

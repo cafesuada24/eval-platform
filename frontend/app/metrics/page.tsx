@@ -1,6 +1,8 @@
-import Link from "next/link"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import Link from "next/link";
+import Form from "next/form";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -8,29 +10,25 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
+} from "@/components/ui/table";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip"
-import { Pencil, Settings2 } from "lucide-react"
+} from "@/components/ui/tooltip";
+import { Pencil, Settings2, Search, Filter } from "lucide-react";
+import { DeleteMetricButton } from "@/components/metrics/delete-metric-button";
+
+export const dynamic = "force-dynamic";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-interface Metric {
-  id: string;
-  name: string;
-  type: string;
-  model?: string;
-  description: string;
-  model_configuration?: any;
-}
+import { Metric } from "@/lib/types";
 
 async function getMetrics(): Promise<Metric[]> {
   try {
-    const res = await fetch(`${API_BASE_URL}/v1/metrics`, { cache: 'no-store' });
+    const res = await fetch(`${API_BASE_URL}/v1/configs/metrics`, { cache: 'no-store' });
     if (!res.ok) return [];
     return res.json();
   } catch (error) {
@@ -39,11 +37,32 @@ async function getMetrics(): Promise<Metric[]> {
   }
 }
 
-export default async function MetricsPage() {
-  const metrics = await getMetrics();
+export default async function MetricsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; type?: string }>;
+}) {
+  const resolvedSearchParams = await searchParams;
+  const q = resolvedSearchParams.q?.toLowerCase() || "";
+  const typeFilter = resolvedSearchParams.type || "all";
+  
+  let metrics = await getMetrics();
+
+  // Apply filtering
+  if (q) {
+    metrics = metrics.filter(m => 
+      m.name.toLowerCase().includes(q) || 
+      (m.description && m.description.toLowerCase().includes(q))
+    );
+  }
+  
+  if (typeFilter !== "all") {
+    metrics = metrics.filter(m => m.type === typeFilter);
+  }
+
   return (
-    <div className="p-8 max-w-6xl mx-auto space-y-8">
-      <div className="flex items-center justify-between">
+    <div className="p-8 max-w-6xl mx-auto space-y-8 flex flex-col h-[calc(100vh-2rem)]">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shrink-0">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Metrics Registry</h1>
           <p className="text-muted-foreground mt-2 text-sm">
@@ -51,72 +70,129 @@ export default async function MetricsPage() {
           </p>
         </div>
         <Link href="/playground">
-          <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+          <Button className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm">
             <Settings2 className="w-4 h-4 mr-2" />
             Create Custom Metric
           </Button>
         </Link>
       </div>
 
-      <div className="border border-border/50 rounded-xl bg-card/50 backdrop-blur-sm overflow-hidden">
-        <Table>
-          <TableHeader className="bg-muted/50">
-            <TableRow className="hover:bg-transparent border-border/50">
-              <TableHead className="w-[250px]">Name</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Model</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {metrics.map((metric, index) => (
-              <TableRow key={metric.id || metric.name || index} className="border-border/50 transition-colors hover:bg-muted/30">
-                <TableCell className="font-medium">
-                  <div className="flex flex-col gap-1">
-                    <span>{metric.name}</span>
-                    <span className="text-xs text-muted-foreground font-normal">{metric.description}</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge 
-                    variant={metric.type === "primitive" ? "secondary" : "default"}
-                    className={metric.type === "custom" ? "bg-primary/20 text-primary hover:bg-primary/30 border-primary/30" : ""}
-                  >
-                    {metric.type}
-                  </Badge>
-                </TableCell>
-                <TableCell className="font-mono text-xs text-muted-foreground">
-                  {metric.model_configuration?.model || metric.model || '-'}
-                </TableCell>
-                <TableCell className="text-right">
-                  {metric.type === "primitive" ? (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger render={<span tabIndex={0} />}>
-                          <Button variant="ghost" size="icon" disabled className="opacity-50">
-                            <Pencil className="w-4 h-4" />
-                            <span className="sr-only">Edit</span>
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent className="bg-secondary text-secondary-foreground border-border/50">
-                          <p>System metrics cannot be edited</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  ) : (
-                    <Link href={`/playground?metric=${metric.name}`}>
-                      <Button variant="ghost" size="icon" className="hover:text-primary hover:bg-primary/10">
-                        <Pencil className="w-4 h-4" />
-                        <span className="sr-only">Edit</span>
-                      </Button>
-                    </Link>
-                  )}
-                </TableCell>
+      <div className="flex flex-col sm:flex-row gap-4 items-center shrink-0 bg-muted/20 p-4 rounded-xl border border-border/50">
+        <Form action="/metrics" className="flex-1 flex gap-3 w-full">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input 
+              name="q" 
+              placeholder="Search metrics by name or description..." 
+              defaultValue={q}
+              className="pl-9 h-10 w-full bg-background border-border shadow-sm transition-all focus-visible:ring-1"
+            />
+          </div>
+          
+          <div className="relative w-40">
+            <select
+              name="type"
+              defaultValue={typeFilter}
+              className="h-10 pl-3 pr-8 rounded-md border border-border bg-background text-sm shadow-sm appearance-none focus:outline-none focus:ring-1 focus:ring-ring w-full"
+            >
+              <option value="all">All Types</option>
+              <option value="ai-judge">AI Judge</option>
+              <option value="primitive">Primitive</option>
+            </select>
+            <Filter className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          </div>
+
+          <Button type="submit" variant="secondary" className="h-10 px-6 font-medium shadow-sm">
+            Search
+          </Button>
+        </Form>
+      </div>
+
+      <div className="border border-border/50 rounded-xl bg-card/50 backdrop-blur-sm flex-1 overflow-hidden flex flex-col">
+        <div className="flex-1 overflow-y-auto">
+          <Table>
+            <TableHeader className="bg-muted/50 sticky top-0 z-10 backdrop-blur-md">
+              <TableRow className="hover:bg-transparent border-border/50">
+                <TableHead className="w-[40%] sm:w-[50%] min-w-[250px]">Name & Description</TableHead>
+                <TableHead className="w-[15%] min-w-[100px]">Type</TableHead>
+                <TableHead className="w-[20%] min-w-[120px]">Model</TableHead>
+                <TableHead className="w-[15%] min-w-[100px] text-right">Actions</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {metrics.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="h-48 text-center text-muted-foreground">
+                    No metrics found matching your criteria.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                metrics.map((metric, index) => (
+                  <TableRow key={metric.id || metric.name || index} className="border-border/50 transition-colors hover:bg-muted/30 group">
+                    <TableCell className="font-medium max-w-[300px] sm:max-w-[400px]">
+                      <div className="flex flex-col gap-1.5">
+                        <span className="truncate" title={metric.name}>{metric.name}</span>
+                        <span className="text-xs text-muted-foreground font-normal truncate" title={metric.description}>
+                          {metric.description}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge 
+                        variant={metric.type === "primitive" ? "secondary" : "default"}
+                        className={metric.type === "ai-judge" ? "bg-primary/10 text-primary hover:bg-primary/20 border-primary/20" : ""}
+                      >
+                        {metric.type}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {metric.model_configuration?.model || '-'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                        {metric.type === "primitive" ? (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger render={<span tabIndex={0} className="inline-block cursor-not-allowed" />}>
+                                <Button variant="ghost" size="icon" disabled className="opacity-50 pointer-events-none">
+                                  <Pencil className="w-4 h-4" />
+                                  <span className="sr-only">Edit</span>
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent className="bg-secondary text-secondary-foreground border-border/50">
+                                <p>System metrics cannot be edited</p>
+                              </TooltipContent>
+                            </Tooltip>
+                            
+                            <Tooltip>
+                              <TooltipTrigger render={<span tabIndex={0} className="inline-block cursor-not-allowed" />}>
+                                <DeleteMetricButton metricId={metric.id} metricName={metric.name} disabled />
+                              </TooltipTrigger>
+                              <TooltipContent className="bg-secondary text-secondary-foreground border-border/50">
+                                <p>System metrics cannot be deleted</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : (
+                          <>
+                            <Link href={`/playground?metric=${metric.name}`}>
+                              <Button variant="ghost" size="icon" className="hover:text-primary hover:bg-primary/10">
+                                <Pencil className="w-4 h-4" />
+                                <span className="sr-only">Edit</span>
+                              </Button>
+                            </Link>
+                            <DeleteMetricButton metricId={metric.id} metricName={metric.name} />
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
     </div>
-  )
+  );
 }
