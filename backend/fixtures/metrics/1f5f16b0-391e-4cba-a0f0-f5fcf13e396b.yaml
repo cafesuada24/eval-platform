@@ -29,5 +29,4 @@ prompt_template: 'You are an expert judge evaluating OCR (Optical Character Reco
   - Perfectly accurate, capturing all text correctly.
 
   Respond only with the decimal score (e.g., 0.0, 0.5, 1.0).'
-id: 1f5f16b0-391e-4cba-a0f0-f5fcf13e396b
 is_system_default: true

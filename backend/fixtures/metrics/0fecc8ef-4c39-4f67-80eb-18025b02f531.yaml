@@ -30,5 +30,4 @@ prompt_template: 'You are an expert judge checking for hallucinations in an AI''
   The response contains significant unsupported claims or contradicts the context.
 
   Respond only with the decimal score (e.g., 0.0, 0.5, 1.0).'
-id: 0fecc8ef-4c39-4f67-80eb-18025b02f531
 is_system_default: true

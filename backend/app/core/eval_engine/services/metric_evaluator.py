@@ -1,5 +1,7 @@
 """Metric evaluator service."""
 
+from typing import Any
+
 from app.core.eval_engine.extractors.runtime_state_extractor import (
     RuntimeStateExtractorService,
 )
@@ -58,10 +60,25 @@ class MetricEvaluatorService:
         return AssertionStatus.PASS
 
     @staticmethod
-    def __format_prompt(template_str: str, bindings: dict[str, float]) -> str:
+    def __format_prompt(
+        template_str: str,
+        bindings: dict[str, float | str | int],
+    ) -> str:
         """Renders a Jinja2 template with resolved variable bindings."""
         template = Template(template_str)
-        return template.render(**bindings)
+
+        # Unflatten bindings so Jinja can resolve dot notation (e.g. testcase.inputs.text)
+        unflattened_bindings: dict[str, Any] = {}
+        for key, value in bindings.items():
+            parts = key.split('.')
+            current = unflattened_bindings
+            for part in parts[:-1]:
+                if part not in current:
+                    current[part] = {}
+                current = current[part]
+            current[parts[-1]] = value
+
+        return template.render(**unflattened_bindings)
 
     def __resolve_bindings(
         self,
@@ -101,12 +118,13 @@ class MetricEvaluatorService:
     ) -> MetricRunResult:
         assert metric.type == 'primitive'
 
+        target = None
         formula_str = metric.formula
         if not formula_str:
             target = metric.required_inputs[0] if metric.required_inputs else None
             if not target:
                 raise ValueError(
-                    f"Primitive metric '{metric.name}' must specify a formula"
+                    f"Primitive metric '{metric.name}' must specify a formula "
                     'or at least one required_input.',
                 )
             formula_str = target
@@ -118,7 +136,10 @@ class MetricEvaluatorService:
             var_bind=resolved_vars,
         )
 
-        justification = f"Directly extracted '{target}' value: {score}."
+        if target:
+            justification = f"Directly extracted '{target}' value: {score}."
+        else:
+            justification = f"Evaluated formula '{formula_str}' to: {score}."
 
         assertion_status = self.__class__.__evaluate_threshold(score, threshold)
         return MetricRunResult(
@@ -146,7 +167,9 @@ class MetricEvaluatorService:
             as_float=False,
         )
         prompt = self.__format_prompt(metric.prompt_template, bindings)
-        judge_output = await self.__ai_judge_serivce.evaluate(metric, prompt, building_mode=building_mode)
+        judge_output = await self.__ai_judge_serivce.evaluate(
+            metric, prompt, building_mode=building_mode
+        )
         assertion_status = self.__evaluate_threshold(
             judge_output.score,
             threshold,
@@ -157,7 +180,9 @@ class MetricEvaluatorService:
             score=judge_output.score,
             justification='\n'.join(judge_output.justification),
             evidence='\n'.join(judge_output.evidence),
-            improvements='\n'.join(judge_output.improvements) if judge_output.improvements else None,
+            improvements='\n'.join(judge_output.improvements)
+            if judge_output.improvements
+            else None,
             assertion_status=assertion_status,
         )
 
@@ -169,16 +194,33 @@ class MetricEvaluatorService:
         building_mode: bool = False,
     ) -> MetricRunResult:
         """Evaluate a metric against a runtime state."""
-        if metric.type == 'primitive':
-            return self.__evaluate_primitive_metric(
+        try:
+            if metric.type == 'primitive':
+                return self.__evaluate_primitive_metric(
+                    metric=metric,
+                    context=context,
+                    threshold=threshold,
+                )
+
+            return await self.__evaluate_ai_judge_metric(
                 metric=metric,
                 context=context,
                 threshold=threshold,
+                building_mode=building_mode,
             )
-
-        return await self.__evaluate_ai_judge_metric(
-            metric=metric,
-            context=context,
-            threshold=threshold,
-            building_mode=building_mode,
-        )
+        except ValueError as e:
+            return MetricRunResult(
+                metric_id=metric.id,
+                score=0.0,
+                justification=f'Execution failed due to missing required variables or format error: {str(e)}',
+                evidence=None,
+                assertion_status=AssertionStatus.FAIL,
+            )
+        except Exception as e:
+            return MetricRunResult(
+                metric_id=metric.id,
+                score=0.0,
+                justification=f'Execution failed due to an unexpected error (e.g., LLM API failure): {str(e)}',
+                evidence=None,
+                assertion_status=AssertionStatus.FAIL,
+            )

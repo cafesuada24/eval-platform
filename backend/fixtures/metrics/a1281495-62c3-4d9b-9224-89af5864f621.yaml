@@ -15,5 +15,4 @@ model_configuration:
 prompt_template: 'Evaluate the relevance of the retrieved context to the user input.
   Input: {{ input_text }}. Context: {{ retrieved_context }}. Provide a score between
   0 and 1.'
-id: a1281495-62c3-4d9b-9224-89af5864f621
 is_system_default: false

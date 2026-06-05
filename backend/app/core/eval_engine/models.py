@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from enum import Enum, IntEnum
 from typing import TYPE_CHECKING, Any, Literal
 from uuid import UUID, uuid4
@@ -15,6 +16,7 @@ if TYPE_CHECKING:
 
 # --- VALUE OBJECTS ---
 
+
 class BatchRunStatus(str, Enum):
     """Batch run status."""
 
@@ -22,6 +24,7 @@ class BatchRunStatus(str, Enum):
     IN_PROGRESS = 'IN_PROGRESS'
     COMPLETED = 'COMPLETED'
     FAILED = 'FAILED'
+
 
 class AssertionStatus(IntEnum):
     """Assertion status."""
@@ -110,7 +113,6 @@ class Metric:
     is_system_default: bool = False
 
 
-
 @dataclass(slots=True)
 class MetricRunResult:
     """A metric run result."""
@@ -122,6 +124,7 @@ class MetricRunResult:
     assertion_status: AssertionStatus
     improvements: str | None = None
     run_id: UUID = field(default_factory=uuid4)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 @dataclass(slots=True)
@@ -143,6 +146,8 @@ class PipelineRunResult:
     metric_results: list[MetricRunResult]
     testcase_id: UUID | None = None
     run_id: UUID = field(default_factory=uuid4)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+
 
 @dataclass(slots=True)
 class BatchRunResult:
@@ -152,28 +157,37 @@ class BatchRunResult:
     pipeline_id: UUID
     dataset_id: UUID
     status: BatchRunStatus
-    pipeline_run_results: list[PipelineRunResult] = field(default_factory=list[PipelineRunResult])
+    pipeline_run_results: list[PipelineRunResult] = field(
+        default_factory=list[PipelineRunResult]
+    )
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+
 
 @dataclass(slots=True)
 class TestCase:
     id: UUID
-    input_text: str
-    input_files: list[str]
-    expected_output: str | None
+    inputs: dict[str, Any]
+    expected_outputs: dict[str, Any]
     metadata: dict[str, Any]
+
 
 @dataclass(slots=True)
 class Dataset:
     id: UUID
     name: str
     cases: list[TestCase]
+    schema: dict[str, Any] = field(default_factory=dict[str, Any])
+
 
 @dataclass(slots=True)
 class EvaluationContext:
     test_case: TestCase
     runtime_states: list[RuntimeState]
     id: UUID = field(default_factory=uuid4)
-    events_by_type: dict[str, list[RuntimeEvent]] = field(init=False, default_factory=dict[str, list[RuntimeEvent]])
+    events_by_type: dict[str, list[RuntimeEvent]] = field(
+        init=False,
+        default_factory=dict[str, list[RuntimeEvent]],
+    )
 
     def __post_init__(self) -> None:
         events_dict: dict[str, list[RuntimeEvent]] = defaultdict(list[RuntimeEvent])
@@ -190,6 +204,7 @@ class EvaluationContext:
 @dataclass(frozen=True, slots=True)
 class JudgeResult:
     """An ai judge result."""
+
     score: float
     justification: list[str]
     evidence: list[str]

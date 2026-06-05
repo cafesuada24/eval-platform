@@ -3,6 +3,7 @@
 import csv
 import io
 import json
+from typing import Any
 from uuid import uuid4
 
 from app.core.eval_engine.models import Dataset, TestCase
@@ -17,45 +18,22 @@ class DatasetParserService:
     """Service to parse dataset files into Dataset entities."""
 
     def parse(self, filename: str, contents: bytes) -> Dataset:
-        """Parse a dataset from bytes."""
-        test_cases: list[TestCase] = []
+        """Parse a dataset from bytes.
 
+        Args:
+            filename: Name of the uploaded file.
+            contents: Raw bytes of the file.
+
+        Returns:
+            Parsed Dataset entity.
+
+        Raises:
+            InvalidDatasetError: If file format is unsupported or invalid.
+        """
         if filename.endswith('.json'):
-            try:
-                data = json.loads(contents.decode('utf-8'))
-                if not isinstance(data, list):
-                    raise InvalidDatasetError('JSON must be a list of test cases')
-                for item in data:
-                    test_cases.append(
-                        TestCase(
-                            id=uuid4(),
-                            input_text=item.get('input_text', ''),
-                            input_files=item.get('input_files', []),
-                            expected_output=item.get('expected_output'),
-                            metadata=item.get('metadata', {}),
-                        )
-                    )
-            except json.JSONDecodeError as e:
-                raise InvalidDatasetError('Invalid JSON file') from e
-
+            test_cases = self._parse_json(contents)
         elif filename.endswith('.csv'):
-            try:
-                text = contents.decode('utf-8')
-                reader = csv.DictReader(io.StringIO(text))
-                for row in reader:
-                    test_cases.append(
-                        TestCase(
-                            id=uuid4(),
-                            input_text=row.get('input_text', ''),
-                            input_files=row.get('input_files', '').split(',')
-                            if row.get('input_files')
-                            else [],
-                            expected_output=row.get('expected_output'),
-                            metadata=row,
-                        )
-                    )
-            except Exception as e:
-                raise InvalidDatasetError(f'Invalid CSV file: {str(e)}') from e
+            test_cases = self._parse_csv(contents)
         else:
             raise InvalidDatasetError('Only .json and .csv files are supported')
 
@@ -64,3 +42,85 @@ class DatasetParserService:
             name=filename,
             cases=test_cases,
         )
+
+    def _parse_json(self, contents: bytes) -> list[TestCase]:
+        """Parse a JSON file into test cases."""
+        test_cases: list[TestCase] = []
+        try:
+            data = json.loads(contents.decode('utf-8'))
+            if not isinstance(data, list):
+                raise InvalidDatasetError('JSON must be a list of test cases')
+
+            for item in data:
+                if not isinstance(item, dict):
+                    continue
+
+                if 'inputs' in item:
+                    inputs = dict[str, Any](item.get('inputs', {}))
+                    outputs = dict[str, Any](
+                        item.get('outputs', item.get('expected_outputs', {}))
+                    )
+                else:
+                    # Flat JSON support
+                    inputs = {}
+                    outputs = {}
+                    for key, value in item.items():
+                        if key in ('expected_output', 'expected_outputs'):
+                            outputs['expected_output'] = value
+                        elif key != 'metadata':
+                            inputs[key] = value
+
+                if 'query' not in inputs:
+                    raise InvalidDatasetError(
+                        "Every test case must contain an 'inputs' object with a 'query' field.",
+                    )
+
+                test_cases.append(
+                    TestCase(
+                        id=uuid4(),
+                        inputs=inputs,
+                        expected_outputs=outputs,
+                        metadata=item.get('metadata', {}),
+                    ),
+                )
+
+        except json.JSONDecodeError as e:
+            raise InvalidDatasetError('Invalid JSON file') from e
+
+        return test_cases
+
+    def _parse_csv(self, contents: bytes) -> list[TestCase]:
+        """Parse a CSV file into test cases."""
+        test_cases: list[TestCase] = []
+        try:
+            text = contents.decode('utf-8')
+            reader = csv.DictReader(io.StringIO(text))
+
+            for row in reader:
+                inputs: dict[str, Any] = {}
+                outputs: dict[str, Any] = {}
+
+                for key, value in row.items():
+                    if key is None:
+                        continue
+                    if key == 'expected_output':
+                        outputs[key] = value
+                    else:
+                        inputs[key] = value
+
+                if 'query' not in inputs or not inputs['query'].strip():
+                    raise InvalidDatasetError("CSV rows must contain a 'query' column.")
+
+                test_cases.append(
+                    TestCase(
+                        id=uuid4(),
+                        inputs=inputs,
+                        expected_outputs=outputs,
+                        metadata={},
+                    ),
+                )
+
+        except Exception as e:
+            raise InvalidDatasetError(f'Invalid CSV file: {str(e)}') from e
+
+        return test_cases

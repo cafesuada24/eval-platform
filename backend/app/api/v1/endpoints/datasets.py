@@ -1,54 +1,290 @@
 """Datasets endpoints."""
 
-from uuid import UUID
+import json
+import shutil
+from collections.abc import Sequence
+from pathlib import Path
+from typing import Annotated
+from uuid import UUID, uuid4
 
 from app.api.dependencies import get_dataset_parser, get_dataset_repo
-from app.core.eval_engine.models import Dataset
+from app.api.v1.schemas.datasets import (
+    DatasetCreate,
+    DatasetUpdate,
+    TestCaseCreate,
+    TestCaseUpdate,
+)
+from app.core.eval_engine.models import Dataset, TestCase
 from app.core.eval_engine.ports import DatasetRepository
 from app.core.eval_engine.services.dataset_parser import (
     DatasetParserService,
     InvalidDatasetError,
 )
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi.responses import FileResponse
+from pydantic import BaseModel
 
 router = APIRouter()
 
+DATASET_FILES_DIR = Path('data/dataset_files')
+DATASET_FILES_DIR.mkdir(parents=True, exist_ok=True)
 
-@router.post("/", response_model=Dataset, status_code=201)
+
+class FileUploadResponse(BaseModel):
+    file_id: str
+    filename: str
+    url: str
+
+
+def _get_dataset_or_404(dataset_id: UUID, repo: DatasetRepository) -> Dataset:
+    """Helper to fetch dataset and raise 404 if not found."""
+    try:
+        return repo.get_by_id(dataset_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail='Dataset not found') from e
+
+
+@router.post('/upload', response_model=Dataset, status_code=201)
 async def upload_dataset(
-    file: UploadFile = File(...),
-    dataset_repo: DatasetRepository = Depends(get_dataset_repo),
-    dataset_parser: DatasetParserService = Depends(get_dataset_parser),
+    file: UploadFile,
+    dataset_repo: Annotated[DatasetRepository, Depends(get_dataset_repo)],
+    dataset_parser: Annotated[DatasetParserService, Depends(get_dataset_parser)],
 ) -> Dataset:
     """Upload a dataset (JSON or CSV)."""
     if not file.filename:
-        raise HTTPException(status_code=400, detail="Filename missing")
+        raise HTTPException(status_code=400, detail='Filename missing')
 
     contents = await file.read()
     try:
         dataset = dataset_parser.parse(file.filename, contents)
     except InvalidDatasetError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     dataset_repo.save(dataset)
     return dataset
 
 
-@router.get("/", response_model=list[Dataset])
+@router.post('/', status_code=201)
+def create_dataset(
+    data: DatasetCreate,
+    dataset_repo: Annotated[DatasetRepository, Depends(get_dataset_repo)],
+) -> Dataset:
+    """Create an empty dataset."""
+    dataset = Dataset(
+        id=uuid4(),
+        name=data.name,
+        schema=data.schema_.model_dump(),
+        cases=[],
+    )
+    dataset_repo.save(dataset)
+    return dataset
+
+
+@router.patch('/{dataset_id}', response_model=Dataset)
+def update_dataset(
+    dataset_id: UUID,
+    data: DatasetUpdate,
+    dataset_repo: Annotated[DatasetRepository, Depends(get_dataset_repo)],
+) -> Dataset:
+    """Update dataset metadata."""
+    dataset = _get_dataset_or_404(dataset_id, dataset_repo)
+    dataset.name = data.name
+    dataset.schema = data.schema_.model_dump()
+    dataset_repo.save(dataset)
+    return dataset
+
+
+@router.get('/', response_model=list[Dataset])
 def list_datasets(
-    dataset_repo: DatasetRepository = Depends(get_dataset_repo),
-) -> list[Dataset]:
+    dataset_repo: Annotated[DatasetRepository, Depends(get_dataset_repo)],
+) -> Sequence[Dataset]:
     """List datasets."""
     return dataset_repo.list_all()
 
 
-@router.get("/{dataset_id}", response_model=Dataset)
+@router.get('/{dataset_id}', response_model=Dataset)
 def get_dataset(
     dataset_id: UUID,
-    dataset_repo: DatasetRepository = Depends(get_dataset_repo),
+    dataset_repo: Annotated[DatasetRepository, Depends(get_dataset_repo)],
 ) -> Dataset:
     """Get a dataset by ID."""
-    try:
-        return dataset_repo.get_by_id(dataset_id)
-    except Exception as e:
-        raise HTTPException(status_code=404, detail="Dataset not found") from e
+    return _get_dataset_or_404(dataset_id, dataset_repo)
+
+
+# --- FILES ---
+
+
+@router.post('/{dataset_id}/files', response_model=FileUploadResponse, status_code=201)
+async def upload_dataset_file(
+    dataset_id: UUID,
+    file: UploadFile,
+) -> FileUploadResponse:
+    """Upload a file to be referenced in test cases."""
+    if not file.filename:
+        raise HTTPException(status_code=400, detail='Filename missing')
+
+    dataset_dir = DATASET_FILES_DIR / str(dataset_id)
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+
+    file_id = f'f_{uuid4().hex}'
+    file_ext = Path(file.filename).suffix
+    storage_name = f'{file_id}{file_ext}'
+    file_path = dataset_dir / storage_name
+
+    with file_path.open('wb') as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    meta_path = dataset_dir / f'{storage_name}.meta.json'
+    with meta_path.open('w') as f:
+        json.dump({'original_filename': file.filename}, f)
+
+    return FileUploadResponse(
+        file_id=storage_name,
+        filename=file.filename,
+        url=f'/api/v1/datasets/{dataset_id}/files/{storage_name}',
+    )
+
+
+@router.get('/{dataset_id}/files')
+def list_dataset_files(dataset_id: UUID) -> list[FileUploadResponse]:
+    """List all files uploaded for a specific dataset."""
+    dataset_dir = DATASET_FILES_DIR / str(dataset_id)
+    files: list[FileUploadResponse] = []
+
+    if not dataset_dir.exists() or not dataset_dir.is_dir():
+        return files
+
+    for file_path in dataset_dir.iterdir():
+        # Skip metadata files
+        if file_path.is_file() and not file_path.name.endswith('.meta.json'):
+            original_name = file_path.name
+            meta_path = dataset_dir / f'{file_path.name}.meta.json'
+
+            if meta_path.exists():
+                try:
+                    meta_data = json.loads(meta_path.read_text())
+                    original_name = meta_data.get('original_filename', original_name)
+                except json.JSONDecodeError:
+                    pass
+
+            files.append(
+                FileUploadResponse(
+                    file_id=file_path.name,
+                    filename=original_name,
+                    url=f'/api/v1/datasets/{dataset_id}/files/{file_path.name}',
+                )
+            )
+
+    return files
+
+
+@router.get('/{dataset_id}/files/{file_id}')
+def get_dataset_file(dataset_id: UUID, file_id: str) -> FileResponse:
+    """Retrieve a dataset file."""
+    # Fallback to global directory for backwards compatibility with old uploads
+    dataset_file_path = DATASET_FILES_DIR / str(dataset_id) / file_id
+    legacy_file_path = DATASET_FILES_DIR / file_id
+
+    if dataset_file_path.exists():
+        return FileResponse(dataset_file_path)
+    if legacy_file_path.exists():
+        return FileResponse(legacy_file_path)
+
+    raise HTTPException(status_code=404, detail='File not found')
+
+
+@router.delete('/{dataset_id}/files/{file_id}', status_code=204)
+def delete_dataset_file(dataset_id: UUID, file_id: str) -> None:
+    """Delete a dataset file."""
+    dataset_file_path = DATASET_FILES_DIR / str(dataset_id) / file_id
+    legacy_file_path = DATASET_FILES_DIR / file_id
+
+    if dataset_file_path.exists():
+        dataset_file_path.unlink()
+        # Clean up metadata file if it exists
+        meta_path = dataset_file_path.with_name(f'{dataset_file_path.name}.meta.json')
+        if meta_path.exists():
+            meta_path.unlink()
+    elif legacy_file_path.exists():
+        legacy_file_path.unlink()
+
+
+# --- TEST CASES ---
+
+
+@router.post('/{dataset_id}/cases', response_model=TestCase, status_code=201)
+def create_test_case(
+    dataset_id: UUID,
+    data: TestCaseCreate,
+    dataset_repo: Annotated[DatasetRepository, Depends(get_dataset_repo)],
+) -> TestCase:
+    """Add a test case to a dataset."""
+    dataset = _get_dataset_or_404(dataset_id, dataset_repo)
+
+    case = TestCase(
+        id=uuid4(),
+        inputs=data.inputs,
+        expected_outputs=data.expected_outputs,
+        metadata=data.metadata,
+    )
+    dataset.cases.append(case)
+    dataset_repo.save(dataset)
+    return case
+
+
+@router.get('/{dataset_id}/cases', response_model=list[TestCase])
+def list_test_cases(
+    dataset_id: UUID,
+    dataset_repo: Annotated[DatasetRepository, Depends(get_dataset_repo)],
+    page: int = Query(1, ge=1),
+    limit: int = Query(50, ge=1, le=1000),
+) -> Sequence[TestCase]:
+    """List test cases for a dataset with pagination."""
+    dataset = _get_dataset_or_404(dataset_id, dataset_repo)
+
+    start = (page - 1) * limit
+    end = start + limit
+    return dataset.cases[start:end]
+
+
+@router.put('/{dataset_id}/cases/{case_id}', response_model=TestCase)
+def update_test_case(
+    dataset_id: UUID,
+    case_id: UUID,
+    data: TestCaseUpdate,
+    dataset_repo: Annotated[DatasetRepository, Depends(get_dataset_repo)],
+) -> TestCase:
+    """Update a testcase inside a dataset."""
+    dataset = _get_dataset_or_404(dataset_id, dataset_repo)
+
+    for i, case in enumerate(dataset.cases):
+        if case.id == case_id:
+            updated_case = TestCase(
+                id=case.id,
+                inputs=data.inputs,
+                expected_outputs=data.expected_outputs,
+                metadata=data.metadata,
+            )
+            dataset.cases[i] = updated_case
+            dataset_repo.save(dataset)
+            return updated_case
+
+    raise HTTPException(status_code=404, detail='Test case not found')
+
+
+@router.delete('/{dataset_id}/cases/{case_id}', status_code=204)
+def delete_test_case(
+    dataset_id: UUID,
+    case_id: UUID,
+    dataset_repo: Annotated[DatasetRepository, Depends(get_dataset_repo)],
+) -> None:
+    """Delete a test case from a dataset."""
+    dataset = _get_dataset_or_404(dataset_id, dataset_repo)
+
+    original_length = len(dataset.cases)
+    dataset.cases = [case for case in dataset.cases if case.id != case_id]
+
+    if len(dataset.cases) == original_length:
+        raise HTTPException(status_code=404, detail='Test case not found')
+
+    dataset_repo.save(dataset)

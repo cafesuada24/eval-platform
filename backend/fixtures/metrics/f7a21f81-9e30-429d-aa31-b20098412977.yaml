@@ -28,5 +28,4 @@ prompt_template: 'You are an expert judge evaluating image captioning models.
   concisely describes the main elements and actions in the image.
 
   Respond only with the decimal score (e.g., 0.0, 0.5, 1.0).'
-id: f7a21f81-9e30-429d-aa31-b20098412977
 is_system_default: true

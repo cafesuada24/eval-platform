@@ -52,13 +52,10 @@ class FormulaEvaluatorService:
             mode='eval',
         )
 
-        variables: set[str] = set()
+        collector = _VariableCollector()
+        collector.visit(tree)
 
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Name) and node.id not in SAFE_GLOBALS:
-                variables.add(node.id)
-
-        return sorted(variables)
+        return sorted(collector.variables)
 
     def evaluate_formula(
         self,
@@ -76,6 +73,28 @@ class FormulaEvaluatorService:
         result = evaluator.visit(tree)
 
         return float(result)
+
+
+class _VariableCollector(ast.NodeVisitor):
+    def __init__(self) -> None:
+        self.variables: set[str] = set()
+
+    def visit_Name(self, node: ast.Name) -> None:
+        if node.id not in SAFE_GLOBALS:
+            self.variables.add(node.id)
+
+    def visit_Attribute(self, node: ast.Attribute) -> None:
+        parts: list[str] = []
+        current: ast.AST = node
+        while isinstance(current, ast.Attribute):
+            parts.append(current.attr)
+            current = current.value
+        if isinstance(current, ast.Name):
+            if current.id not in SAFE_GLOBALS:
+                parts.append(current.id)
+                self.variables.add('.'.join(reversed(parts)))
+        else:
+            self.generic_visit(node)
 
 
 class _Evaluator(ast.NodeVisitor):
@@ -120,6 +139,22 @@ class _Evaluator(ast.NodeVisitor):
                 return value
 
         raise NameError(node.id)
+
+    def visit_Attribute(
+        self,
+        node: ast.Attribute,
+    ) -> Numeric:
+        parts: list[str] = []
+        current: ast.AST = node
+        while isinstance(current, ast.Attribute):
+            parts.append(current.attr)
+            current = current.value
+        if isinstance(current, ast.Name):
+            var_name = '.'.join(reversed(parts + [current.id]))
+            if var_name in self.variables:
+                return self.variables[var_name]
+
+        raise NameError(f"Undefined variable or unsupported attribute access: {ast.unparse(node) if hasattr(ast, 'unparse') else 'attribute'}")
 
     def visit_BinOp(
         self,

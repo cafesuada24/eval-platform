@@ -14,4 +14,3 @@ model_configuration:
   temperature: 0.0
 prompt_template: Evaluate if the output_text is supported by the retrieved_context.
   Score from 0 to 5, where 0 is completely hallucinated and 5 is perfectly grounded.
-id: 5f5727a3-1b97-44fd-bd8b-6583883ae7d0

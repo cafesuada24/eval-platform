@@ -1,6 +1,7 @@
 """AI judge service implementations."""
 
 import litellm
+litellm.drop_params = True
 from app.core.eval_engine.models import JudgeResult, Metric
 from pydantic import TypeAdapter
 

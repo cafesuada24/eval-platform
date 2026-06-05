@@ -28,6 +28,7 @@ class YamlPipelineRepository:
             with file_path.open('r', encoding='utf-8') as f:
                 data = yaml.safe_load(f)
                 if data:
+                    data['id'] = str(pipeline_id)
                     return self.__adapter.validate_python(data)
         except Exception:
             pass
@@ -44,9 +45,11 @@ class YamlPipelineRepository:
         """Find a pipeline config by name."""
         for file_path in self.__fixtures_dir.glob('*.yaml'):
             try:
+                pipeline_id = UUID(file_path.stem)
                 with file_path.open('r', encoding='utf-8') as f:
                     data = yaml.safe_load(f)
                     if data and data.get('name') == name:
+                        data['id'] = str(pipeline_id)
                         return self.__adapter.validate_python(data)
             except Exception:
                 pass
@@ -64,9 +67,11 @@ class YamlPipelineRepository:
         pipelines: list[Pipeline] = []
         for file_path in self.__fixtures_dir.glob("*.yaml"):
             try:
+                pipeline_id = UUID(file_path.stem)
                 with file_path.open("r", encoding="utf-8") as f:
                     data = yaml.safe_load(f)
                     if data:
+                        data['id'] = str(pipeline_id)
                         pipelines.append(self.__adapter.validate_python(data))
             except Exception:
                 pass
@@ -76,6 +81,6 @@ class YamlPipelineRepository:
         """Save a pipeline configuration to a YAML file."""
         file_path = self.__fixtures_dir / f'{pipeline.id}.yaml'
         # Dump using JSON mode to ensure enums and UUIDs are stringified
-        data = self.__adapter.dump_python(pipeline, mode='json', exclude_none=True)
+        data = self.__adapter.dump_python(pipeline, mode='json', exclude_none=True, exclude={'id'})
         with file_path.open('w', encoding='utf-8') as f:
             yaml.safe_dump(data, f, sort_keys=False)

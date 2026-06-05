@@ -64,9 +64,8 @@ async def run_metric_evaluation(
         context = EvaluationContext(
             test_case=TestCase(
                 id=uuid4(),
-                input_text='',
-                input_files=[],
-                expected_output=None,
+                inputs={'text': ''},
+                expected_outputs={},
                 metadata={},
             ),
             runtime_states=[runtime_state],

@@ -28,6 +28,7 @@ class YamlMetricRepository:
             with file_path.open('r', encoding='utf-8') as f:
                 data = yaml.safe_load(f)
                 if data:
+                    data['id'] = str(metric_id)
                     return self.adapter.validate_python(data)
         except Exception:
             pass
@@ -44,9 +45,11 @@ class YamlMetricRepository:
         """Find a metric config by name."""
         for file_path in self.fixtures_dir.glob('*.yaml'):
             try:
+                metric_id = UUID(file_path.stem)
                 with file_path.open('r', encoding='utf-8') as f:
                     data = yaml.safe_load(f)
                     if data and data.get('name') == name:
+                        data['id'] = str(metric_id)
                         return self.adapter.validate_python(data)
             except Exception:
                 # In a real implementation, we might want to log parsing errors
@@ -65,9 +68,11 @@ class YamlMetricRepository:
         metrics: list[Metric] = []
         for file_path in self.fixtures_dir.glob('*.yaml'):
             try:
+                metric_id = UUID(file_path.stem)
                 with file_path.open('r', encoding='utf-8') as f:
                     data = yaml.safe_load(f)
                     if data:
+                        data['id'] = str(metric_id)
                         metrics.append(self.adapter.validate_python(data))
             except Exception:
                 pass
@@ -77,7 +82,7 @@ class YamlMetricRepository:
         """Save a metric configuration to a YAML file."""
         file_path = self.fixtures_dir / f'{metric.id}.yaml'
         # Dump using JSON mode to ensure enums and UUIDs are stringified
-        data = self.adapter.dump_python(metric, mode='json', exclude_none=True)
+        data = self.adapter.dump_python(metric, mode='json', exclude_none=True, exclude={'id'})
         with file_path.open('w', encoding='utf-8') as f:
             yaml.safe_dump(data, f, sort_keys=False)
 

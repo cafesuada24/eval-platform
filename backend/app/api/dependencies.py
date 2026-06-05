@@ -22,7 +22,9 @@ from app.core.eval_engine.ports import (
     PipelineRepository,
 )
 from app.core.eval_engine.services.dataset_parser import DatasetParserService
-from app.core.eval_engine.services.evaluation_orchestrator import EvaluationOrchestratorService
+from app.core.eval_engine.services.evaluation_orchestrator import (
+    EvaluationOrchestratorService,
+)
 from app.core.eval_engine.services.formula_evaluator import FormulaEvaluatorService
 from app.core.eval_engine.services.metric_evaluator import MetricEvaluatorService
 from app.core.eval_engine.services.pipeline_evaluator import PipelineEvaluatorService

@@ -131,7 +131,21 @@ class RuntimeStateExtractorService:
         variable: str,
         context: EvaluationContext,
     ) -> VariableExtractedValue | None:
-        """Extract a variable from runtime state."""
+        """Extract a variable from runtime state or test case."""
+        # Dynamic extraction from testcase body (e.g. testcase.inputs.image_url)
+        if variable.startswith('testcase.'):
+            parts = variable.split('.', 2)
+            if len(parts) == 3:
+                domain = parts[1]
+                key = parts[2]
+                if domain == 'inputs':
+                    return context.test_case.inputs.get(key)
+                if domain == 'expected_outputs':
+                    return context.test_case.expected_outputs.get(key)
+                if domain == 'metadata':
+                    return context.test_case.metadata.get(key)
+            raise ValueError(f"Invalid testcase variable format '{variable}'. Expected format: testcase.<inputs|expected_outputs|metadata>.<key>")
+
         extractor = EXTRACTOR_REGISTRY.get(variable)
         if extractor is None:
             raise ValueError(f'Invalid variable {variable}.')
