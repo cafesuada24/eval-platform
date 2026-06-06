@@ -5,8 +5,16 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "chromadb>=1.5.9",
+    "easyocr>=1.7.2",
     "evalplatform-sdk",
+    "google-genai>=2.6.0",
+    "langchain-text-splitters>=1.1.2",
+    "pillow>=12.2.0",
+    "pypdf>=6.12.2",
+    "python-dotenv>=1.2.2",
+    "streamlit>=1.58.0",
 ]
 
 [tool.uv.sources]
-evalplatform-sdk = { workspace = true }
+evalplatform-sdk = { workspace = true, editable = true }
