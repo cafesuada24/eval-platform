@@ -97,4 +97,9 @@ disallow_untyped_defs = true
 asyncio_mode = "auto"
 
 [tool.uv.workspace]
-members = ["backend", "sdk", "ai-chat/engine"]
+members = [
+    "backend",
+    "sdk",
+    "ai-chat/engine",
+    "ai-chat",
+]
