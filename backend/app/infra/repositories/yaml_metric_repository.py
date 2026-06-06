@@ -3,10 +3,13 @@
 from pathlib import Path
 from uuid import UUID
 
+import logging
 import yaml
 from app.core.eval_engine.models import Metric
 from app.core.exceptions import MetricNotFoundError
 from pydantic import TypeAdapter
+
+logger = logging.getLogger(__name__)
 
 
 class YamlMetricRepository:
@@ -30,8 +33,8 @@ class YamlMetricRepository:
                 if data:
                     data['id'] = str(metric_id)
                     return self.adapter.validate_python(data)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Failed to load metric config from %s: %s", file_path, e)
         return None
 
     def get_by_id(self, metric_id: UUID) -> Metric:
@@ -51,9 +54,8 @@ class YamlMetricRepository:
                     if data and data.get('name') == name:
                         data['id'] = str(metric_id)
                         return self.adapter.validate_python(data)
-            except Exception:
-                # In a real implementation, we might want to log parsing errors
-                pass
+            except Exception as e:
+                logger.warning("Failed to load metric config from %s: %s", file_path, e)
         return None
 
     def get_by_name(self, name: str) -> Metric:
@@ -74,8 +76,8 @@ class YamlMetricRepository:
                     if data:
                         data['id'] = str(metric_id)
                         metrics.append(self.adapter.validate_python(data))
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Failed to load metric config from %s: %s", file_path, e)
         return metrics
 
     def save(self, metric: Metric) -> None:

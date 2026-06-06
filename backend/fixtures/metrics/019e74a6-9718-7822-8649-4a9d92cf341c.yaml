@@ -1,5 +1,5 @@
 name: output_sentiment_score
-type: custom
+type: ai-judge
 description: Custom AI judge metric for output_sentiment_score
 model_configuration:
   provider: google

@@ -134,6 +134,7 @@ def get_evaluation_orchestrator(
     pipeline_eval_srv: Annotated[PipelineEvaluatorService, Depends(get_pipeline_evaluator)],
     runtime_state_repo: Annotated[RuntimeStateRepository, Depends(get_runtime_state_repo)],
     dataset_repo: Annotated[DatasetRepository, Depends(get_dataset_repo)],
+    pipeline_repo: Annotated[PipelineRepository, Depends(get_pipeline_repo)],
 ) -> EvaluationOrchestratorService:
     """Get the evaluation orchestrator service."""
     return EvaluationOrchestratorService(
@@ -141,6 +142,7 @@ def get_evaluation_orchestrator(
         pipeline_eval_srv=pipeline_eval_srv,
         runtime_state_repo=runtime_state_repo,
         dataset_repo=dataset_repo,
+        pipeline_repo=pipeline_repo,
     )
 
 

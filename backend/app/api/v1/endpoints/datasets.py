@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Annotated
 from uuid import UUID, uuid4
 
+from app.core.config import settings
 from app.api.dependencies import get_dataset_parser, get_dataset_repo
 from app.api.v1.schemas.datasets import (
     DatasetCreate,
@@ -24,10 +25,14 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-router = APIRouter()
+def get_dataset_files_dir() -> Path:
+    """Lazily creates and returns the dataset files directory."""
+    d = settings.dataset_files_dir
+    d.mkdir(parents=True, exist_ok=True)
+    return d
 
-DATASET_FILES_DIR = Path('data/dataset_files')
-DATASET_FILES_DIR.mkdir(parents=True, exist_ok=True)
+
+router = APIRouter()
 
 
 class FileUploadResponse(BaseModel):
@@ -123,7 +128,7 @@ async def upload_dataset_file(
     if not file.filename:
         raise HTTPException(status_code=400, detail='Filename missing')
 
-    dataset_dir = DATASET_FILES_DIR / str(dataset_id)
+    dataset_dir = get_dataset_files_dir() / str(dataset_id)
     dataset_dir.mkdir(parents=True, exist_ok=True)
 
     file_id = f'f_{uuid4().hex}'
@@ -148,7 +153,7 @@ async def upload_dataset_file(
 @router.get('/{dataset_id}/files')
 def list_dataset_files(dataset_id: UUID) -> list[FileUploadResponse]:
     """List all files uploaded for a specific dataset."""
-    dataset_dir = DATASET_FILES_DIR / str(dataset_id)
+    dataset_dir = get_dataset_files_dir() / str(dataset_id)
     files: list[FileUploadResponse] = []
 
     if not dataset_dir.exists() or not dataset_dir.is_dir():
@@ -182,8 +187,8 @@ def list_dataset_files(dataset_id: UUID) -> list[FileUploadResponse]:
 def get_dataset_file(dataset_id: UUID, file_id: str) -> FileResponse:
     """Retrieve a dataset file."""
     # Fallback to global directory for backwards compatibility with old uploads
-    dataset_file_path = DATASET_FILES_DIR / str(dataset_id) / file_id
-    legacy_file_path = DATASET_FILES_DIR / file_id
+    dataset_file_path = get_dataset_files_dir() / str(dataset_id) / file_id
+    legacy_file_path = get_dataset_files_dir() / file_id
 
     if dataset_file_path.exists():
         return FileResponse(dataset_file_path)
@@ -196,8 +201,8 @@ def get_dataset_file(dataset_id: UUID, file_id: str) -> FileResponse:
 @router.delete('/{dataset_id}/files/{file_id}', status_code=204)
 def delete_dataset_file(dataset_id: UUID, file_id: str) -> None:
     """Delete a dataset file."""
-    dataset_file_path = DATASET_FILES_DIR / str(dataset_id) / file_id
-    legacy_file_path = DATASET_FILES_DIR / file_id
+    dataset_file_path = get_dataset_files_dir() / str(dataset_id) / file_id
+    legacy_file_path = get_dataset_files_dir() / file_id
 
     if dataset_file_path.exists():
         dataset_file_path.unlink()

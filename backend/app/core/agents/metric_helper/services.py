@@ -2,7 +2,6 @@ import logging
 import uuid
 
 import yaml
-from app.api.v1.schemas.agent_dtos import ChatRequest
 from app.core.agents.metric_helper.models import (
     ChatMessage,
     ChatSession,
@@ -32,10 +31,13 @@ class MetricHelperAppService:
         self.__metric_repo = metric_repo
         self.__session_repo = session_repo
 
-    async def chat(self, request: ChatRequest) -> MetricHelperResponse:
+    async def chat(
+        self,
+        messages: list[ChatMessage],
+        metric_id: uuid.UUID | None = None,
+    ) -> MetricHelperResponse:
         """Handle a chat turn with the metric helper agent."""
         current_yaml = None
-        metric_id = request.metric_id
 
         if metric_id:
             metric_config = self.__metric_repo.find_by_id(metric_id)
@@ -47,12 +49,11 @@ class MetricHelperAppService:
                 )
                 current_yaml = yaml.dump(data, sort_keys=False)
 
-        messages_list = request.messages
-        if not messages_list:
+        if not messages:
             raise ValueError('No message history provided in request.')
 
         session_id = metric_id if metric_id else uuid.uuid4()
-        session = ChatSession(metric_id=session_id, messages=messages_list)
+        session = ChatSession(metric_id=session_id, messages=messages)
 
         result = await self.__agentic_helper.chat(
             session=session,
@@ -60,7 +61,7 @@ class MetricHelperAppService:
         )
 
         if result.response_text:
-            messages_list.append(
+            messages.append(
                 ChatMessage(
                     role='model',
                     content=result.response_text,
@@ -70,7 +71,7 @@ class MetricHelperAppService:
 
         if metric_id:
             try:
-                session_data = ChatSession(metric_id=metric_id, messages=messages_list)
+                session_data = ChatSession(metric_id=metric_id, messages=messages)
                 self.__session_repo.save(session_data)
             except Exception as e:
                 logger.error(f"Failed to save session for metric '{metric_id}': {e}", exc_info=True)

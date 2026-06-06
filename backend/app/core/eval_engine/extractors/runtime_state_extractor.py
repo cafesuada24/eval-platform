@@ -66,27 +66,35 @@ def extract_output_text(context: EvaluationContext) -> str | None:
 @extractor('retrieved_context')
 def extract_retrieved_context(context: EvaluationContext) -> str | None:
     events = context.events_by_type.get(RuntimeEventType.RETRIEVAL, [])
-    if not events:
-        return 'No relevant documents found.'
+
+    formatted: list[str] = []
+    chunk_index = 1
+    has_retrieval_events = False
+
     for ev in events:
         if not isinstance(ev.payload, RetrievalPayload):
-            logging.warning("Retrieved non retrieval payload during 'retrieved_context' extraction")
+            logging.warning(
+                "Retrieved non retrieval payload during 'retrieved_context' extraction"
+            )
             continue
 
-            # Format chunks if it's stored as a list
+        has_retrieval_events = True
         chunks = ev.payload.chunks
         if not chunks:
-            return 'No relevant documents found.'
-        formatted: list[str] = []
-        for i, chunk in enumerate(chunks):
-            # Handle both dict and Pydantic model cases for serialization
+            continue
+
+        for chunk in chunks:
             doc = chunk['document']
             text = chunk['content']
             score = chunk['confidence']
-
             formatted.append(
-                f'--- Document {i + 1} (Source: {doc}, Confidence Score: {score:.4f}) ---\n{text}\n',
+                f'--- Document {chunk_index} (Source: {doc}, Confidence Score: {score:.4f}) ---\n{text}\n'
             )
+            chunk_index += 1
+
+    if has_retrieval_events:
+        if not formatted:
+            return 'No relevant documents found.'
         return '\n'.join(formatted)
 
     for state in context.runtime_states:
@@ -101,7 +109,10 @@ def ocr_latency_ms(context: EvaluationContext) -> int | None:
     if not events:
         return None
     for ev in events:
-        if isinstance(ev.payload, FileProcessedPayload) and ev.payload.processor == 'ocr':
+        if (
+            isinstance(ev.payload, FileProcessedPayload)
+            and ev.payload.processor == 'ocr'
+        ):
             return ev.payload.latency_ms
     return None
 
@@ -144,7 +155,9 @@ class RuntimeStateExtractorService:
                     return context.test_case.expected_outputs.get(key)
                 if domain == 'metadata':
                     return context.test_case.metadata.get(key)
-            raise ValueError(f"Invalid testcase variable format '{variable}'. Expected format: testcase.<inputs|expected_outputs|metadata>.<key>")
+            raise ValueError(
+                f"Invalid testcase variable format '{variable}'. Expected format: testcase.<inputs|expected_outputs|metadata>.<key>"
+            )
 
         extractor = EXTRACTOR_REGISTRY.get(variable)
         if extractor is None:

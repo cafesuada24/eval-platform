@@ -54,19 +54,19 @@ class PipelineRepository(Protocol):
     """Pipeline repository."""
 
     def find_by_id(self, pipeline_id: UUID) -> Pipeline | None:
-        """Find a metric by id."""
+        """Find a pipeline by id."""
         ...
 
     def get_by_id(self, pipeline_id: UUID) -> Pipeline:
-        """Find a metric by id."""
+        """Find a pipeline by id."""
         ...
 
     def find_by_name(self, name: str) -> Pipeline | None:
-        """Find a metric config by name."""
+        """Find a pipeline by name."""
         ...
 
     def get_by_name(self, name: str) -> Pipeline:
-        """Get a metric config by name.
+        """Get a pipeline by name.
 
         Raise PipelineNotFoundError if not found.
         """
@@ -78,6 +78,10 @@ class PipelineRepository(Protocol):
 
     def save(self, pipeline: Pipeline) -> None:
         """Save a pipeline configuration."""
+        ...
+
+    def delete(self, pipeline_id: UUID) -> None:
+        """Delete a pipeline configuration."""
         ...
 
 

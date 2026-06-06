@@ -16,17 +16,4 @@ class SubmitTestcaseRequest(BaseModel):
     runtime_ids: list[UUID]
 
 
-class MetricSummary(BaseModel):
-    metric_id: UUID
-    average_score: float
-    pass_count: int
-    fail_count: int
-    warning_count: int
-    pass_rate: float
-    total_runs: int
-
-class BatchSummary(BaseModel):
-    job_id: UUID
-    pipeline_id: UUID
-    metrics: list[MetricSummary]
 

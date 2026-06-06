@@ -101,7 +101,7 @@ class RuntimeState:
     """
 
     runtime_id: UUID = field(default_factory=uuid4)
-    events: list[RuntimeEvent] = field(default_factory=list[RuntimeEvent])
+    events: list[RuntimeEvent] = field(default_factory=list)
     resource_usage: ResourceUsage = field(default_factory=ResourceUsage)
 
     # artifacts: list[dict[str, Any]] | None = None

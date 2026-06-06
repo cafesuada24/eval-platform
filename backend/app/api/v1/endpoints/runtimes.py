@@ -66,6 +66,8 @@ async def ingest_runtimes_batch(
             for ev in request.events
         ]
 
+        print(len(events))
+
         state = RuntimeState(
             runtime_id=request.runtime_id or uuid4(),
             events=events,
@@ -90,7 +92,7 @@ def list_runtimes(
             usage=rt.resource_usage,
             events=[
                 EventGetResponse(
-                    event_id=ev.runtime_id,
+                    event_id=ev.event_id,
                     runtime_id=rt.runtime_id,
                     payload=ev.payload,
                     timestamp=ev.timestamp,
@@ -117,7 +119,7 @@ def get_runtime(
             usage=rt.resource_usage,
             events=[
                 EventGetResponse(
-                    event_id=ev.runtime_id,
+                    event_id=ev.event_id,
                     runtime_id=rt.runtime_id,
                     payload=ev.payload,
                     timestamp=ev.timestamp,
@@ -156,9 +158,8 @@ def get_runtime_variables(
     context = EvaluationContext(
         test_case=TestCase(
             id=uuid4(),
-            input_text='',
-            input_files=[],
-            expected_output=None,
+            inputs={},
+            expected_outputs={},
             metadata={},
         ),
         runtime_states=[state],

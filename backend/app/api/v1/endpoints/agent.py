@@ -77,7 +77,10 @@ async def chat_with_agent(
     app_service: Annotated[MetricHelperAppService, Depends(get_metric_helper_app_service)],
 ) -> MetricHelperResponse:
     try:
-        return await app_service.chat(request)
+        return await app_service.chat(
+            messages=request.messages,
+            metric_id=request.metric_id,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:

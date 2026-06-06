@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from enum import Enum, IntEnum
 from typing import TYPE_CHECKING, Any, Literal
 from uuid import UUID, uuid4
@@ -59,9 +59,9 @@ class MetricThreshold:
 
     def __post_init__(self) -> None:
         """Validation."""
-        if self.fail_below and self.fail_over:
+        if self.fail_below is not None and self.fail_over is not None:
             raise ValueError('fail_below and fail_over cannot be defined together.')
-        if self.warning_below and self.warning_over:
+        if self.warning_below is not None and self.warning_over is not None:
             raise ValueError(
                 'warning_below and warning_over cannot be defined together.',
             )
@@ -118,13 +118,14 @@ class MetricRunResult:
     """A metric run result."""
 
     metric_id: UUID
+    metric_name: str
     score: float
     justification: str
     evidence: str | None
     assertion_status: AssertionStatus
     improvements: str | None = None
     run_id: UUID = field(default_factory=uuid4)
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass(slots=True)
@@ -146,7 +147,26 @@ class PipelineRunResult:
     metric_results: list[MetricRunResult]
     testcase_id: UUID | None = None
     run_id: UUID = field(default_factory=uuid4)
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+
+
+@dataclass(slots=True)
+class MetricSummary:
+    metric_id: UUID
+    metric_name: str
+    average_score: float
+    pass_count: int
+    fail_count: int
+    warning_count: int
+    pass_rate: float
+    total_runs: int
+
+
+@dataclass(slots=True)
+class BatchSummary:
+    job_id: UUID
+    pipeline_id: UUID
+    metrics: list[MetricSummary]
 
 
 @dataclass(slots=True)
@@ -158,9 +178,9 @@ class BatchRunResult:
     dataset_id: UUID
     status: BatchRunStatus
     pipeline_run_results: list[PipelineRunResult] = field(
-        default_factory=list[PipelineRunResult]
+        default_factory=list[PipelineRunResult],
     )
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass(slots=True)
@@ -190,7 +210,7 @@ class EvaluationContext:
     )
 
     def __post_init__(self) -> None:
-        events_dict: dict[str, list[RuntimeEvent]] = defaultdict(list[RuntimeEvent])
+        events_dict: dict[str, list[RuntimeEvent]] = defaultdict(list)
         for state in self.runtime_states:
             for event in state.events:
                 events_dict[event.payload.event_type].append(event)

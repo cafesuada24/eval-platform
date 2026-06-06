@@ -7,9 +7,11 @@ from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.eval_engine.models import Metric
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import TypeAdapter
+from app.core.exceptions import DomainError, NotFoundError
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -54,6 +56,21 @@ app.add_middleware(
 )
 
 app.include_router(api_router, prefix="/v1")
+
+@app.exception_handler(NotFoundError)
+async def not_found_error_handler(request: Request, exc: NotFoundError):
+    return JSONResponse(
+        status_code=404,
+        content={"detail": str(exc)},
+    )
+
+@app.exception_handler(DomainError)
+async def domain_error_handler(request: Request, exc: DomainError):
+    logger.warning(f"Domain error occurred: {str(exc)}")
+    return JSONResponse(
+        status_code=400,
+        content={"detail": str(exc)},
+    )
 
 @app.get("/healthz")
 async def healthz():

@@ -50,10 +50,29 @@ class PipelineEvaluatorService:
             for metric, threshold in metrics
         ]
 
-        results: list[MetricRunResult] = list(await asyncio.gather(*tasks))
+        raw_results = await asyncio.gather(*tasks, return_exceptions=True)
 
-        # TODO: replace this with strategy pattern:)
-        overall_status = max((result.assertion_status for result in results), default=AssertionStatus.PASS)
+        results: list[MetricRunResult] = []
+        for i, res in enumerate(raw_results):
+            if isinstance(res, Exception):
+                metric = metrics[i][0]
+                results.append(
+                    MetricRunResult(
+                        metric_id=metric.id,
+                        metric_name=metric.name,
+                        score=0.0,
+                        justification=f'Execution failed: {str(res)}',
+                        evidence=None,
+                        assertion_status=AssertionStatus.WARNING,
+                    )
+                )
+            else:
+                results.append(res)
+
+        overall_status = max(
+            (result.assertion_status for result in results),
+            default=AssertionStatus.PASS,
+        )
 
         return PipelineRunResult(
             evaluation_context_id=context.id,

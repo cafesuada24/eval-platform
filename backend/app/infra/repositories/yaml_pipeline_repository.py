@@ -3,10 +3,13 @@
 from pathlib import Path
 from uuid import UUID
 
+import logging
 import yaml
 from app.core.eval_engine.models import Pipeline
 from app.core.exceptions import PipelineNotFoundError
 from pydantic import TypeAdapter
+
+logger = logging.getLogger(__name__)
 
 
 class YamlPipelineRepository:
@@ -30,8 +33,8 @@ class YamlPipelineRepository:
                 if data:
                     data['id'] = str(pipeline_id)
                     return self.__adapter.validate_python(data)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Failed to load pipeline config from %s: %s", file_path, e)
         return None
 
     def get_by_id(self, pipeline_id: UUID) -> Pipeline:
@@ -51,8 +54,8 @@ class YamlPipelineRepository:
                     if data and data.get('name') == name:
                         data['id'] = str(pipeline_id)
                         return self.__adapter.validate_python(data)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Failed to load pipeline config from %s: %s", file_path, e)
         return None
 
     def get_by_name(self, name: str) -> Pipeline:
@@ -73,8 +76,8 @@ class YamlPipelineRepository:
                     if data:
                         data['id'] = str(pipeline_id)
                         pipelines.append(self.__adapter.validate_python(data))
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Failed to load pipeline config from %s: %s", file_path, e)
         return pipelines
 
     def save(self, pipeline: Pipeline) -> None:
@@ -84,3 +87,9 @@ class YamlPipelineRepository:
         data = self.__adapter.dump_python(pipeline, mode='json', exclude_none=True, exclude={'id'})
         with file_path.open('w', encoding='utf-8') as f:
             yaml.safe_dump(data, f, sort_keys=False)
+
+    def delete(self, pipeline_id: UUID) -> None:
+        """Delete a pipeline configuration YAML file."""
+        file_path = self.__fixtures_dir / f'{pipeline_id}.yaml'
+        if file_path.exists():
+            file_path.unlink()

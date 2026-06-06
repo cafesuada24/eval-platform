@@ -56,6 +56,10 @@ class Settings(BaseSettings):
         return self.fixtures_dir / 'datasets'
 
     @property
+    def dataset_files_dir(self) -> Path:
+        return self.fixtures_dir / 'dataset_files'
+
+    @property
     def batch_results_dir(self) -> Path:
         return self.fixtures_dir / 'batch_results'
 

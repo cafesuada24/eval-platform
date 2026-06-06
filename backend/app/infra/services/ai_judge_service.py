@@ -1,7 +1,6 @@
 """AI judge service implementations."""
 
 import litellm
-litellm.drop_params = True
 from app.core.eval_engine.models import JudgeResult, Metric
 from pydantic import TypeAdapter
 
@@ -22,6 +21,9 @@ def _get_litellm_model_name(config: Metric) -> str:
 
 class LiteLLMAIJudge:
     """AI judge backed by LiteLLM."""
+
+    def __init__(self) -> None:
+        litellm.drop_params = True
 
     async def evaluate(
         self,
@@ -62,7 +64,6 @@ The JSON object MUST contain exactly these four fields in this EXACT order:
         ]
 
         ta = TypeAdapter(JudgeResult)
-        print(ta.json_schema())
 
 
         response = await litellm.acompletion(
@@ -78,6 +79,5 @@ The JSON object MUST contain exactly these four fields in this EXACT order:
         )
 
         content = response.choices[0].message.content
-        print(content)
 
         return ta.validate_json(content)

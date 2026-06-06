@@ -1,4 +1,4 @@
-name: "ocr_process_time_ms"
+name: "ocr_latency_ms"
 type: "primitive"
 description: "Evaluates the processing time of OCR operation in milliseconds."
 scoring_scale:
@@ -6,5 +6,5 @@ scoring_scale:
   max: 60000.0
   data_type: "float"
 required_inputs:
-  - "ocr_process_time_ms"
-formula: "ocr_process_time_ms"
+  - "ocr_latency_ms"
+formula: "ocr_latency_ms"

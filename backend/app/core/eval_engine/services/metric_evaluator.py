@@ -1,5 +1,4 @@
-"""Metric evaluator service."""
-
+import asyncio
 from typing import Any
 
 from app.core.eval_engine.extractors.runtime_state_extractor import (
@@ -28,7 +27,7 @@ class MetricEvaluatorService:
     ) -> None:
         self.__formula_evaluator = formula_evaluator
         self.__rs_extractor = rs_extractor
-        self.__ai_judge_serivce = ai_judge_service
+        self.__ai_judge_service = ai_judge_service
 
     @staticmethod
     def __evaluate_threshold(
@@ -144,6 +143,7 @@ class MetricEvaluatorService:
         assertion_status = self.__class__.__evaluate_threshold(score, threshold)
         return MetricRunResult(
             metric_id=metric.id,
+            metric_name=metric.name,
             score=score,
             justification=justification,
             evidence=None,
@@ -167,7 +167,7 @@ class MetricEvaluatorService:
             as_float=False,
         )
         prompt = self.__format_prompt(metric.prompt_template, bindings)
-        judge_output = await self.__ai_judge_serivce.evaluate(
+        judge_output = await self.__ai_judge_service.evaluate(
             metric, prompt, building_mode=building_mode
         )
         assertion_status = self.__evaluate_threshold(
@@ -177,6 +177,7 @@ class MetricEvaluatorService:
 
         return MetricRunResult(
             metric_id=metric.id,
+            metric_name=metric.name,
             score=judge_output.score,
             justification='\n'.join(judge_output.justification),
             evidence='\n'.join(judge_output.evidence),
@@ -194,33 +195,50 @@ class MetricEvaluatorService:
         building_mode: bool = False,
     ) -> MetricRunResult:
         """Evaluate a metric against a runtime state."""
-        try:
-            if metric.type == 'primitive':
-                return self.__evaluate_primitive_metric(
+        attempts = 3
+        last_error = None
+        is_value_error = False
+
+        for attempt in range(attempts):
+            try:
+                if metric.type == 'primitive':
+                    return self.__evaluate_primitive_metric(
+                        metric=metric,
+                        context=context,
+                        threshold=threshold,
+                    )
+
+                return await self.__evaluate_ai_judge_metric(
                     metric=metric,
                     context=context,
                     threshold=threshold,
+                    building_mode=building_mode,
                 )
+            except ValueError as e:
+                last_error = e
+                is_value_error = True
+                if attempt < attempts - 1:
+                    await asyncio.sleep(0.5)
+            except Exception as e:
+                last_error = e
+                is_value_error = False
+                if attempt < attempts - 1:
+                    await asyncio.sleep(0.5)
 
-            return await self.__evaluate_ai_judge_metric(
-                metric=metric,
-                context=context,
-                threshold=threshold,
-                building_mode=building_mode,
-            )
-        except ValueError as e:
+        if is_value_error:
             return MetricRunResult(
                 metric_id=metric.id,
+                metric_name=metric.name,
                 score=0.0,
-                justification=f'Execution failed due to missing required variables or format error: {str(e)}',
+                justification=f'Execution failed due to missing required variables or format error after {attempts} attempts: {str(last_error)}',
                 evidence=None,
-                assertion_status=AssertionStatus.FAIL,
+                assertion_status=AssertionStatus.WARNING,
             )
-        except Exception as e:
-            return MetricRunResult(
-                metric_id=metric.id,
-                score=0.0,
-                justification=f'Execution failed due to an unexpected error (e.g., LLM API failure): {str(e)}',
-                evidence=None,
-                assertion_status=AssertionStatus.FAIL,
-            )
+        return MetricRunResult(
+            metric_id=metric.id,
+            metric_name=metric.name,
+            score=0.0,
+            justification=f'Execution failed due to an unexpected error (e.g., LLM API failure) after {attempts} attempts: {str(last_error)}',
+            evidence=None,
+            assertion_status=AssertionStatus.WARNING,
+        )

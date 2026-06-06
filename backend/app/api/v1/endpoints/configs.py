@@ -139,3 +139,13 @@ def update_pipeline(
     pipeline_repo.save(pipeline)
     return pipeline
 
+
+@router.delete('/pipelines/{pipeline_id}', status_code=204)
+def delete_pipeline(
+    pipeline_id: UUID,
+    pipeline_repo: Annotated[PipelineRepository, Depends(get_pipeline_repo)],
+) -> None:
+    if not pipeline_repo.find_by_id(pipeline_id):
+        raise HTTPException(status_code=404, detail='Pipeline not found')
+    pipeline_repo.delete(pipeline_id)
+
