@@ -3,7 +3,7 @@
 
 
 import React from "react"
-import { Info, CheckCircle2, Plus, X } from "lucide-react"
+import { Info, Plus, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -200,12 +200,11 @@ export function MetricConfigurator({
                         <span className="font-mono text-sm">{input}</span>
                         <div className="flex items-center gap-2">
                           {isAutoBound ? (
-                            <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500/20 gap-1.5 font-normal">
-                              <CheckCircle2 className="w-3 h-3" />
-                              Auto-bound
+                            <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/20 gap-1.5 font-semibold font-mono text-[10px] rounded-[2px]">
+                              ✅ Auto-bound to System State
                             </Badge>
                           ) : (
-                            <Badge variant="outline" className="text-muted-foreground gap-1.5 font-normal">
+                            <Badge variant="outline" className="text-muted-foreground gap-1.5 font-normal text-[10px] font-mono rounded-[2px]">
                               Requires Pipeline Mapping
                             </Badge>
                           )}

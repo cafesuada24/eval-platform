@@ -47,6 +47,31 @@ export function PipelineEditor({ initialPipeline, availableMetrics }: Props) {
   }
   
   const savePipeline = async () => {
+    // Validate thresholds against metric scoring_scale before submitting
+    for (const item of pipeline.metrics) {
+      const metricDetails = availableMetrics.find(m => m.id === item.metric_id);
+      if (!metricDetails || !item.threshold) continue;
+      
+      const scale = metricDetails.scoring_scale;
+      for (const [key, val] of Object.entries(item.threshold)) {
+        if (val === null || val === undefined) continue;
+        
+        if (val < scale.min || val > scale.max) {
+          toast.error(`Validation Error in ${metricDetails.name}`, {
+            description: `${key} (${val}) must be between ${scale.min} and ${scale.max}.`
+          });
+          return;
+        }
+        
+        if (scale.data_type === "integer" && !Number.isInteger(val)) {
+          toast.error(`Validation Error in ${metricDetails.name}`, {
+            description: `${key} must be a whole number (integer).`
+          });
+          return;
+        }
+      }
+    }
+
     setIsSaving(true);
     try {
       const isNew = !pipeline.id;
@@ -64,7 +89,13 @@ export function PipelineEditor({ initialPipeline, availableMetrics }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      if (!res.ok) throw new Error("Failed to save pipeline");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        const errorMessage = typeof errorData.detail === 'string' 
+          ? errorData.detail 
+          : JSON.stringify(errorData.detail || "Failed to save pipeline");
+        throw new Error(errorMessage);
+      }
       
       const saved = await res.json();
       toast.success("Pipeline saved successfully");
@@ -72,8 +103,9 @@ export function PipelineEditor({ initialPipeline, availableMetrics }: Props) {
       if (isNew && saved.id) {
         router.replace(`/pipelines/${saved.id}`);
       }
-    } catch (error) {
-      toast.error("Failed to save pipeline");
+    } catch (error: any) {
+      console.error("Save error:", error);
+      toast.error(error.message || "Failed to save pipeline");
     } finally {
       setIsSaving(false);
     }
@@ -137,6 +169,13 @@ export function PipelineEditor({ initialPipeline, availableMetrics }: Props) {
                   name={metricDetails.name}
                   description={`Semantic thresholds applied for ${metricDetails.name}`}
                   type={metricDetails.type === "ai-judge" ? "custom" : metricDetails.type}
+                  scoringScale={metricDetails.scoring_scale}
+                  threshold={item.threshold as any}
+                  onThresholdChange={(newThreshold) => {
+                    const newMetrics = [...pipeline.metrics];
+                    newMetrics[index] = { ...newMetrics[index], threshold: newThreshold };
+                    setPipeline({ ...pipeline, metrics: newMetrics });
+                  }}
                 />
                 <Button 
                   variant="destructive" 

@@ -10,6 +10,7 @@ export enum AssertionStatus {
 
 export interface MetricSummary {
   metric_id: string; // UUID
+  metric_name: string;
   average_score: number;
   pass_count: number;
   fail_count: number;
@@ -26,10 +27,13 @@ export interface BatchSummary {
 
 export interface MetricRunResult {
   metric_id: string; // UUID
+  metric_name: string;
   score: number;
   justification: string;
   assertion_status: AssertionStatus;
   run_id: string; // UUID
+  evidence?: string | null;
+  improvements?: string | null;
 }
 
 export interface PipelineRunResult {
@@ -48,6 +52,16 @@ export async function getEvaluations(): Promise<BatchRunResult[]> {
   if (!res.ok) {
     if (res.status === 404) return [];
     throw new Error(`Failed to fetch evaluations: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function getEvaluation(evaluationId: string): Promise<BatchRunResult> {
+  const res = await fetch(`${API_BASE_URL}/evaluations/${evaluationId}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch evaluation: ${res.statusText}`);
   }
   return res.json();
 }

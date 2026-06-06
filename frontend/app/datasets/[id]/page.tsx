@@ -1,83 +1,50 @@
-import { Dataset } from "@/lib/types"
-import { DatasetDetailClient } from "@/components/datasets/DatasetDetailClient"
-import Link from "next/link"
-import { ArrowLeft, Database } from "lucide-react"
+import React from "react";
+import { DatasetWorkspace } from "@/components/datasets/DatasetWorkspace";
+import { fetchDataset } from "@/lib/api/datasets";
+import { Metadata } from "next";
 
-export const dynamic = "force-dynamic";
+interface DatasetPageProps {
+  params: {
+    id: string;
+  };
+}
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
-async function getDataset(id: string): Promise<Dataset | null> {
+export async function generateMetadata({ params }: DatasetPageProps): Promise<Metadata> {
   try {
-    const res = await fetch(`${API_BASE_URL}/v1/datasets/${id}`, { cache: 'no-store' });
-    if (!res.ok) {
-      if (res.status === 404) return null;
-      throw new Error(`HTTP error! status: ${res.status}`);
-    }
-    return res.json();
+    const resolvedParams = await params;
+    // Note: Since this is a server component, fetchDataset would need to be able to make 
+    // an absolute URL fetch to the API if this is during SSR, but for simplicity we'll assume
+    // either it's mocked or we can just set a static title for now since `fetch` with relative URL 
+    // fails in Next.js Server Components. In a real app we'd fetch directly from DB or absolute URL.
+    return {
+      title: `Dataset ${resolvedParams.id} | EvalPlatform`,
+    };
   } catch (error) {
-    console.error("Failed to fetch dataset:", error);
-    return null;
+    return {
+      title: "Dataset Not Found",
+    };
   }
 }
 
-interface Props {
-  params: Promise<{ id: string }>;
-}
+export default async function DatasetPage({ params }: DatasetPageProps) {
+  const resolvedParams = await params;
+  
+  try {
+    const dataset = await fetchDataset(resolvedParams.id);
 
-export default async function DatasetDetailPage({ params }: Props) {
-  const { id } = await params;
-  const dataset = await getDataset(id);
-
-  if (!dataset) {
     return (
-      <div className="min-h-full bg-background flex flex-col items-center justify-center p-8">
-        <div className="max-w-md text-center space-y-6">
-          <Database className="w-16 h-16 text-muted-foreground mx-auto" />
-          <h1 className="text-4xl font-bold tracking-tight text-foreground">Not Found</h1>
-          <p className="text-muted-foreground font-mono">Dataset {id} could not be located in the core.</p>
-          <Link href="/datasets" className="inline-flex items-center text-primary hover:text-primary/80 transition-colors">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Return to Core
-          </Link>
+      <main className="w-full h-screen bg-background">
+        <DatasetWorkspace dataset={dataset} />
+      </main>
+    );
+  } catch (error) {
+    return (
+      <main className="w-full h-screen bg-background flex items-center justify-center text-muted-foreground">
+        <div className="text-center space-y-4">
+          <h1 className="text-2xl font-bold text-foreground">Dataset Not Found</h1>
+          <p>The dataset you are looking for does not exist or could not be loaded.</p>
         </div>
-      </div>
-    )
+      </main>
+    );
   }
-
-  return (
-    <div className="min-h-full bg-background p-8">
-      <div className="max-w-7xl mx-auto space-y-12">
-        {/* Navigation & Header */}
-        <div className="space-y-8">
-          <Link 
-            href="/datasets" 
-            className="inline-flex items-center text-sm font-mono tracking-widest uppercase text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Index
-          </Link>
-
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-border/50">
-            <div className="space-y-4">
-              <h1 className="text-5xl lg:text-6xl font-extrabold tracking-tighter text-foreground">
-                {dataset.name}
-              </h1>
-              <div className="flex flex-wrap items-center gap-4">
-                <span className="font-mono text-sm text-muted-foreground bg-secondary border border-border px-3 py-1 rounded-full">
-                  ID: {dataset.id}
-                </span>
-                <span className="font-mono text-sm text-primary bg-primary/10 border border-primary/20 px-3 py-1 rounded-full">
-                  {dataset.cases?.length || 0} CASES
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Rows Client Component */}
-        <DatasetDetailClient dataset={dataset} />
-      </div>
-    </div>
-  )
 }

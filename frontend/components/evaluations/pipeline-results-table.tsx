@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Fragment } from "react";
 import {
   Table,
   TableBody,
@@ -53,7 +53,7 @@ export function PipelineResultsTable({ results }: PipelineResultsTableProps) {
             results.map((run) => {
               const isExpanded = expandedRows.has(run.run_id);
               return (
-                <div key={run.run_id} className="contents">
+                <Fragment key={run.run_id}>
                   <TableRow
                     className="cursor-pointer hover:bg-muted/50"
                     onClick={() => toggleRow(run.run_id)}
@@ -79,8 +79,8 @@ export function PipelineResultsTable({ results }: PipelineResultsTableProps) {
                   </TableRow>
                   {isExpanded && (
                     <TableRow className="bg-muted/20 hover:bg-muted/20">
-                      <TableCell colSpan={4} className="p-0">
-                        <div className="p-4 border-b">
+                      <TableCell colSpan={4} className="p-0 whitespace-normal">
+                        <div className="p-4 border-b whitespace-normal break-words">
                           <h4 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wider">
                             Metric Results
                           </h4>
@@ -96,11 +96,11 @@ export function PipelineResultsTable({ results }: PipelineResultsTableProps) {
                                   <div className="flex-1 pr-4">
                                     <div className="flex items-center gap-2 mb-1">
                                       <span className="font-medium text-sm">
-                                        Metric: {metric.metric_id.split("-")[0]}
+                                        Metric: {metric.metric_name}
                                       </span>
                                       <RunStatusBadge status={metric.assertion_status} className="text-[10px] h-5 px-2" />
                                     </div>
-                                    <p className="text-xs text-muted-foreground line-clamp-2 hover:line-clamp-none transition-all">
+                                    <p className="text-xs text-muted-foreground line-clamp-2 hover:line-clamp-none transition-all whitespace-normal break-words">
                                       {metric.justification || "No justification provided."}
                                     </p>
                                   </div>
@@ -118,7 +118,7 @@ export function PipelineResultsTable({ results }: PipelineResultsTableProps) {
                       </TableCell>
                     </TableRow>
                   )}
-                </div>
+                </Fragment>
               );
             })
           )}

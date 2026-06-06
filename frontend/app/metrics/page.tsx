@@ -37,6 +37,8 @@ async function getMetrics(): Promise<Metric[]> {
   }
 }
 
+import { PageHeader } from "@/components/ui/page-header";
+
 export default async function MetricsPage({
   searchParams,
 }: {
@@ -61,23 +63,22 @@ export default async function MetricsPage({
   }
 
   return (
-    <div className="p-8 max-w-6xl mx-auto space-y-8 flex flex-col h-[calc(100vh-2rem)]">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shrink-0">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Metrics Registry</h1>
-          <p className="text-muted-foreground mt-2 text-sm">
-            Manage your primitive and custom AI-judged evaluation metrics.
-          </p>
-        </div>
-        <Link href="/playground">
-          <Button className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm">
-            <Settings2 className="w-4 h-4 mr-2" />
-            Create Custom Metric
-          </Button>
-        </Link>
-      </div>
+    <div className="p-8 max-w-6xl mx-auto space-y-8 flex flex-col h-[calc(100vh-3.5rem)] bg-background">
+      <PageHeader 
+        preTitle="Evaluation Core"
+        title="Metrics Registry"
+        description="Manage your primitive and custom AI-judged evaluation metrics."
+        actions={
+          <Link href="/playground">
+            <Button size="sm" className="h-9 shadow-sm rounded-[2px]">
+              <Settings2 className="w-4 h-4 mr-2" />
+              Create Custom Metric
+            </Button>
+          </Link>
+        }
+      />
 
-      <div className="flex flex-col sm:flex-row gap-4 items-center shrink-0 bg-muted/20 p-4 rounded-xl border border-border/50">
+      <div className="flex flex-col sm:flex-row gap-4 items-center shrink-0 bg-card/20 p-4 rounded-[2px] border border-border/40">
         <Form action="/metrics" className="flex-1 flex gap-3 w-full">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -85,7 +86,7 @@ export default async function MetricsPage({
               name="q" 
               placeholder="Search metrics by name or description..." 
               defaultValue={q}
-              className="pl-9 h-10 w-full bg-background border-border shadow-sm transition-all focus-visible:ring-1"
+              className="pl-9 h-9 w-full bg-background border-border shadow-sm transition-all focus-visible:ring-1 rounded-[2px] text-xs font-mono"
             />
           </div>
           
@@ -93,7 +94,7 @@ export default async function MetricsPage({
             <select
               name="type"
               defaultValue={typeFilter}
-              className="h-10 pl-3 pr-8 rounded-md border border-border bg-background text-sm shadow-sm appearance-none focus:outline-none focus:ring-1 focus:ring-ring w-full"
+              className="h-9 pl-3 pr-8 rounded-[2px] border border-border bg-background text-xs shadow-sm appearance-none focus:outline-none focus:ring-1 focus:ring-ring w-full font-mono"
             >
               <option value="all">All Types</option>
               <option value="ai-judge">AI Judge</option>
@@ -102,13 +103,13 @@ export default async function MetricsPage({
             <Filter className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           </div>
 
-          <Button type="submit" variant="secondary" className="h-10 px-6 font-medium shadow-sm">
+          <Button type="submit" variant="secondary" className="h-9 px-6 font-mono text-xs uppercase tracking-wider shadow-sm rounded-[2px]">
             Search
           </Button>
         </Form>
       </div>
 
-      <div className="border border-border/50 rounded-xl bg-card/50 backdrop-blur-sm flex-1 overflow-hidden flex flex-col">
+      <div className="border border-border/40 rounded-[2px] bg-card/30 backdrop-blur-xs flex-1 overflow-hidden flex flex-col">
         <div className="flex-1 overflow-y-auto">
           <Table>
             <TableHeader className="bg-muted/50 sticky top-0 z-10 backdrop-blur-md">

@@ -90,9 +90,8 @@ export interface HTTPValidationError {
 
 export interface TestCase {
   id: string; // UUID
-  input_text: string;
-  input_files: string[];
-  expected_output?: string | null;
+  inputs: Record<string, any>;
+  expected_outputs: Record<string, any>;
   metadata: Record<string, any>;
 }
 
@@ -110,7 +109,8 @@ export interface BatchRunResult {
   dataset_name?: string;
   pass_rate?: number;
   status: "PENDING" | "COMPLETED" | "FAILED";
-  pipeline_run_results: any[]; 
+  pipeline_run_results: any[];
+  created_at?: string;
 }
 
 export interface RuntimeEvent {

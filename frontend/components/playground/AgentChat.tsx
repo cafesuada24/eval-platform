@@ -143,10 +143,10 @@ export function AgentChat({
             <div key={msg.id} className="space-y-4">
               {/* Standard Chat Message Bubbles */}
               <div className={`flex gap-3 max-w-[85%] ${msg.role === "user" ? "ml-auto flex-row-reverse" : ""}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+                <div className={`w-8 h-8 rounded-[2px] flex items-center justify-center shrink-0 ${msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted border"}`}>
                   {msg.role === "user" ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
                 </div>
-                <div className={`px-4 py-3 rounded-2xl flex flex-col gap-3 ${msg.role === "user" ? "bg-primary text-primary-foreground rounded-tr-sm shadow-sm" : "bg-muted/50 border border-border/50 rounded-tl-sm shadow-sm"}`}>
+                <div className={`px-4 py-3 rounded-[2px] flex flex-col gap-3 ${msg.role === "user" ? "bg-primary text-primary-foreground border border-primary/20 shadow-sm" : "bg-muted/30 border border-border/50 shadow-sm"}`}>
                   <p className="text-sm leading-relaxed whitespace-pre-wrap">{content}</p>
                   
                   {msg.role === "model" && (
@@ -155,7 +155,7 @@ export function AgentChat({
                       variant="outline"
                       size="sm"
                       onClick={() => msg.runtime_id ? setSelectedRuntimeId(msg.runtime_id) : toast.error("No runtime ID attached to this message.")}
-                      className="self-start text-xs font-semibold shadow-sm"
+                      className="self-start text-xs font-semibold shadow-sm h-8 rounded-[2px]"
                       disabled={!msg.runtime_id}
                     >
                       <TestTube className="w-3.5 h-3.5 mr-1.5" />
@@ -171,7 +171,7 @@ export function AgentChat({
                   return (
                     <div key={toolInvocation.toolCallId} className="flex gap-3 max-w-[85%]">
                       <div className="w-8 h-8 shrink-0" />
-                      <div className="px-4 py-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 rounded-tl-sm flex items-center gap-2 shadow-sm font-medium">
+                      <div className="px-4 py-3 rounded-[2px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 flex items-center gap-2 shadow-sm font-medium">
                         <Sparkles className="w-4 h-4" />
                         <p className="text-sm">Agent updated the configuration panel</p>
                       </div>
@@ -185,10 +185,10 @@ export function AgentChat({
         })}
         {isLoading && (
           <div className="flex gap-3 max-w-[85%] animate-pulse">
-             <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-muted">
+             <div className="w-8 h-8 rounded-[2px] flex items-center justify-center shrink-0 bg-muted border">
                <Bot className="w-4 h-4" />
              </div>
-             <div className="px-4 py-3 rounded-2xl bg-muted/50 border border-border/50 rounded-tl-sm flex items-center gap-1 shadow-sm">
+             <div className="px-4 py-3 rounded-[2px] bg-muted/30 border border-border/50 flex items-center gap-1 shadow-sm">
                <span className="w-1.5 h-1.5 rounded-full bg-foreground/50 animate-bounce" />
                <span className="w-1.5 h-1.5 rounded-full bg-foreground/50 animate-bounce delay-75" />
                <span className="w-1.5 h-1.5 rounded-full bg-foreground/50 animate-bounce delay-150" />
@@ -204,13 +204,13 @@ export function AgentChat({
             value={input}
             onChange={handleInputChange}
             placeholder="Tell the agent to redesign the metric... (e.g. Add validation, change scoring scale)" 
-            className="pr-12 bg-muted/30 border-border/50 focus-visible:ring-primary/50 rounded-full h-10 shadow-inner"
+            className="pr-12 bg-muted/30 border-border/50 focus-visible:ring-primary/50 rounded-[2px] h-10 shadow-inner"
             disabled={isLoading}
           />
           <Button 
             type="submit" 
             size="icon" 
-            className="absolute right-1 top-1 bottom-1 h-auto w-8 rounded-full shadow-sm"
+            className="absolute right-1 top-1 bottom-1 h-auto w-8 rounded-[2px] shadow-sm"
             disabled={!input.trim() || isLoading}
           >
             <Send className="w-4 h-4" />

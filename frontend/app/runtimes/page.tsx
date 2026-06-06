@@ -2,6 +2,8 @@ import { getRuntimes } from "@/lib/api/runtimes";
 import { RuntimeTable } from "@/components/runtimes/runtime-table";
 import { Terminal } from "lucide-react";
 
+import { PageHeader } from "@/components/ui/page-header";
+
 export default async function RuntimesPage({
   searchParams,
 }: {
@@ -39,20 +41,14 @@ export default async function RuntimesPage({
   const paginated = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   return (
-    <div className="flex flex-col h-full bg-background p-6 lg:p-10">
-      <div className="flex flex-col gap-2 mb-8">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <Terminal className="size-5" />
-          </div>
-          <h1 className="text-3xl font-medium tracking-tight">Execution Runtimes</h1>
-        </div>
-        <p className="text-muted-foreground text-base max-w-2xl mt-1">
-          Inspect, filter, and analyze the individual execution traces and telemetry from your AI pipelines.
-        </p>
-      </div>
+    <div className="p-8 max-w-6xl mx-auto space-y-8 flex flex-col h-[calc(100vh-3.5rem)] bg-background">
+      <PageHeader 
+        preTitle="Telemetry Console"
+        title="Execution Runtimes"
+        description="Inspect, filter, and analyze the individual execution traces and telemetry from your AI pipelines."
+      />
 
-      <div className="flex-1 bg-card rounded-2xl border shadow-sm flex flex-col min-h-0 overflow-hidden">
+      <div className="border border-border/40 rounded-[2px] bg-card/30 backdrop-blur-xs flex-1 overflow-hidden flex flex-col">
         <RuntimeTable 
           data={paginated} 
           total={filtered.length} 

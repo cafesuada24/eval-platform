@@ -43,7 +43,7 @@ export default function RootLayout({
           <TooltipProvider>
             <SidebarProvider>
               <AppSidebar />
-              <SidebarInset className="flex w-full flex-col">
+              <SidebarInset className="flex-1 min-w-0 flex flex-col">
                 <header className="flex h-14 shrink-0 items-center gap-2 px-4 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12 border-b">
                   <div className="flex items-center gap-2">
                     <SidebarTrigger className="-ml-1" />

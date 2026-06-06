@@ -71,13 +71,29 @@ export function DatasetDetailClient({ dataset }: Props) {
                 </span>
               </TableCell>
               <TableCell className="align-top py-5">
-                <div className="font-mono text-xs text-foreground/90 whitespace-pre-wrap leading-relaxed max-h-[160px] overflow-y-auto pr-2">
-                  {testCase.input_text || <span className="text-muted-foreground italic">No input</span>}
+                <div className="font-mono text-xs text-foreground/90 whitespace-pre-wrap leading-relaxed max-h-[160px] overflow-y-auto pr-2 space-y-1.5">
+                  {Object.entries(testCase.inputs || {}).map(([key, val]) => (
+                    <div key={key} className="flex flex-col gap-0.5">
+                      <span className="text-[9px] font-semibold uppercase text-muted-foreground">{key}:</span>
+                      <span className="text-foreground/90 break-all">{String(val)}</span>
+                    </div>
+                  ))}
+                  {Object.keys(testCase.inputs || {}).length === 0 && (
+                    <span className="text-muted-foreground italic">No inputs</span>
+                  )}
                 </div>
               </TableCell>
               <TableCell className="align-top py-5">
-                <div className="font-mono text-xs text-foreground/90 whitespace-pre-wrap leading-relaxed max-h-[160px] overflow-y-auto pr-2">
-                  {testCase.expected_output || <span className="text-muted-foreground italic">-</span>}
+                <div className="font-mono text-xs text-foreground/90 whitespace-pre-wrap leading-relaxed max-h-[160px] overflow-y-auto pr-2 space-y-1.5">
+                  {Object.entries(testCase.expected_outputs || {}).map(([key, val]) => (
+                    <div key={key} className="flex flex-col gap-0.5">
+                      <span className="text-[9px] font-semibold uppercase text-muted-foreground">{key}:</span>
+                      <span className="text-foreground/90 break-all">{String(val)}</span>
+                    </div>
+                  ))}
+                  {Object.keys(testCase.expected_outputs || {}).length === 0 && (
+                    <span className="text-muted-foreground italic">-</span>
+                  )}
                 </div>
               </TableCell>
               <TableCell className="align-top text-right py-5">

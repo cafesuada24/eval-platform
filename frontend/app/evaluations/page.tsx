@@ -9,20 +9,36 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, ArrowUpDown } from "lucide-react";
 import Form from "next/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
+// Format date securely on server to avoid local timezone hydration mismatches
+function formatDate(dateStr?: string) {
+  if (!dateStr) return "-";
+  try {
+    const d = new Date(dateStr);
+    const pad = (num: number) => String(num).padStart(2, "0");
+    return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`;
+  } catch (e) {
+    return "-";
+  }
+}
+
+import { PageHeader } from "@/components/ui/page-header";
+
 export default async function EvaluationsPage(props: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; sort?: string; order?: string }>;
 }) {
   const searchParams = await props.searchParams;
   const q = searchParams.q || "";
+  const sort = searchParams.sort || "created_at"; // Default sort by run time
+  const order = searchParams.order || "desc"; // Default descending order (newest first)
 
-  // Fetch from the new list endpoint
+  // Fetch all runs
   let runs = await getEvaluations();
 
   // Basic client-side filtering if search query exists
@@ -38,45 +54,103 @@ export default async function EvaluationsPage(props: {
     );
   }
 
-  return (
-    <div className="container mx-auto py-8 max-w-5xl">
-      <div className="flex flex-col gap-2 mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Dataset Run Results</h1>
-        <p className="text-muted-foreground">
-          View all recent evaluation batches and their overarching pass rates.
-        </p>
-      </div>
+  // Pass rate calculation helper
+  const getPassRate = (run: any) => {
+    if (run.pass_rate !== undefined) return run.pass_rate;
+    if (!run.pipeline_run_results || run.pipeline_run_results.length === 0) return 0;
+    const total = run.pipeline_run_results.length;
+    const passes = run.pipeline_run_results.filter(
+      (r: any) => r.overall_status === 0 || r.overall_status === "PASS"
+    ).length;
+    return total > 0 ? (passes / total) * 100 : 0;
+  };
 
-      <div className="flex items-center justify-between mb-6">
+  // Perform client-side sorting based on query params
+  runs.sort((a, b) => {
+    let valA: any = "";
+    let valB: any = "";
+
+    if (sort === "created_at") {
+      valA = a.created_at ? new Date(a.created_at).getTime() : 0;
+      valB = b.created_at ? new Date(b.created_at).getTime() : 0;
+    } else if (sort === "pass_rate") {
+      valA = getPassRate(a);
+      valB = getPassRate(b);
+    } else if (sort === "pipeline_name") {
+      valA = (a.pipeline_name || a.pipeline_id).toLowerCase();
+      valB = (b.pipeline_name || b.pipeline_id).toLowerCase();
+    } else if (sort === "dataset_name") {
+      valA = (a.dataset_name || a.dataset_id).toLowerCase();
+      valB = (b.dataset_name || b.dataset_id).toLowerCase();
+    } else if (sort === "status") {
+      valA = a.status.toLowerCase();
+      valB = b.status.toLowerCase();
+    }
+
+    if (valA < valB) return order === "asc" ? -1 : 1;
+    if (valA > valB) return order === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  // Helper component to render sortable column links
+  const SortableHeader = ({ field, children, className }: { field: string; children: React.ReactNode; className?: string }) => {
+    const isActive = sort === field;
+    const nextOrder = isActive && order === "desc" ? "asc" : "desc";
+    return (
+      <TableHead className={className}>
+        <Link
+          href={{
+            pathname: "/evaluations",
+            query: { q, sort: field, order: nextOrder },
+          }}
+          className="inline-flex items-center gap-1.5 hover:text-foreground transition-colors group select-none font-mono text-[10px] uppercase tracking-wider font-semibold"
+        >
+          {children}
+          <ArrowUpDown className={`h-3 w-3 transition-colors ${isActive ? 'text-primary' : 'text-muted-foreground/40 group-hover:text-muted-foreground/80'}`} />
+        </Link>
+      </TableHead>
+    );
+  };
+
+  return (
+    <div className="p-8 max-w-6xl mx-auto space-y-8 bg-background">
+      <PageHeader 
+        preTitle="Evaluation Workspace"
+        title="Batch Run Logs"
+        description="View all recent evaluation batches, execution timestamps, and their overarching pass rates."
+      />
+
+      <div className="flex flex-col sm:flex-row gap-4 items-center shrink-0 bg-card/20 p-4 rounded-[2px] border border-border/40">
         <Form action="/evaluations" className="flex w-full max-w-sm gap-2">
           <Input
             name="q"
             defaultValue={q}
             placeholder="Search by ID or name..."
-            className="flex-1"
+            className="flex-1 rounded-[2px] border-border text-xs font-mono h-9"
           />
-          <Button type="submit" variant="secondary">
+          <Button type="submit" variant="secondary" className="rounded-[2px] font-mono text-[10px] uppercase tracking-wider h-9 px-4">
             Search
           </Button>
         </Form>
       </div>
 
-      <div className="border rounded-md bg-card">
+      <div className="border border-border/40 rounded-[2px] overflow-hidden bg-card/30 backdrop-blur-xs shadow-sm">
         <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/50">
-              <TableHead>Job ID</TableHead>
-              <TableHead>Pipeline</TableHead>
-              <TableHead>Dataset</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right w-32">Pass Rate</TableHead>
+          <TableHeader className="bg-muted/30 border-b border-border/60">
+            <TableRow className="border-border/60 hover:bg-transparent">
+              <TableHead className="w-[120px] font-mono text-muted-foreground uppercase text-[10px] tracking-widest h-11">Job ID</TableHead>
+              <SortableHeader field="pipeline_name">Pipeline</SortableHeader>
+              <SortableHeader field="dataset_name">Dataset</SortableHeader>
+              <SortableHeader field="status">Status</SortableHeader>
+              <SortableHeader field="created_at" className="w-[200px]">Run Time</SortableHeader>
+              <SortableHeader field="pass_rate" className="text-right w-36">Pass Rate</SortableHeader>
               <TableHead className="w-10"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {runs.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground h-32">
+                <TableCell colSpan={7} className="text-center text-muted-foreground h-32 font-mono text-xs italic">
                   No evaluation runs found.
                 </TableCell>
               </TableRow>
@@ -84,48 +158,40 @@ export default async function EvaluationsPage(props: {
               runs.map((run) => {
                 const pipelineStr = run.pipeline_name || run.pipeline_id.split("-")[0];
                 const datasetStr = run.dataset_name || run.dataset_id.split("-")[0];
-                
-                // Determine pass rate
-                let passRate = run.pass_rate;
-                if (passRate === undefined && run.pipeline_run_results) {
-                  // Fallback calculation if possible
-                  const total = run.pipeline_run_results.length;
-                  const passes = run.pipeline_run_results.filter(
-                    (r) => r.overall_status === 0 || r.overall_status === "PASS"
-                  ).length;
-                  passRate = total > 0 ? (passes / total) * 100 : 0;
-                }
+                const passRate = getPassRate(run);
+                const timeStr = formatDate(run.created_at);
 
                 return (
-                  <TableRow key={run.job_id} className="group hover:bg-muted/50 transition-colors cursor-pointer">
-                    <TableCell className="font-mono text-xs font-medium">
+                  <TableRow key={run.job_id} className="group hover:bg-muted/30 border-border/40 transition-colors cursor-pointer relative">
+                    <TableCell className="font-mono text-xs font-medium py-3.5">
                       <Link href={`/evaluations/${run.job_id}`} className="absolute inset-0 z-10">
                         <span className="sr-only">View Details</span>
                       </Link>
                       {run.job_id.split("-")[0]}...
                     </TableCell>
-                    <TableCell className="font-medium">{pipelineStr}</TableCell>
-                    <TableCell className="text-muted-foreground">{datasetStr}</TableCell>
-                    <TableCell>
+                    <TableCell className="font-medium text-xs py-3.5">{pipelineStr}</TableCell>
+                    <TableCell className="text-muted-foreground text-xs py-3.5">{datasetStr}</TableCell>
+                    <TableCell className="py-3.5">
                       <Badge
                         variant="secondary"
-                        className={
+                        className={`rounded-[2px] font-mono text-[9px] font-semibold uppercase ${
                           run.status === "COMPLETED"
-                            ? "bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20"
+                            ? "bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 border border-emerald-500/20"
                             : run.status === "FAILED"
-                            ? "bg-rose-500/10 text-rose-600 hover:bg-rose-500/20"
-                            : "bg-blue-500/10 text-blue-600 hover:bg-blue-500/20"
-                        }
+                            ? "bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 border border-rose-500/20"
+                            : "bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 border border-blue-500/20"
+                        }`}
                       >
                         {run.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="font-mono text-xs text-muted-foreground py-3.5">{timeStr}</TableCell>
+                    <TableCell className="text-right py-3.5">
                       {passRate !== undefined ? (
-                        <div className="flex items-center justify-end gap-2">
-                          <div className="w-16 h-1.5 bg-secondary rounded-full overflow-hidden">
+                        <div className="flex items-center justify-end gap-2.5">
+                          <div className="w-16 h-1.5 bg-secondary rounded-[1px] overflow-hidden border border-border/20">
                             <div
-                              className={`h-full rounded-full ${
+                              className={`h-full rounded-[1px] ${
                                 passRate >= 80
                                   ? "bg-emerald-500"
                                   : passRate >= 50
@@ -135,15 +201,15 @@ export default async function EvaluationsPage(props: {
                               style={{ width: `${passRate}%` }}
                             />
                           </div>
-                          <span className="text-sm font-medium w-9 text-right">
+                          <span className="text-xs font-mono font-medium w-8 text-right text-foreground/80">
                             {passRate.toFixed(0)}%
                           </span>
                         </div>
                       ) : (
-                        <span className="text-muted-foreground text-sm">N/A</span>
+                        <span className="text-muted-foreground text-xs font-mono">N/A</span>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-3.5">
                       <ChevronRight className="h-4 w-4 text-muted-foreground opacity-50 group-hover:opacity-100 transition-opacity" />
                     </TableCell>
                   </TableRow>
