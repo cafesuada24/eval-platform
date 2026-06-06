@@ -7,7 +7,13 @@ import threading
 
 import httpx
 
-from .management import DatasetClient, PipelineClient
+from .management import (
+    AgentClient,
+    DatasetClient,
+    DocumentClient,
+    MetricClient,
+    PipelineClient,
+)
 from .models import RuntimeState
 
 logger = logging.getLogger(__name__)
@@ -51,7 +57,7 @@ class EvalClient:
         base_url: str,
         flush_interval_seconds: float = 3.0,
         max_buffer_size: int = 50,
-        max_buffer_capacity: int = 5000,
+        max_buffer_capacity: int = 15000,
     ) -> None:
         global _default_client
         if _default_client is None:
@@ -73,15 +79,20 @@ class EvalClient:
             timeout=httpx.Timeout(10.0, connect=5.0),
             limits=httpx.Limits(max_connections=10),
             headers={'Authorization': f'Bearer {self.api_key}'},
+            follow_redirects=True,
         )
 
         # Dedicated client for management API calls
         self._management_client = httpx.Client(
             timeout=30.0,
             headers={'Authorization': f'Bearer {self.api_key}'},
+            follow_redirects=True,
         )
         self.datasets = DatasetClient(self._management_client, self.base_url)
         self.pipelines = PipelineClient(self._management_client, self.base_url)
+        self.metrics = MetricClient(self._management_client, self.base_url)
+        self.agent = AgentClient(self._management_client, self.base_url)
+        self.documents = DocumentClient(self._management_client, self.base_url)
 
         self._worker_thread = threading.Thread(
             target=self._background_loop, daemon=True,

@@ -22,6 +22,14 @@ ArtifactType = Literal[
     'image/caption',  # Descriptive image alt-text
     'generated/description',  # LLM outputted image context
 ]
+class Artifact(BaseModel):
+    """A multimodal object attached to a trace."""
+
+    model_config = ConfigDict(validate_assignment=True)
+
+    type: ArtifactType
+    content: str
+    metadata: dict[str, Any] | None = None
 
 
 class GenerationPayload(BaseModel):
@@ -57,7 +65,7 @@ class RetrievalPayload(BaseModel):
     model_config = ConfigDict(validate_assignment=True)
 
     query: str = ''
-    chunks: list[RetrievedChunk] = Field(default_factory=list)
+    chunks: list[RetrievedChunk] = Field(default_factory=list[RetrievedChunk])
     latency_ms: int = 0
 
     event_type: Literal['retrieval'] = 'retrieval'
@@ -74,7 +82,8 @@ class FileProcessedPayload(BaseModel):
     content: str = ''
     latency_ms: int = 0
 
-    event_type: Literal['ocr_processed'] = 'ocr_processed'
+    event_type: Literal['file_processed'] = 'file_processed'
+
 
 
 type RuntimeEventPayload = Annotated[
@@ -182,6 +191,8 @@ class RuntimeEvent(BaseModel):
     runtime_id: str  # The trace id
     payload: RuntimeEventPayload
     timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    metadata: dict[str, Any] | None = None
+
 
 
 class RuntimeState(BaseModel):
@@ -194,9 +205,55 @@ class RuntimeState(BaseModel):
     runtime_id: str
     events: list[RuntimeEvent] = Field(default_factory=list[RuntimeEvent])
     usage: ResourceUsage = Field(default_factory=ResourceUsage)
-
-    # artifacts: list[dict[str, Any]] | None = None
+    artifacts: list[Artifact] = Field(default_factory=list[Artifact])
     metadata: dict[str, Any] | None = None
+
+    @property
+    def input_text(self) -> str | None:
+        """Helper to get the input text of the last generation event."""
+        for event in reversed(self.events):
+            if isinstance(event.payload, GenerationPayload):
+                return event.payload.input_text
+        return None
+
+    @input_text.setter
+    def input_text(self, value: str) -> None:
+        """Helper to set the input text of the generation event, creating it if needed."""
+        for event in reversed(self.events):
+            if isinstance(event.payload, GenerationPayload):
+                event.payload.input_text = value
+                return
+        payload = GenerationPayload(input_text=value)
+        self.events.append(
+            RuntimeEvent(
+                runtime_id=self.runtime_id,
+                payload=payload,
+            ),
+        )
+
+    @property
+    def output_text(self) -> str | None:
+        """Helper to get the output text of the last generation event."""
+        for event in reversed(self.events):
+            if isinstance(event.payload, GenerationPayload):
+                return event.payload.output_text
+        return None
+
+    @output_text.setter
+    def output_text(self, value: str) -> None:
+        """Helper to set the output text of the generation event, creating it if needed."""
+        for event in reversed(self.events):
+            if isinstance(event.payload, GenerationPayload):
+                event.payload.output_text = value
+                return
+        payload = GenerationPayload(output_text=value)
+        self.events.append(
+            RuntimeEvent(
+                runtime_id=self.runtime_id,
+                payload=payload,
+            ),
+        )
+
 
     @contextmanager
     def track_generation(

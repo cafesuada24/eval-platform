@@ -41,7 +41,7 @@ def test_dataset_upload_json():
         assert result == {"id": "123", "name": "test_dataset"}
         mock_client.post.assert_called_once()
         args, kwargs = mock_client.post.call_args
-        assert args[0] == "http://test/v1/datasets/"
+        assert args[0] == "http://test/v1/datasets/upload"
         assert "files" in kwargs
         assert "file" in kwargs["files"]
     finally:
@@ -66,7 +66,7 @@ def test_dataset_upload_csv():
         assert result == {"id": "124", "name": "test_csv"}
         mock_client.post.assert_called_once()
         args, kwargs = mock_client.post.call_args
-        assert args[0] == "http://test/v1/datasets/"
+        assert args[0] == "http://test/v1/datasets/upload"
         assert "files" in kwargs
     finally:
         os.unlink(temp_path)

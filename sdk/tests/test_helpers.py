@@ -29,16 +29,12 @@ def test_trace_context_manager(test_client):
         state.output_text = "world"
 
     assert len(test_client._buffer) == 1
-    event = test_client._buffer[0]
+    state_out = test_client._buffer[0]
     
-    assert event.runtime_id == "test-trace-1"
-    assert event.event_type == "trace.completed"
-    
-    payload = event.payload
-    assert payload["input_text"] == "hello"
-    assert payload["output_text"] == "world"
-    assert "latency_ms" in payload["resource_usage"]
-    assert payload["resource_usage"]["latency_ms"] >= 10.0
+    assert state_out.runtime_id == "test-trace-1"
+    assert state_out.input_text == "hello"
+    assert state_out.output_text == "world"
+    assert state_out.usage.latency_ms >= 10.0
 
 
 def test_capture_trace_sync(test_client):
@@ -52,14 +48,12 @@ def test_capture_trace_sync(test_client):
     assert result == "Response to: Hi there"
     assert len(test_client._buffer) == 1
     
-    event = test_client._buffer[0]
-    assert event.runtime_id == "trace-sync"
-    
-    payload = event.payload
-    assert payload["input_text"] == "Hi there"
-    assert payload["output_text"] == "Response to: Hi there"
-    assert payload["metadata"]["temperature"] == 0.7
-    assert payload["resource_usage"]["latency_ms"] >= 10.0
+    state = test_client._buffer[0]
+    assert state.runtime_id == "trace-sync"
+    assert state.input_text == "Hi there"
+    assert state.output_text == "Response to: Hi there"
+    assert state.metadata["temperature"] == 0.7
+    assert state.usage.latency_ms >= 10.0
 
 
 @pytest.mark.asyncio
@@ -74,12 +68,29 @@ async def test_capture_trace_async(test_client):
     assert result["answer"] == "Async response to: Hello async"
     assert len(test_client._buffer) == 1
     
-    event = test_client._buffer[0]
-    assert event.runtime_id == "trace-async"
+    state = test_client._buffer[0]
+    assert state.runtime_id == "trace-async"
+    assert state.input_text == "Hello async"
+    assert "Async response to" in state.metadata["output"]["answer"]
+    assert state.metadata["model"] == "gpt-4"
+    assert state.usage.latency_ms >= 10.0
+
+
+def test_capture_trace_generator(test_client):
+    @capture_trace
+    def stream_text(input_text: str):
+        time.sleep(0.005)
+        yield "Hello "
+        time.sleep(0.005)
+        yield "world"
+        
+    result = list(stream_text(input_text="greet", runtime_id="trace-stream"))
+    assert result == ["Hello ", "world"]
+    assert len(test_client._buffer) == 1
     
-    payload = event.payload
-    assert payload["input_text"] == "Hello async"
-    assert "output" in payload["metadata"]
-    assert "Async response to" in payload["metadata"]["output"]
-    assert payload["metadata"]["model"] == "gpt-4"
-    assert payload["resource_usage"]["latency_ms"] >= 10.0
+    state = test_client._buffer[0]
+    assert state.runtime_id == "trace-stream"
+    assert state.input_text == "greet"
+    assert state.output_text == "Hello world"
+    assert state.usage.latency_ms >= 10.0
+

@@ -12,17 +12,24 @@ def test_artifact_creation():
     assert artifact_with_metadata.metadata == {"foo": "bar"}
 
 def test_runtime_event_creation():
+    from evalplatform_sdk.models import GenerationPayload
     now = datetime.now(timezone.utc)
+    payload = GenerationPayload(
+        provider="google",
+        model="gemini-1.5-flash",
+        input_text="hello",
+        output_text="world",
+    )
     event = RuntimeEvent(
         runtime_id="t1",
-        event_type="generation.start",
         timestamp=now,
-        payload={"foo": "bar"}
+        payload=payload
     )
     assert event.runtime_id == "t1"
-    assert event.event_type == "generation.start"
+    assert event.payload.event_type == "generation"
+    assert event.payload.provider == "google"
+    assert event.payload.model == "gemini-1.5-flash"
     assert event.timestamp == now
-    assert event.payload == {"foo": "bar"}
     assert event.metadata is None
 
 def test_runtime_state_defaults():
@@ -32,24 +39,25 @@ def test_runtime_state_defaults():
     assert state.output_text is None
     assert state.artifacts == []
     assert state.events == []
-    assert state.resource_usage == {}
+    assert state.usage.latency_ms == 0
     assert state.metadata is None
 
 def test_track_generation():
     state = RuntimeState(runtime_id="t1")
-    with state.track_generation(model="gpt-4", custom_meta="foo") as gen:
-        gen.input_tokens = 10
-        gen.output_tokens = 20
-        assert len(state.events) == 1
-        start_event = state.events[0]
-        assert start_event.event_type == "generation.start"
-        assert start_event.metadata == {"model": "gpt-4", "custom_meta": "foo"}
+    with state.track_generation() as gen:
+        gen.model_info(provider="google", model_name="gemini-1.5-flash")
+        gen.user_input("hello")
+        gen.output_text("world")
+        gen.token_usage(input_tokens=10, output_tokens=20)
 
-    assert len(state.events) == 2
-    end_event = state.events[1]
-    assert end_event.event_type == "generation.end"
-    assert end_event.payload["input_tokens"] == 10
-    assert end_event.payload["output_tokens"] == 20
-    assert "latency_ms" in end_event.payload
-    assert end_event.payload["latency_ms"] >= 0
-    assert end_event.metadata == {"model": "gpt-4", "custom_meta": "foo"}
+    assert len(state.events) == 1
+    event = state.events[0]
+    assert event.payload.event_type == "generation"
+    assert event.payload.provider == "google"
+    assert event.payload.model == "gemini-1.5-flash"
+    assert event.payload.input_text == "hello"
+    assert event.payload.output_text == "world"
+    assert event.payload.input_tokens == 10
+    assert event.payload.output_tokens == 20
+    assert event.payload.latency_ms >= 0
+
