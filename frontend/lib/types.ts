@@ -98,6 +98,7 @@ export interface TestCase {
 export interface Dataset {
   id: string; // UUID
   name: string;
+  description?: string;
   cases: TestCase[];
 }
 

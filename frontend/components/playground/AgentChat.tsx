@@ -1,17 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client"
-// @ts-nocheck
 
-import { useState, useEffect } from "react"
-import { 
-  Send, Bot, User, Sparkles, TestTube, MessageSquare, 
-  HelpCircle, Loader2, Play, Upload, ChevronDown, ChevronUp, 
-  Trash2, Eye, FileText, X
-} from "lucide-react"
+import { useState } from "react"
+import { Send, Bot, User, Sparkles, TestTube, MessageSquare } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
 import { UseFormReturn } from "react-hook-form"
 import { MetricConfig } from "@/app/playground/page"
@@ -35,38 +28,6 @@ interface AgentChatProps {
   submitFeedback?: (feedbackText: string) => Promise<void>
 }
 
-interface UploadedArtifact {
-  id: string
-  name: string
-  text: string
-  size: number
-}
-
-// Collapsible Row for variable values to keep timeline clean and "reasonable"
-const VariableValueRow = ({ name, value }: { name: string; value: string }) => {
-  const [expanded, setExpanded] = useState(false);
-  const isLong = value.length > 120;
-  
-  return (
-    <div className="leading-relaxed border-b border-border/30 last:border-b-0 pb-2 last:pb-0 pt-2 first:pt-0">
-      <span className="text-emerald-700 dark:text-emerald-400 font-bold font-mono text-[10px] uppercase tracking-wider block mb-1">{name}</span>
-      <div className="relative">
-        <p className={`text-foreground/90 font-mono text-[11px] whitespace-pre-wrap break-all leading-normal ${!expanded && isLong ? "max-h-[50px] overflow-hidden opacity-85" : ""}`}>
-          {value}
-        </p>
-        {isLong && (
-          <button 
-            onClick={() => setExpanded(!expanded)} 
-            className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold hover:underline block mt-1 shrink-0"
-          >
-            {expanded ? "Collapse Content ▲" : "View Entire Content (Long Document) ▼"}
-          </button>
-        )}
-      </div>
-    </div>
-  );
-};
-
 const getMessageContent = (msg: any) => {
   if (msg.content) return msg.content;
   if (msg.parts && Array.isArray(msg.parts)) {
@@ -77,23 +38,15 @@ const getMessageContent = (msg: any) => {
 
 
 
-export function AgentChat({ 
-  messages, 
-  setMessages,
-  input, 
-  setInput,
-  handleInputChange, 
-  handleSubmit, 
+export function AgentChat({
+  messages,
+  input,
+  handleInputChange,
+  handleSubmit,
   isLoading,
   form,
-  selectedMetric,
   selectedMetricId,
-  reloadSession,
-  submitFeedback
 }: AgentChatProps) {
-  // Required inputs from the active form state
-  const requiredInputs = form.watch("required_inputs") || [];
-
   const [selectedRuntimeId, setSelectedRuntimeId] = useState<string | null>(null);
   const [isFileManagerOpen, setIsFileManagerOpen] = useState(false);
 

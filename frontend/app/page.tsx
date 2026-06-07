@@ -3,15 +3,16 @@ import { getEvaluations } from "@/lib/api/evaluations";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { 
-  ListTree, 
-  Activity, 
-  Database, 
-  Bot, 
-  ArrowRight, 
+import {
+  ListTree,
+  Activity,
+  Database,
+  Bot,
+  ArrowRight,
   ChevronRight
 } from "lucide-react";
 import { Metric, Pipeline } from "@/lib/types";
+import { formatDate } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -50,23 +51,26 @@ async function getDatasets() {
   }
 }
 
-function formatDate(dateStr?: string) {
-  if (!dateStr) return "-";
+
+async function getApiStatus(): Promise<boolean> {
   try {
-    const d = new Date(dateStr);
-    const pad = (num: number) => String(num).padStart(2, "0");
-    return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`;
-  } catch (e) {
-    return "-";
+    const res = await fetch(`${API_BASE_URL}/v1/configs/metrics`, {
+      method: "HEAD",
+      cache: "no-store",
+    });
+    return res.ok;
+  } catch {
+    return false;
   }
 }
 
 export default async function Home() {
-  const [pipelines, metrics, datasets, evaluations] = await Promise.all([
+  const [pipelines, metrics, datasets, evaluations, apiOnline] = await Promise.all([
     getPipelines(),
     getMetrics(),
     getDatasets(),
-    getEvaluations().catch(() => [])
+    getEvaluations().catch(() => []),
+    getApiStatus(),
   ]);
 
   const aiJudges = metrics.filter(m => m.type === "ai-judge").length;
@@ -277,9 +281,9 @@ export default async function Home() {
             <CardContent className="pt-6 space-y-4">
               <div className="flex items-center justify-between text-xs font-mono">
                 <span className="text-muted-foreground">AGENT CONNECTIVITY</span>
-                <span className="text-emerald-500 flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  ONLINE
+                <span className={`flex items-center gap-1.5 ${apiOnline ? "text-emerald-500" : "text-rose-500"}`}>
+                  <span className={`h-1.5 w-1.5 rounded-full ${apiOnline ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`} />
+                  {apiOnline ? "ONLINE" : "OFFLINE"}
                 </span>
               </div>
               <div className="flex items-center justify-between text-xs font-mono border-t border-border/30 pt-3">

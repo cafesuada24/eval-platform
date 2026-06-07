@@ -1,4 +1,5 @@
 import { getEvaluations } from "@/lib/api/evaluations";
+import { BatchRunResult } from "@/lib/types";
 import {
   Table,
   TableBody,
@@ -13,22 +14,36 @@ import { ChevronRight, ArrowUpDown } from "lucide-react";
 import Form from "next/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { formatDate } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-// Format date securely on server to avoid local timezone hydration mismatches
-function formatDate(dateStr?: string) {
-  if (!dateStr) return "-";
-  try {
-    const d = new Date(dateStr);
-    const pad = (num: number) => String(num).padStart(2, "0");
-    return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`;
-  } catch (e) {
-    return "-";
-  }
+import { PageHeader } from "@/components/ui/page-header";
+
+interface SortableHeaderProps {
+  field: string;
+  children: React.ReactNode;
+  className?: string;
+  sort: string;
+  order: string;
+  q: string;
 }
 
-import { PageHeader } from "@/components/ui/page-header";
+function SortableHeader({ field, children, className, sort, order, q }: SortableHeaderProps) {
+  const isActive = sort === field;
+  const nextOrder = isActive && order === "desc" ? "asc" : "desc";
+  return (
+    <TableHead className={className}>
+      <Link
+        href={{ pathname: "/evaluations", query: { q, sort: field, order: nextOrder } }}
+        className="inline-flex items-center gap-1.5 hover:text-foreground transition-colors group select-none font-mono text-[10px] uppercase tracking-wider font-semibold"
+      >
+        {children}
+        <ArrowUpDown className={`h-3 w-3 transition-colors ${isActive ? "text-primary" : "text-muted-foreground/40 group-hover:text-muted-foreground/80"}`} />
+      </Link>
+    </TableHead>
+  );
+}
 
 export default async function EvaluationsPage(props: {
   searchParams: Promise<{ q?: string; sort?: string; order?: string }>;
@@ -55,20 +70,20 @@ export default async function EvaluationsPage(props: {
   }
 
   // Pass rate calculation helper
-  const getPassRate = (run: any) => {
+  const getPassRate = (run: BatchRunResult) => {
     if (run.pass_rate !== undefined) return run.pass_rate;
     if (!run.pipeline_run_results || run.pipeline_run_results.length === 0) return 0;
     const total = run.pipeline_run_results.length;
     const passes = run.pipeline_run_results.filter(
-      (r: any) => r.overall_status === 0 || r.overall_status === "PASS"
+      (r: { overall_status: number | string }) => r.overall_status === 0 || r.overall_status === "PASS"
     ).length;
     return total > 0 ? (passes / total) * 100 : 0;
   };
 
   // Perform client-side sorting based on query params
   runs.sort((a, b) => {
-    let valA: any = "";
-    let valB: any = "";
+    let valA: string | number = "";
+    let valB: string | number = "";
 
     if (sort === "created_at") {
       valA = a.created_at ? new Date(a.created_at).getTime() : 0;
@@ -91,26 +106,6 @@ export default async function EvaluationsPage(props: {
     if (valA > valB) return order === "asc" ? 1 : -1;
     return 0;
   });
-
-  // Helper component to render sortable column links
-  const SortableHeader = ({ field, children, className }: { field: string; children: React.ReactNode; className?: string }) => {
-    const isActive = sort === field;
-    const nextOrder = isActive && order === "desc" ? "asc" : "desc";
-    return (
-      <TableHead className={className}>
-        <Link
-          href={{
-            pathname: "/evaluations",
-            query: { q, sort: field, order: nextOrder },
-          }}
-          className="inline-flex items-center gap-1.5 hover:text-foreground transition-colors group select-none font-mono text-[10px] uppercase tracking-wider font-semibold"
-        >
-          {children}
-          <ArrowUpDown className={`h-3 w-3 transition-colors ${isActive ? 'text-primary' : 'text-muted-foreground/40 group-hover:text-muted-foreground/80'}`} />
-        </Link>
-      </TableHead>
-    );
-  };
 
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-8 bg-background">
@@ -139,11 +134,11 @@ export default async function EvaluationsPage(props: {
           <TableHeader className="bg-muted/30 border-b border-border/60">
             <TableRow className="border-border/60 hover:bg-transparent">
               <TableHead className="w-[120px] font-mono text-muted-foreground uppercase text-[10px] tracking-widest h-11">Job ID</TableHead>
-              <SortableHeader field="pipeline_name">Pipeline</SortableHeader>
-              <SortableHeader field="dataset_name">Dataset</SortableHeader>
-              <SortableHeader field="status">Status</SortableHeader>
-              <SortableHeader field="created_at" className="w-[200px]">Run Time</SortableHeader>
-              <SortableHeader field="pass_rate" className="text-right w-36">Pass Rate</SortableHeader>
+              <SortableHeader field="pipeline_name" sort={sort} order={order} q={q}>Pipeline</SortableHeader>
+              <SortableHeader field="dataset_name" sort={sort} order={order} q={q}>Dataset</SortableHeader>
+              <SortableHeader field="status" sort={sort} order={order} q={q}>Status</SortableHeader>
+              <SortableHeader field="created_at" className="w-[200px]" sort={sort} order={order} q={q}>Run Time</SortableHeader>
+              <SortableHeader field="pass_rate" className="text-right w-36" sort={sort} order={order} q={q}>Pass Rate</SortableHeader>
               <TableHead className="w-10"></TableHead>
             </TableRow>
           </TableHeader>

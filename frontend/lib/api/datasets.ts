@@ -1,6 +1,7 @@
 import { Dataset, TestCase, PaginatedTestCases, FileAsset } from "@/types/dataset";
 
-const BASE_URL = "http://localhost:8000/v1/datasets";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const BASE_URL = `${API_BASE}/v1/datasets`;
 
 export async function fetchDataset(id: string): Promise<Dataset> {
   const res = await fetch(`${BASE_URL}/${id}`);
@@ -86,12 +87,10 @@ export async function uploadFile(datasetId: string, file: File): Promise<FileAss
 }
 
 export async function fetchDocuments(): Promise<FileAsset[]> {
-  // Using the absolute API base URL for generic documents
-  const API_BASE_URL = "http://localhost:8000/v1/documents";
-  const res = await fetch(API_BASE_URL);
+  const res = await fetch(`${API_BASE}/v1/documents`);
   if (!res.ok) throw new Error("Failed to fetch documents");
   const data = await res.json();
-  return data.map((d: any) => ({
+  return data.map((d: { id: string; name: string }) => ({
     file_id: d.id,
     filename: d.name,
     url: ""

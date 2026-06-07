@@ -1,6 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
-// @ts-nocheck
 
 import { useState, useEffect, useRef } from "react"
 import { useForm } from "react-hook-form"
@@ -12,6 +10,9 @@ import { MetricConfigurator } from "@/components/playground/MetricConfigurator"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Save } from "lucide-react"
+import { useSearchParams } from "next/navigation"
+import { Suspense } from "react"
+import { ChatMessage, Metric, MetricDraft } from "@/lib/types"
 
 export const metricSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -30,19 +31,32 @@ export const metricSchema = z.object({
 
 export type MetricConfig = z.infer<typeof metricSchema>
 
-import { useSearchParams } from "next/navigation"
-import { Suspense } from "react"
-import { ChatMessage } from "@/lib/types"
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+/** Applies a metric_draft returned by the agent onto the react-hook-form instance. */
+function applyMetricDraft(
+  draft: MetricDraft,
+  setValue: ReturnType<typeof useForm<MetricConfig>>["setValue"]
+) {
+  if (draft.name !== undefined) setValue("name", draft.name, { shouldValidate: true, shouldDirty: true });
+  if (draft.prompt_template !== undefined) setValue("prompt_template", draft.prompt_template, { shouldValidate: true, shouldDirty: true });
+  if (draft.required_inputs !== undefined) setValue("required_inputs", draft.required_inputs, { shouldValidate: true, shouldDirty: true });
+  if (draft.model_provider !== undefined) setValue("provider", draft.model_provider, { shouldValidate: true, shouldDirty: true });
+  if (draft.model_name !== undefined) setValue("model_name", draft.model_name, { shouldValidate: true, shouldDirty: true });
+  if (draft.model_temperature !== undefined) setValue("temperature", draft.model_temperature, { shouldValidate: true, shouldDirty: true });
+  if (draft.scoring_scale_min !== undefined) setValue("min_score", draft.scoring_scale_min, { shouldValidate: true, shouldDirty: true });
+  if (draft.scoring_scale_max !== undefined) setValue("max_score", draft.scoring_scale_max, { shouldValidate: true, shouldDirty: true });
+  if (draft.scoring_scale_type !== undefined) setValue("data_type", draft.scoring_scale_type, { shouldValidate: true, shouldDirty: true });
+}
 
 function PlaygroundContent() {
   const searchParams = useSearchParams();
-  const initialMetricName = searchParams.get('metric');
+  const initialMetricName = searchParams.get("metric");
 
-  const [metricsList, setMetricsList] = useState<any[]>([]);
+  const [metricsList, setMetricsList] = useState<Metric[]>([]);
   const [selectedMetric, setSelectedMetric] = useState<string>(initialMetricName || "new");
-  
-  // Hook states declared at the top to avoid temporal dead zone in callbacks
-  const [input, setInput] = useState("")
+
+  const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const loadedSessionForRef = useRef<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -60,35 +74,31 @@ function PlaygroundContent() {
       model_name: "",
       temperature: 0.2
     }
-  })
+  });
 
   // Fetch metrics list on mount
   useEffect(() => {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-    fetch(`${baseUrl}/v1/configs/metrics`)
+    fetch(`${API_BASE}/v1/configs/metrics`)
       .then(res => res.json())
-      .then(data => setMetricsList(data.filter((m: any) => m.type === 'ai-judge')))
+      .then((data: Metric[]) => setMetricsList(data.filter(m => m.type === "ai-judge")))
       .catch(console.error);
   }, []);
 
-  // Reload session messages from backend history
   const reloadSession = () => {
     if (selectedMetric === "new") {
       setMessages([]);
       return;
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-    const existingMetric = metricsList.find((m: any) => m.name === selectedMetric);
-    fetch(`${baseUrl}/v1/agent/sessions/${existingMetric?.id || selectedMetric}`)
+    const existingMetric = metricsList.find(m => m.name === selectedMetric);
+    fetch(`${API_BASE}/v1/agent/sessions/${existingMetric?.id || selectedMetric}`)
       .then(res => {
         if (res.ok) return res.json();
         throw new Error("Failed to load session");
       })
       .then(data => {
-        if (data && data.messages) {
-          // Avoid impure Math.random inside render cycles - generate deterministic ID
-          setMessages(data.messages.map((msg: any, idx: number) => ({
+        if (data?.messages) {
+          setMessages(data.messages.map((msg: ChatMessage, idx: number) => ({
             id: `msg-${Date.now()}-${idx}`,
             role: msg.role,
             content: msg.content
@@ -103,62 +113,61 @@ function PlaygroundContent() {
       });
   };
 
-  // Submit feedback programmatically to the agent API
-  const submitFeedback = async (feedbackText: string) => {
-    if (!feedbackText.trim() || isLoading) return;
-    
-    // Pure ID generation using timestamp and simple index
-    const userMessage: ChatMessage = { id: `msg-${Date.now()}-user`, role: 'user' as const, content: feedbackText };
-    const currentMessages = [...messages, userMessage];
-    setMessages(currentMessages);
+  /**
+   * Shared agent communication logic used by both the chat input and
+   * programmatic feedback submission. Sends messages to /api/chat, applies
+   * any returned metric_draft to the form, and appends the agent reply.
+   */
+  const sendToAgent = async (currentMessages: ChatMessage[]) => {
+    const metricId = selectedMetric === "new"
+      ? null
+      : (metricsList.find(m => m.name === selectedMetric)?.id ?? null);
+
     setIsLoading(true);
-    
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: currentMessages,
-          metric_id: selectedMetric === "new" ? null : (metricsList.find((m: any) => m.name === selectedMetric)?.id || null),
+          metric_id: metricId,
           data: { current_yaml_config: JSON.stringify(form.getValues(), null, 2) }
         })
       });
-      
+
       if (!response.ok) throw new Error("Failed to communicate with agent");
-      
+
       const result = await response.json();
-      
+
       if (result.metric_draft) {
-        const m = result.metric_draft;
-        if (m.name !== undefined) form.setValue('name', m.name, { shouldValidate: true, shouldDirty: true });
-        if (m.prompt_template !== undefined) form.setValue('prompt_template', m.prompt_template, { shouldValidate: true, shouldDirty: true });
-        if (m.required_inputs !== undefined) form.setValue('required_inputs', m.required_inputs, { shouldValidate: true, shouldDirty: true });
-        
-        if (m.model_provider !== undefined) form.setValue('provider', m.model_provider, { shouldValidate: true, shouldDirty: true });
-        if (m.model_name !== undefined) form.setValue('model_name', m.model_name, { shouldValidate: true, shouldDirty: true });
-        if (m.model_temperature !== undefined) form.setValue('temperature', m.model_temperature, { shouldValidate: true, shouldDirty: true });
-        
-        if (m.scoring_scale_min !== undefined) form.setValue('min_score', m.scoring_scale_min, { shouldValidate: true, shouldDirty: true });
-        if (m.scoring_scale_max !== undefined) form.setValue('max_score', m.scoring_scale_max, { shouldValidate: true, shouldDirty: true });
-        if (m.scoring_scale_type !== undefined) form.setValue('data_type', m.scoring_scale_type, { shouldValidate: true, shouldDirty: true });
-        
+        applyMetricDraft(result.metric_draft as MetricDraft, form.setValue);
         toast.success("Agent updated the configuration panel");
       }
-      
+
       if (result.response_text) {
         setMessages(prev => [...prev, {
-           id: `msg-${Date.now()}-agent`,
-           role: 'model',
-           content: result.response_text,
-           runtime_id: result.runtime_id,
-           toolInvocations: result.metric_draft ? [{ toolCallId: `call-${Date.now()}`, toolName: 'UpdateMetricConfigTool', result: 'success' }] : []
+          id: `msg-${Date.now()}-agent`,
+          role: "model",
+          content: result.response_text,
+          runtime_id: result.runtime_id,
+          toolInvocations: result.metric_draft
+            ? [{ toolCallId: `call-${Date.now()}`, toolName: "UpdateMetricConfigTool", result: "success" }]
+            : []
         }]);
       }
-    } catch (_err) {
+    } catch {
       toast.error("Agent failed to respond.");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const submitFeedback = async (feedbackText: string) => {
+    if (!feedbackText.trim() || isLoading) return;
+    const userMessage: ChatMessage = { id: `msg-${Date.now()}-user`, role: "user", content: feedbackText };
+    const currentMessages = [...messages, userMessage];
+    setMessages(currentMessages);
+    await sendToAgent(currentMessages);
   };
 
   // Handle metric selection change
@@ -175,47 +184,42 @@ function PlaygroundContent() {
         model_name: "",
         temperature: 0.2
       });
-      // Defer state update to avoid synchronous setState inside render warnings
-      setTimeout(() => {
-        setMessages([]);
-      }, 0);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setMessages([]);
       loadedSessionForRef.current = "new";
       return;
     }
 
     if (metricsList.length === 0) return;
-    
-    // Prevent fetching session and resetting form if we already loaded it for the active metric
-    // This stops "Save" (which updates metricsList) from wiping out the active chat session
+
     if (loadedSessionForRef.current === selectedMetric) return;
 
-    const m = metricsList.find((x: any) => x.name === selectedMetric);
+    const m = metricsList.find(x => x.name === selectedMetric);
     if (m) {
-      if (m.name !== undefined) form.setValue('name', m.name);
-      if (m.prompt_template !== undefined) form.setValue('prompt_template', m.prompt_template);
-      if (m.required_inputs !== undefined) form.setValue('required_inputs', m.required_inputs);
+      if (m.name !== undefined) form.setValue("name", m.name);
+      if (m.prompt_template !== undefined) form.setValue("prompt_template", m.prompt_template);
+      if (m.required_inputs !== undefined) form.setValue("required_inputs", m.required_inputs);
       if (m.model_configuration) {
-        if (m.model_configuration.provider !== undefined) form.setValue('provider', m.model_configuration.provider);
-        if (m.model_configuration.model !== undefined) form.setValue('model_name', m.model_configuration.model);
-        if (m.model_configuration.temperature !== undefined) form.setValue('temperature', m.model_configuration.temperature);
+        if (m.model_configuration.provider !== undefined) form.setValue("provider", m.model_configuration.provider);
+        if (m.model_configuration.model !== undefined) form.setValue("model_name", m.model_configuration.model);
+        if (m.model_configuration.temperature !== undefined) form.setValue("temperature", m.model_configuration.temperature);
       }
       if (m.scoring_scale) {
-        if (m.scoring_scale.min !== undefined) form.setValue('min_score', m.scoring_scale.min);
-        if (m.scoring_scale.max !== undefined) form.setValue('max_score', m.scoring_scale.max);
-        if (m.scoring_scale.data_type !== undefined) form.setValue('data_type', m.scoring_scale.data_type);
+        if (m.scoring_scale.min !== undefined) form.setValue("min_score", m.scoring_scale.min);
+        if (m.scoring_scale.max !== undefined) form.setValue("max_score", m.scoring_scale.max);
+        if (m.scoring_scale.data_type !== undefined) form.setValue("data_type", m.scoring_scale.data_type);
       }
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-    const existingMetric = metricsList.find((m: any) => m.name === selectedMetric);
-    fetch(`${baseUrl}/v1/agent/sessions/${existingMetric?.id || selectedMetric}`)
+    const existingMetric = metricsList.find(x => x.name === selectedMetric);
+    fetch(`${API_BASE}/v1/agent/sessions/${existingMetric?.id || selectedMetric}`)
       .then(res => {
         if (res.ok) return res.json();
         throw new Error("Failed to load session");
       })
       .then(data => {
-        if (data && data.messages) {
-          setMessages(data.messages.map((msg: any, idx: number) => ({
+        if (data?.messages) {
+          setMessages(data.messages.map((msg: ChatMessage, idx: number) => ({
             id: `msg-${Date.now()}-${idx}`,
             role: msg.role,
             content: msg.content,
@@ -225,81 +229,29 @@ function PlaygroundContent() {
           setMessages([]);
         }
       })
-      .catch(_err => {
-        setMessages([]);
-      })
-      .finally(() => {
-        loadedSessionForRef.current = selectedMetric;
-      });
+      .catch(() => setMessages([]))
+      .finally(() => { loadedSessionForRef.current = selectedMetric; });
   }, [selectedMetric, metricsList, form]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => setInput(e.target.value)
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => setInput(e.target.value);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
-    
-    const userMessage: ChatMessage = { id: `msg-${Date.now()}-user`, role: 'user' as const, content: input };
+    const userMessage: ChatMessage = { id: `msg-${Date.now()}-user`, role: "user", content: input };
     const currentMessages = [...messages, userMessage];
     setMessages(currentMessages);
     setInput("");
-    setIsLoading(true);
-    
-    try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: currentMessages,
-          metric_id: selectedMetric === "new" ? null : (metricsList.find((m: any) => m.name === selectedMetric)?.id || null),
-          data: { current_yaml_config: JSON.stringify(form.getValues(), null, 2) }
-        })
-      });
-      
-      if (!response.ok) throw new Error("Failed to communicate with agent");
-      
-      const result = await response.json();
-      
-      if (result.metric_draft) {
-        const m = result.metric_draft;
-        if (m.name !== undefined) form.setValue('name', m.name, { shouldValidate: true, shouldDirty: true });
-        if (m.prompt_template !== undefined) form.setValue('prompt_template', m.prompt_template, { shouldValidate: true, shouldDirty: true });
-        if (m.required_inputs !== undefined) form.setValue('required_inputs', m.required_inputs, { shouldValidate: true, shouldDirty: true });
-        
-        if (m.model_provider !== undefined) form.setValue('provider', m.model_provider, { shouldValidate: true, shouldDirty: true });
-        if (m.model_name !== undefined) form.setValue('model_name', m.model_name, { shouldValidate: true, shouldDirty: true });
-        if (m.model_temperature !== undefined) form.setValue('temperature', m.model_temperature, { shouldValidate: true, shouldDirty: true });
-        
-        if (m.scoring_scale_min !== undefined) form.setValue('min_score', m.scoring_scale_min, { shouldValidate: true, shouldDirty: true });
-        if (m.scoring_scale_max !== undefined) form.setValue('max_score', m.scoring_scale_max, { shouldValidate: true, shouldDirty: true });
-        if (m.scoring_scale_type !== undefined) form.setValue('data_type', m.scoring_scale_type, { shouldValidate: true, shouldDirty: true });
-        
-        toast.success("Agent updated the configuration panel");
-      }
-      
-      if (result.response_text) {
-        setMessages(prev => [...prev, {
-           id: `msg-${Date.now()}-agent`,
-           role: 'model',
-           content: result.response_text,
-           runtime_id: result.runtime_id,
-           toolInvocations: result.metric_draft ? [{ toolCallId: `call-${Date.now()}`, toolName: 'UpdateMetricConfigTool', result: 'success' }] : []
-        }]);
-      }
-    } catch (_err) {
-      toast.error("Agent failed to respond.");
-    } finally {
-      setIsLoading(false);
-    }
-  }
+    await sendToAgent(currentMessages);
+  };
 
   const handleSave = form.handleSubmit(async (data) => {
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
       const isNew = selectedMetric === "new";
-      const existingMetric = isNew ? null : metricsList.find((m: any) => m.name === selectedMetric);
-      
-      const payload: any = {
+      const existingMetric = isNew ? null : metricsList.find(m => m.name === selectedMetric);
+
+      const payload = {
+        ...(isNew ? {} : { id: existingMetric?.id }),
         name: data.name,
         type: "ai-judge",
         description: `Custom AI judge metric for ${data.name}`,
@@ -317,26 +269,19 @@ function PlaygroundContent() {
         }
       };
 
-      if (!isNew && existingMetric?.id) {
-        payload.id = existingMetric.id;
-      }
+      const url = isNew
+        ? `${API_BASE}/v1/configs/metrics`
+        : `${API_BASE}/v1/configs/metrics/${existingMetric?.id || data.name}`;
 
-      const url = isNew 
-        ? `${baseUrl}/v1/configs/metrics` 
-        : `${baseUrl}/v1/configs/metrics/${existingMetric?.id || data.name}`;
-      
       const res = await fetch(url, {
-        method: isNew ? 'POST' : 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        method: isNew ? "POST" : "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
-      if (!res.ok) {
-        throw new Error("Failed to save metric");
-      }
-      
+      if (!res.ok) throw new Error("Failed to save metric");
+
       const savedMetric = await res.json();
-      
-      // Explicitly save the agent chat session against this metric
+
       if (messages.length > 0) {
         const sanitizedMessages = messages.map(msg => ({
           role: msg.role,
@@ -344,34 +289,31 @@ function PlaygroundContent() {
           runtime_id: msg.runtime_id
         }));
         const targetId = savedMetric?.id || existingMetric?.id || data.name;
-        await fetch(`${baseUrl}/v1/agent/sessions/${targetId}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        await fetch(`${API_BASE}/v1/agent/sessions/${targetId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ messages: sanitizedMessages })
         }).catch(err => console.error("Failed to persist agent session:", err));
       }
 
       toast.success("Metric configuration saved successfully.");
-      
-      // Refresh metrics list after save
-      fetch(`${baseUrl}/v1/configs/metrics`)
+
+      fetch(`${API_BASE}/v1/configs/metrics`)
         .then(r => r.json())
-        .then(d => {
-          setMetricsList(d.filter((m: any) => m.type === 'ai-judge'));
-          if (selectedMetric !== data.name) {
-            setSelectedMetric(data.name);
-          }
+        .then((d: Metric[]) => {
+          setMetricsList(d.filter(m => m.type === "ai-judge"));
+          if (selectedMetric !== data.name) setSelectedMetric(data.name);
         })
         .catch(console.error);
 
-    } catch (_err) {
+    } catch {
       toast.error("Failed to save metric configuration to API.");
     }
   }, (errors) => {
     if (errors.min_score) {
-      toast.error(errors.min_score.message || "Validation Error")
+      toast.error(errors.min_score.message || "Validation Error");
     } else {
-      toast.error("Please fix the validation errors before saving.")
+      toast.error("Please fix the validation errors before saving.");
     }
   });
 
@@ -381,9 +323,9 @@ function PlaygroundContent() {
         <div className="flex items-center gap-4">
           <h1 className="text-sm font-semibold tracking-tight">Metric Playground</h1>
           <div className="flex items-center gap-2">
-            <span className={`flex h-2 w-2 rounded-full ${isLoading ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500 animate-pulse'}`} />
+            <span className={`flex h-2 w-2 rounded-full ${isLoading ? "bg-amber-500 animate-pulse" : "bg-emerald-500 animate-pulse"}`} />
             <span className="text-xs text-muted-foreground font-medium">
-              {isLoading ? 'Agent Thinking...' : 'Agent Connected'}
+              {isLoading ? "Agent Thinking..." : "Agent Connected"}
             </span>
           </div>
         </div>
@@ -393,29 +335,29 @@ function PlaygroundContent() {
         </Button>
       </div>
 
-      <ResizablePanelGroup orientation="horizontal" className="flex-1 overflow-hidden">
+      <ResizablePanelGroup direction="horizontal" className="flex-1 overflow-hidden">
         <ResizablePanel defaultSize={40} minSize={25} className="flex flex-col h-full bg-background relative">
-          <AgentChat 
-            messages={messages} 
+          <AgentChat
+            messages={messages}
             setMessages={setMessages}
-            input={input} 
+            input={input}
             setInput={setInput}
-            handleInputChange={handleInputChange} 
+            handleInputChange={handleInputChange}
             handleSubmit={handleSubmit}
             isLoading={isLoading}
             form={form}
             selectedMetric={selectedMetric}
-            selectedMetricId={selectedMetric === "new" ? null : (metricsList.find((m: any) => m.name === selectedMetric)?.id || null)}
+            selectedMetricId={selectedMetric === "new" ? null : (metricsList.find(m => m.name === selectedMetric)?.id ?? null)}
             reloadSession={reloadSession}
             submitFeedback={submitFeedback}
           />
         </ResizablePanel>
-        
+
         <ResizableHandle className="w-1.5 bg-border/50 hover:bg-primary/50 transition-colors data-[resize-handle-state=drag]:bg-primary" />
-        
+
         <ResizablePanel defaultSize={60} minSize={30} className="flex flex-col h-full bg-card/30">
-          <MetricConfigurator 
-            form={form} 
+          <MetricConfigurator
+            form={form}
             metricsList={metricsList}
             selectedMetric={selectedMetric}
             onSelectMetric={setSelectedMetric}
