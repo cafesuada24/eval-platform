@@ -179,18 +179,18 @@ export default async function EvaluationsPage(props: {
                       </Link>
                       {run.job_id.split("-")[0]}...
                     </TableCell>
-                    <TableCell className="font-medium text-xs py-3.5">
+                    <TableCell className="py-3.5">
                       <Link
                         href={`/pipelines/${run.pipeline_id}`}
-                        className="z-20 relative hover:underline text-primary"
+                        className="z-20 relative inline-flex items-center px-2 py-0.5 text-[11px] font-mono rounded-[2px] bg-secondary/50 text-foreground border border-border/30 hover:bg-secondary hover:border-primary/30 transition-colors"
                       >
                         {pipelineStr}
                       </Link>
                     </TableCell>
-                    <TableCell className="text-muted-foreground text-xs py-3.5">
+                    <TableCell className="py-3.5">
                       <Link
                         href={`/datasets/${run.dataset_id}`}
-                        className="z-20 relative hover:underline text-primary"
+                        className="z-20 relative inline-flex items-center px-2 py-0.5 text-[11px] font-mono rounded-[2px] bg-secondary/50 text-muted-foreground border border-border/30 hover:bg-secondary hover:text-foreground hover:border-primary/30 transition-colors"
                       >
                         {datasetStr}
                       </Link>

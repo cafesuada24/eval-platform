@@ -64,22 +64,22 @@ export default async function EvaluationDetailsPage(props: {
           preTitle="Diagnostics / Evaluation details"
           title={`Job: ${summary.job_id.split("-")[0]}`}
           description={
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-xs font-mono mt-1 text-muted-foreground">
-              <div>
-                <span>Pipeline: </span>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs font-mono mt-2">
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                <span>Pipeline:</span>
                 <Link
                   href={`/pipelines/${summary.pipeline_id}`}
-                  className="text-primary hover:underline font-semibold"
+                  className="inline-flex items-center px-2 py-0.5 text-[11px] font-mono rounded-[2px] bg-secondary/50 text-primary border border-border/30 hover:bg-secondary hover:border-primary/30 transition-colors"
                 >
                   {pipeline ? pipeline.name : summary.pipeline_id.split("-")[0]}
                 </Link>
               </div>
               {dataset && (
-                <div>
-                  <span>Dataset: </span>
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <span>Dataset:</span>
                   <Link
                     href={`/datasets/${dataset.id}`}
-                    className="text-primary hover:underline font-semibold"
+                    className="inline-flex items-center px-2 py-0.5 text-[11px] font-mono rounded-[2px] bg-secondary/50 text-primary border border-border/30 hover:bg-secondary hover:border-primary/30 transition-colors"
                   >
                     {dataset.name}
                   </Link>
