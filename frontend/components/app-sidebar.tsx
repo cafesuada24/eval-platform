@@ -88,7 +88,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     
     const checkStatus = async () => {
       try {
-        const res = await fetch(`${baseUrl}/v1/configs/metrics`, { method: "HEAD", cache: "no-store" });
+        const res = await fetch(`${baseUrl}/healthz`, { method: "GET", cache: "no-store" });
         setIsOnline(res.ok);
       } catch {
         setIsOnline(false);
