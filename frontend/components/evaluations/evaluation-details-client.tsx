@@ -27,6 +27,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { MetricDiagnosticBoard } from "./metric-diagnostic-board";
+import { filterRunsByMetric } from "@/lib/diagnostic-utils";
 
 interface EvaluationDetailsClientProps {
   summary: BatchSummary;
@@ -36,6 +38,7 @@ interface EvaluationDetailsClientProps {
 }
 
 export function EvaluationDetailsClient({
+  summary,
   pipelines,
   dataset,
   runtimes,
@@ -45,6 +48,10 @@ export function EvaluationDetailsClient({
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [metricFilter, setMetricFilter] = useState<{
+    metricId: string;
+    status: AssertionStatus | null;
+  } | null>(null);
   const [copiedText, setCopiedText] = useState(false);
   const [isRawJsonExpanded, setIsRawJsonExpanded] = useState(true);
 
@@ -108,9 +115,9 @@ export function EvaluationDetailsClient({
     });
   }, [pipelines, caseMap, matchRuntimeState]);
 
-  // Filter runs based on search query and status filter badge
+  // Filter runs based on search query, status filter badge, and metric filter
   const filteredRuns = useMemo(() => {
-    return runsWithDetails.filter((run) => {
+    const step1 = runsWithDetails.filter((run) => {
       // 1. Status Filter
       if (statusFilter !== "ALL") {
         if (statusFilter === "PASS" && run.overall_status !== AssertionStatus.PASS) return false;
@@ -137,7 +144,9 @@ export function EvaluationDetailsClient({
 
       return true;
     });
-  }, [runsWithDetails, statusFilter, searchQuery]);
+
+    return filterRunsByMetric(step1, metricFilter);
+  }, [runsWithDetails, statusFilter, searchQuery, metricFilter]);
 
   // Find currently selected run details
   const selectedRun = useMemo(() => {
@@ -256,6 +265,13 @@ export function EvaluationDetailsClient({
           <XCircle className="h-8 w-8 text-rose-500/30 shrink-0" />
         </div>
       </div>
+
+      {/* Render Metric Diagnostic Board */}
+      <MetricDiagnosticBoard
+        metrics={summary.metrics}
+        activeFilter={metricFilter}
+        onFilterChange={setMetricFilter}
+      />
 
       {/* Main Split Pane Layout */}
       <div className="flex-1 w-full min-h-0 min-w-0 border border-border bg-card/10 rounded-[2px] overflow-hidden flex flex-row">
