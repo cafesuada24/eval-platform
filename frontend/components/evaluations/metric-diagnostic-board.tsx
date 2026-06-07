@@ -77,10 +77,12 @@ export function MetricDiagnosticBoard({
                     aria-pressed={activeFilter?.metricId === metric.metric_id && activeFilter?.status === AssertionStatus.PASS}
                     style={{ width: `${passWidth}%` }}
                     className={cn(
-                      "bg-emerald-500 transition-all cursor-pointer hover:opacity-80 focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring",
+                      "bg-emerald-500 transition-all cursor-pointer hover:opacity-80 focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring flex items-center justify-center text-[10px] font-mono font-semibold text-white",
                       activeFilter?.metricId === metric.metric_id && activeFilter?.status === AssertionStatus.PASS && "ring-2 ring-primary ring-inset"
                     )}
-                  />
+                  >
+                    {passWidth >= 8 && metric.pass_count}
+                  </div>
                 )}
                 {warnWidth > 0 && (
                   <div
@@ -93,10 +95,12 @@ export function MetricDiagnosticBoard({
                     aria-pressed={activeFilter?.metricId === metric.metric_id && activeFilter?.status === AssertionStatus.WARNING}
                     style={{ width: `${warnWidth}%` }}
                     className={cn(
-                      "bg-amber-500 transition-all cursor-pointer hover:opacity-80 focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring",
+                      "bg-amber-500 transition-all cursor-pointer hover:opacity-80 focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring flex items-center justify-center text-[10px] font-mono font-semibold text-white",
                       activeFilter?.metricId === metric.metric_id && activeFilter?.status === AssertionStatus.WARNING && "ring-2 ring-primary ring-inset"
                     )}
-                  />
+                  >
+                    {warnWidth >= 8 && metric.warning_count}
+                  </div>
                 )}
                 {failWidth > 0 && (
                   <div
@@ -109,10 +113,12 @@ export function MetricDiagnosticBoard({
                     aria-pressed={activeFilter?.metricId === metric.metric_id && activeFilter?.status === AssertionStatus.FAIL}
                     style={{ width: `${failWidth}%` }}
                     className={cn(
-                      "bg-rose-500 transition-all cursor-pointer hover:opacity-80 focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring",
+                      "bg-rose-500 transition-all cursor-pointer hover:opacity-80 focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring flex items-center justify-center text-[10px] font-mono font-semibold text-white",
                       activeFilter?.metricId === metric.metric_id && activeFilter?.status === AssertionStatus.FAIL && "ring-2 ring-primary ring-inset"
                     )}
-                  />
+                  >
+                    {failWidth >= 8 && metric.fail_count}
+                  </div>
                 )}
               </div>
             </div>
