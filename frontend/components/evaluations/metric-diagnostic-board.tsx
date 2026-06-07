@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { MetricSummary, AssertionStatus } from "@/lib/api/evaluations";
 import { calculateMetricRatios } from "@/lib/diagnostic-utils";
 import { cn } from "@/lib/utils";
@@ -16,6 +17,8 @@ export function MetricDiagnosticBoard({
   activeFilter,
   onFilterChange,
 }: MetricDiagnosticBoardProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
   if (!metrics || metrics.length === 0) return null;
 
   const handleSegmentClick = (metricId: string, status: AssertionStatus) => {
@@ -32,6 +35,9 @@ export function MetricDiagnosticBoard({
       handleSegmentClick(metricId, status);
     }
   };
+
+  const visibleMetrics = isExpanded ? metrics : metrics.slice(0, 4);
+  const hasMoreThanFour = metrics.length > 4;
 
   return (
     <div className="bg-card/30 border border-border/40 p-4 rounded-[2px] mb-6 space-y-4">
@@ -53,7 +59,7 @@ export function MetricDiagnosticBoard({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {metrics.map((metric) => {
+        {visibleMetrics.map((metric) => {
           const { passWidth, warnWidth, failWidth } = calculateMetricRatios(metric);
           
           return (
@@ -125,7 +131,19 @@ export function MetricDiagnosticBoard({
           );
         })}
       </div>
+
+      {hasMoreThanFour && (
+        <div className="flex justify-center pt-2">
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground hover:text-foreground px-4 py-1.5 border border-border/40 hover:border-border/80 bg-card/25 rounded-[2px] cursor-pointer transition-all"
+          >
+            {isExpanded ? "Show Less" : `Show More (+${metrics.length - 4})`}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
+
 
