@@ -206,65 +206,8 @@ export function EvaluationDetailsClient({
     return "No input context available";
   };
 
-  // Calculate stats for current batch
-  const stats = useMemo(() => {
-    const total = pipelines.length;
-    const passes = pipelines.filter((p) => p.overall_status === AssertionStatus.PASS).length;
-    const warnings = pipelines.filter((p) => p.overall_status === AssertionStatus.WARNING).length;
-    const fails = pipelines.filter((p) => p.overall_status === AssertionStatus.FAIL).length;
-    const passRate = total > 0 ? (passes / total) * 100 : 0;
-    return { total, passes, warnings, fails, passRate };
-  }, [pipelines]);
-
   return (
     <div className="flex flex-col h-full w-full min-h-0 min-w-0">
-      {/* Metrics mini-summary widgets */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        {/* Pass Rate */}
-        <div className="p-4 bg-card border border-border rounded-[2px] flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-mono block">Pass Rate</span>
-            <span className="text-2xl font-bold tracking-tight text-foreground font-mono">{stats.passRate.toFixed(1)}%</span>
-          </div>
-          <Activity className="h-8 w-8 text-muted-foreground/30 shrink-0" />
-        </div>
-        
-        {/* Passed Runs */}
-        <div className="p-4 bg-card border border-border rounded-[2px] flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-mono block">Passed Runs</span>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400 font-mono">{stats.passes}</span>
-              <span className="text-xs text-muted-foreground font-mono">/ {stats.total}</span>
-            </div>
-          </div>
-          <CheckCircle2 className="h-8 w-8 text-emerald-500/30 shrink-0" />
-        </div>
-        
-        {/* Warning Runs */}
-        <div className="p-4 bg-card border border-border rounded-[2px] flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-mono block">Warning Runs</span>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl font-bold tracking-tight text-amber-400 font-mono">{stats.warnings}</span>
-              <span className="text-xs text-muted-foreground font-mono">/ {stats.total}</span>
-            </div>
-          </div>
-          <AlertTriangle className="h-8 w-8 text-amber-500/30 shrink-0" />
-        </div>
-        
-        {/* Failed Runs */}
-        <div className="p-4 bg-card border border-border rounded-[2px] flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-mono block">Failed Runs</span>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl font-bold tracking-tight text-rose-400 font-mono">{stats.fails}</span>
-              <span className="text-xs text-muted-foreground font-mono">/ {stats.total}</span>
-            </div>
-          </div>
-          <XCircle className="h-8 w-8 text-rose-500/30 shrink-0" />
-        </div>
-      </div>
 
       {/* Render Metric Diagnostic Board */}
       <MetricDiagnosticBoard
@@ -293,10 +236,25 @@ export function EvaluationDetailsClient({
               {/* Filter Badges */}
               <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-none">
                 {[
-                  { label: "All", value: "ALL", count: stats.total },
-                  { label: "Passed", value: "PASS", count: stats.passes, activeClass: "border-emerald-500/30 text-emerald-700 dark:text-emerald-600 dark:text-emerald-400 bg-emerald-500/10" },
-                  { label: "Warning", value: "WARNING", count: stats.warnings, activeClass: "border-amber-500/30 text-amber-700 dark:text-amber-400 bg-amber-500/10" },
-                  { label: "Failed", value: "FAIL", count: stats.fails, activeClass: "border-rose-500/30 text-rose-700 dark:text-rose-400 bg-rose-500/10" },
+                  { label: "All", value: "ALL", count: pipelines.length },
+                  {
+                    label: "Passed",
+                    value: "PASS",
+                    count: pipelines.filter((p) => p.overall_status === AssertionStatus.PASS).length,
+                    activeClass: "border-emerald-500/30 text-emerald-700 dark:text-emerald-600 dark:text-emerald-400 bg-emerald-500/10",
+                  },
+                  {
+                    label: "Warning",
+                    value: "WARNING",
+                    count: pipelines.filter((p) => p.overall_status === AssertionStatus.WARNING).length,
+                    activeClass: "border-amber-500/30 text-amber-700 dark:text-amber-400 bg-amber-500/10",
+                  },
+                  {
+                    label: "Failed",
+                    value: "FAIL",
+                    count: pipelines.filter((p) => p.overall_status === AssertionStatus.FAIL).length,
+                    activeClass: "border-rose-500/30 text-rose-700 dark:text-rose-400 bg-rose-500/10",
+                  },
                 ].map((f) => {
                   const isActive = statusFilter === f.value;
                   return (
