@@ -51,7 +51,7 @@ export default async function EvaluationDetailsPage(props: {
   }
 
   return (
-    <div className="p-8 w-full space-y-8 bg-background flex flex-col h-[calc(100vh-6.5rem)] overflow-hidden text-foreground">
+    <div className="p-8 w-full space-y-8 bg-background flex flex-col min-h-[calc(100vh-6.5rem)] h-auto pb-12 text-foreground">
       <div className="space-y-4 shrink-0">
         <Link href="/evaluations" className={cn(buttonVariants({ variant: "ghost" }), "-ml-4 text-xs font-mono")}>
           <ChevronLeft className="mr-2 h-4 w-4" />
