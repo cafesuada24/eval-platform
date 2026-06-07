@@ -1,7 +1,7 @@
 """Evaluation orchestrator service."""
 
 import asyncio
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypedDict
 from uuid import UUID
 
 from app.core.eval_engine.models import (
@@ -22,6 +22,15 @@ from app.core.kernel.ports import RuntimeStateRepository
 
 if TYPE_CHECKING:
     from app.core.kernel.models import RuntimeState
+
+
+class _MetricAccumulator(TypedDict):
+    name: str
+    total_score: float
+    pass_count: int
+    fail_count: int
+    warning_count: int
+    total_runs: int
 
 
 class EvaluationOrchestratorService:
@@ -150,7 +159,7 @@ class EvaluationOrchestratorService:
     def get_job_summary(self, job_id: UUID) -> BatchSummary:
         """Get the evaluation job summary."""
         job = self.get_job(job_id)
-        metric_stats = {}
+        metric_stats: dict[UUID, _MetricAccumulator] = {}
 
         for pr in job.pipeline_run_results:
             for mr in pr.metric_results:

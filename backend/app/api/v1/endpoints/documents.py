@@ -3,7 +3,7 @@ from typing import Annotated
 from app.api.dependencies import get_document_service
 from app.api.v1.schemas.documents_dtos import UploadedFileMetadata
 from app.core.documents.services import DocumentService
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from google import genai
 from google.genai import types
 
@@ -82,7 +82,7 @@ async def upload_file(
     return UploadedFileMetadata(**metadata.model_dump())
 
 
-@router.get('', response_model=list[UploadedFileMetadata])
+@router.get('')
 async def list_uploaded_files(
     document_service: Annotated[DocumentService, Depends(get_document_service)],
 ) -> list[UploadedFileMetadata]:
@@ -95,11 +95,11 @@ async def list_uploaded_files(
     return files
 
 
-@router.delete('/{file_id}')
+@router.delete('/{file_id}', status_code=204)
 async def delete_uploaded_file(
     file_id: str,
     document_service: Annotated[DocumentService, Depends(get_document_service)],
-) -> dict[str, str]:
+) -> None:
     """Delete a persistently uploaded file by ID."""
     doc = document_service.get_document(file_id)
     if not doc:
@@ -112,4 +112,3 @@ async def delete_uploaded_file(
             status_code=500, detail=f'Failed to delete file from disk and vector storage: {str(e)}',
         ) from e
 
-    return {'status': 'success', 'message': f'File {file_id} deleted successfully'}

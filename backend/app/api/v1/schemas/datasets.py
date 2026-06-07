@@ -1,6 +1,6 @@
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 
 class DatasetSchemaDef(BaseModel):
@@ -10,23 +10,18 @@ class DatasetSchemaDef(BaseModel):
 
 class DatasetCreate(BaseModel):
     name: str
+    description: str | None = None
     schema_: DatasetSchemaDef = Field(default_factory=DatasetSchemaDef, alias="schema")
 
 class DatasetUpdate(BaseModel):
-    name: str
-    schema_: DatasetSchemaDef = Field(default_factory=DatasetSchemaDef, alias="schema")
+    name: str | None = None
+    description: str | None = None
+    schema_: DatasetSchemaDef | None = Field(default=None, alias="schema")
 
 class TestCaseCreate(BaseModel):
     inputs: dict[str, Any] = Field(default_factory=dict)
     expected_outputs: dict[str, Any] = Field(default_factory=dict)
     metadata: dict[str, Any] = Field(default_factory=dict)
-
-    @field_validator('inputs')
-    @classmethod
-    def validate_inputs(cls, v: dict[str, Any]) -> dict[str, Any]:
-        if 'query' not in v:
-            raise ValueError("inputs must contain a 'query' field")
-        return v
 
 class TestCaseUpdate(TestCaseCreate):
     pass

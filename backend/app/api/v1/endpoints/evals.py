@@ -1,4 +1,4 @@
-from typing import Annotated, Any
+from typing import Annotated
 from uuid import UUID, uuid4
 
 from app.api.dependencies import (
@@ -9,10 +9,12 @@ from app.api.dependencies import (
     get_pipeline_repo,
     get_runtime_state_repo,
 )
+from app.api.v1.schemas.common import StatusResponse
 from app.api.v1.schemas.evals import (
     CreateEvaluationRequest,
     CreateEvaluationResponse,
     SubmitTestcaseRequest,
+    SubmitTestcaseResponse,
 )
 from app.core.eval_engine.models import (
     BatchRunResult,
@@ -89,12 +91,12 @@ def create_evaluation(
 ) -> CreateEvaluationResponse:
     pipeline = pipeline_repo.find_by_id(request.pipeline_id)
     if not pipeline:
-        raise NotFoundError('Pipeline not found')
+        raise HTTPException(status_code=404, detail='Pipeline not found')
 
     try:
         dataset = dataset_repo.get_by_id(request.dataset_id)
-    except ValueError as e:
-        raise NotFoundError('Dataset not found') from e
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail='Dataset not found') from e
 
     job_id = uuid4()
     orchestrator.create_job(
@@ -115,13 +117,13 @@ async def submit_testcase(
         EvaluationOrchestratorService,
         Depends(get_evaluation_orchestrator),
     ],
-) -> dict[str, Any]:
+) -> SubmitTestcaseResponse:
     result = await orchestrator.evaluate_testcase(
         job_id=evaluation_id,
         testcase_id=testcase_id,
         runtime_ids=request.runtime_ids,
     )
-    return {'status': 'success', 'result': result}
+    return SubmitTestcaseResponse(status='success', result=result)
 
 
 @router.post('/{evaluation_id}/complete')
@@ -130,12 +132,15 @@ async def complete_evaluation(
     orchestrator: Annotated[
         EvaluationOrchestratorService, Depends(get_evaluation_orchestrator)
     ],
-) -> dict[str, Any]:
+) -> StatusResponse:
     await orchestrator.complete_job(evaluation_id)
-    return {'status': 'completed', 'evaluation_id': str(evaluation_id)}
+    return StatusResponse(
+        status='success',
+        message=f'Evaluation job {evaluation_id} marked as completed.',
+    )
 
 
-@router.get('/{evaluation_id}', response_model=BatchRunResult)
+@router.get('/{evaluation_id}')
 def get_evaluation(
     evaluation_id: UUID,
     orchestrator: Annotated[
@@ -156,9 +161,7 @@ def get_evaluation_summary(
     return orchestrator.get_job_summary(evaluation_id)
 
 
-@router.get(
-    '/{evaluation_id}/testcases/{testcase_id}', response_model=PipelineRunResult
-)
+@router.get('/{evaluation_id}/testcases/{testcase_id}')
 def get_testcase_evaluation(
     evaluation_id: UUID,
     testcase_id: UUID,
@@ -173,28 +176,26 @@ def get_testcase_evaluation(
 def get_evaluation_pipelines(
     evaluation_id: UUID,
     orchestrator: Annotated[
-        EvaluationOrchestratorService, Depends(get_evaluation_orchestrator)
+        EvaluationOrchestratorService,
+        Depends(get_evaluation_orchestrator),
     ],
 ) -> list[PipelineRunResult]:
     return orchestrator.get_pipeline_results(evaluation_id)
 
 
-@router.get(
-    '/{evaluation_id}/pipelines/{pipeline_run_id}', response_model=PipelineRunResult
-)
+@router.get('/{evaluation_id}/pipelines/{pipeline_run_id}')
 def get_pipeline_result(
     evaluation_id: UUID,
     pipeline_run_id: UUID,
     orchestrator: Annotated[
-        EvaluationOrchestratorService, Depends(get_evaluation_orchestrator)
+        EvaluationOrchestratorService,
+        Depends(get_evaluation_orchestrator),
     ],
 ) -> PipelineRunResult:
     return orchestrator.get_pipeline_result(evaluation_id, pipeline_run_id)
 
 
-@router.get(
-    '/{evaluation_id}/metrics/{metric_id}', response_model=list[MetricRunResult]
-)
+@router.get('/{evaluation_id}/metrics/{metric_id}')
 def get_metric_results(
     evaluation_id: UUID,
     metric_id: UUID,
@@ -205,7 +206,7 @@ def get_metric_results(
     return orchestrator.get_metric_results(evaluation_id, metric_id)
 
 
-@router.get('', response_model=list[BatchRunResult])
+@router.get('')
 def list_evaluations(
     orchestrator: Annotated[
         EvaluationOrchestratorService,

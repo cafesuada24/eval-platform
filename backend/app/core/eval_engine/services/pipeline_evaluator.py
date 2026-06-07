@@ -63,7 +63,7 @@ class PipelineEvaluatorService:
                         score=0.0,
                         justification=f'Execution failed: {str(res)}',
                         evidence=None,
-                        assertion_status=AssertionStatus.WARNING,
+                        assertion_status=AssertionStatus.FAIL,
                     )
                 )
             else:

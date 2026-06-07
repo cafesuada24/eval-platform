@@ -49,6 +49,7 @@ from app.infra.vector_storage.chroma_adapter import ChromaVectorStorage
 from fastapi import Depends
 
 
+# --- Singletons (lru_cache): repositories and stateless infrastructure services ---
 @lru_cache
 def get_metric_repo() -> MetricRepository:
     """Get the metric repository singleton."""
@@ -93,6 +94,7 @@ def get_vector_storage() -> VectorStoragePort:
     return ChromaVectorStorage(settings.chromadb_dir)
 
 
+# --- Per-request: services with request-scoped state or composed from injected singletons ---
 def get_document_service(
     document_repo: Annotated[DocumentRepository, Depends(get_document_repo)],
     vector_storage: Annotated[VectorStoragePort, Depends(get_vector_storage)],

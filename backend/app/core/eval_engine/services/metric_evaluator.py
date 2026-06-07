@@ -240,5 +240,5 @@ class MetricEvaluatorService:
             score=0.0,
             justification=f'Execution failed due to an unexpected error (e.g., LLM API failure) after {attempts} attempts: {str(last_error)}',
             evidence=None,
-            assertion_status=AssertionStatus.WARNING,
+            assertion_status=AssertionStatus.FAIL,
         )

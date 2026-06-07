@@ -6,6 +6,7 @@ from app.api.dependencies import (
     get_metric_helper_app_service,
 )
 from app.api.v1.schemas.agent_dtos import ChatRequest, SaveSessionRequest
+from app.api.v1.schemas.common import StatusResponse
 from app.core.agents.metric_helper.models import (
     ChatSession,
     MetricHelperResponse,
@@ -19,7 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException
 router = APIRouter()
 
 
-@router.get('/sessions/{metric_id}', response_model=ChatSession)
+@router.get('/sessions/{metric_id}')
 def get_session(
     metric_id: UUID,
     session_repo: Annotated[ChatSessionRepository, Depends(get_chat_session_repo)],
@@ -31,11 +32,11 @@ def get_session(
     return session
 
 
-@router.delete('/sessions/{metric_id}')
+@router.delete('/sessions/{metric_id}', status_code=204)
 def delete_session(
     metric_id: UUID,
     session_repo: Annotated[ChatSessionRepository, Depends(get_chat_session_repo)],
-) -> dict[str, str]:
+) -> None:
     """Clear the persisted chat session history for a metric."""
     try:
         session_repo.delete(metric_id)
@@ -44,10 +45,7 @@ def delete_session(
             status_code=500,
             detail=f'Failed to clear session: {str(e)}',
         ) from e
-    return {
-        'status': 'success',
-        'message': f"Session for metric '{metric_id}' cleared.",
-    }
+    return None
 
 
 @router.post('/sessions/{metric_id}')
@@ -55,7 +53,7 @@ def save_session(
     metric_id: UUID,
     request: SaveSessionRequest,
     session_repo: Annotated[ChatSessionRepository, Depends(get_chat_session_repo)],
-) -> dict[str, str]:
+) -> StatusResponse:
     """Explicitly save the chat session history for a metric (e.g. upon creation)."""
     try:
         session_data = ChatSession(metric_id=metric_id, messages=request.messages)
@@ -65,16 +63,19 @@ def save_session(
             status_code=500,
             detail=f'Failed to save session: {str(e)}',
         ) from e
-    return {
-        'status': 'success',
-        'message': f"Session for metric '{metric_id}' saved.",
-    }
+    return StatusResponse(
+        status='success',
+        message=f"Session for metric '{metric_id}' saved.",
+    )
 
 
-@router.post('/chat', response_model=MetricHelperResponse)
+@router.post('/chat')
 async def chat_with_agent(
     request: ChatRequest,
-    app_service: Annotated[MetricHelperAppService, Depends(get_metric_helper_app_service)],
+    app_service: Annotated[
+        MetricHelperAppService,
+        Depends(get_metric_helper_app_service),
+    ],
 ) -> MetricHelperResponse:
     try:
         return await app_service.chat(
@@ -84,4 +85,6 @@ async def chat_with_agent(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An error occurred during chat: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f'An error occurred during chat: {str(e)}',
+        ) from e

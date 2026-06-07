@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Annotated
 from uuid import UUID, uuid4
 
-from app.core.config import settings
 from app.api.dependencies import get_dataset_parser, get_dataset_repo
 from app.api.v1.schemas.datasets import (
     DatasetCreate,
@@ -15,15 +14,18 @@ from app.api.v1.schemas.datasets import (
     TestCaseCreate,
     TestCaseUpdate,
 )
+from app.core.config import settings
 from app.core.eval_engine.models import Dataset, TestCase
 from app.core.eval_engine.ports import DatasetRepository
 from app.core.eval_engine.services.dataset_parser import (
     DatasetParserService,
     InvalidDatasetError,
 )
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from app.core.exceptions import NotFoundError
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+
 
 def get_dataset_files_dir() -> Path:
     """Lazily creates and returns the dataset files directory."""
@@ -45,25 +47,48 @@ def _get_dataset_or_404(dataset_id: UUID, repo: DatasetRepository) -> Dataset:
     """Helper to fetch dataset and raise 404 if not found."""
     try:
         return repo.get_by_id(dataset_id)
-    except ValueError as e:
+    except NotFoundError as e:
         raise HTTPException(status_code=404, detail='Dataset not found') from e
 
 
-@router.post('/upload', response_model=Dataset, status_code=201)
+@router.post('/upload', status_code=201)
 async def upload_dataset(
     file: UploadFile,
     dataset_repo: Annotated[DatasetRepository, Depends(get_dataset_repo)],
     dataset_parser: Annotated[DatasetParserService, Depends(get_dataset_parser)],
+    column_mapping: Annotated[str | None, Form()] = None,
+    name: Annotated[str | None, Form()] = None,
+    description: Annotated[str | None, Form()] = None,
 ) -> Dataset:
-    """Upload a dataset (JSON or CSV)."""
+    """Upload a dataset (JSON, JSONL, or CSV)."""
     if not file.filename:
         raise HTTPException(status_code=400, detail='Filename missing')
 
+    parsed_mapping: dict[str, str] | None = None
+    if column_mapping:
+        try:
+            parsed_mapping = json.loads(column_mapping)
+            if not isinstance(parsed_mapping, dict):
+                raise HTTPException(
+                    status_code=400,
+                    detail='column_mapping must be a JSON object',
+                )
+        except json.JSONDecodeError as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f'Invalid JSON in column_mapping: {str(e)}',
+            ) from e
+
     contents = await file.read()
     try:
-        dataset = dataset_parser.parse(file.filename, contents)
+        dataset = dataset_parser.parse(file.filename, contents, parsed_mapping)
     except InvalidDatasetError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
+
+    if name:
+        dataset.name = name
+    if description is not None:
+        dataset.description = description
 
     dataset_repo.save(dataset)
     return dataset
@@ -78,6 +103,7 @@ def create_dataset(
     dataset = Dataset(
         id=uuid4(),
         name=data.name,
+        description=data.description,
         schema=data.schema_.model_dump(),
         cases=[],
     )
@@ -85,7 +111,7 @@ def create_dataset(
     return dataset
 
 
-@router.patch('/{dataset_id}', response_model=Dataset)
+@router.patch('/{dataset_id}')
 def update_dataset(
     dataset_id: UUID,
     data: DatasetUpdate,
@@ -93,13 +119,17 @@ def update_dataset(
 ) -> Dataset:
     """Update dataset metadata."""
     dataset = _get_dataset_or_404(dataset_id, dataset_repo)
-    dataset.name = data.name
-    dataset.schema = data.schema_.model_dump()
+    if 'name' in data.model_fields_set and data.name is not None:
+        dataset.name = data.name
+    if 'description' in data.model_fields_set:
+        dataset.description = data.description
+    if 'schema_' in data.model_fields_set and data.schema_ is not None:
+        dataset.schema = data.schema_.model_dump()
     dataset_repo.save(dataset)
     return dataset
 
 
-@router.get('/', response_model=list[Dataset])
+@router.get('/')
 def list_datasets(
     dataset_repo: Annotated[DatasetRepository, Depends(get_dataset_repo)],
 ) -> Sequence[Dataset]:
@@ -107,7 +137,7 @@ def list_datasets(
     return dataset_repo.list_all()
 
 
-@router.get('/{dataset_id}', response_model=Dataset)
+@router.get('/{dataset_id}')
 def get_dataset(
     dataset_id: UUID,
     dataset_repo: Annotated[DatasetRepository, Depends(get_dataset_repo)],
@@ -119,7 +149,7 @@ def get_dataset(
 # --- FILES ---
 
 
-@router.post('/{dataset_id}/files', response_model=FileUploadResponse, status_code=201)
+@router.post('/{dataset_id}/files', status_code=201)
 async def upload_dataset_file(
     dataset_id: UUID,
     file: UploadFile,
@@ -217,7 +247,7 @@ def delete_dataset_file(dataset_id: UUID, file_id: str) -> None:
 # --- TEST CASES ---
 
 
-@router.post('/{dataset_id}/cases', response_model=TestCase, status_code=201)
+@router.post('/{dataset_id}/cases', status_code=201)
 def create_test_case(
     dataset_id: UUID,
     data: TestCaseCreate,
@@ -237,7 +267,7 @@ def create_test_case(
     return case
 
 
-@router.get('/{dataset_id}/cases', response_model=list[TestCase])
+@router.get('/{dataset_id}/cases')
 def list_test_cases(
     dataset_id: UUID,
     dataset_repo: Annotated[DatasetRepository, Depends(get_dataset_repo)],
@@ -252,7 +282,7 @@ def list_test_cases(
     return dataset.cases[start:end]
 
 
-@router.put('/{dataset_id}/cases/{case_id}', response_model=TestCase)
+@router.put('/{dataset_id}/cases/{case_id}')
 def update_test_case(
     dataset_id: UUID,
     case_id: UUID,

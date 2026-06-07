@@ -2,6 +2,7 @@
 
 from uuid import UUID
 
+from app.core.eval_engine.models import PipelineRunResult
 from pydantic import BaseModel
 
 
@@ -14,6 +15,11 @@ class CreateEvaluationResponse(BaseModel):
 
 class SubmitTestcaseRequest(BaseModel):
     runtime_ids: list[UUID]
+
+
+class SubmitTestcaseResponse(BaseModel):
+    status: str
+    result: PipelineRunResult
 
 
 

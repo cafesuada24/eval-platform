@@ -2,6 +2,7 @@ from pathlib import Path
 from uuid import UUID
 
 from app.core.eval_engine.models import Dataset
+from app.core.exceptions import NotFoundError
 from pydantic import TypeAdapter, ValidationError
 
 
@@ -20,7 +21,7 @@ class LocalJsonDatasetRepository:
         """Get a dataset by id."""
         path = self._get_path(dataset_id)
         if not path.exists() or not path.is_file():
-            raise ValueError(f"Dataset {dataset_id} not found.")
+            raise NotFoundError(f"Dataset {dataset_id} not found.")
         raw_data = path.read_text(encoding='utf-8')
         return self.__ta.validate_json(raw_data)
 

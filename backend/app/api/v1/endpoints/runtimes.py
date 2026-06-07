@@ -22,12 +22,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 router = APIRouter()
 
 
-@router.put('')
-async def ingest_runtime(
-    request: RuntimeIngestionRequest,
-    repository: Annotated[RuntimeStateRepository, Depends(get_runtime_state_repo)],
-) -> RuntimeIngestionResponse:
-    """Ingest a runtime."""
+def _build_runtime_state(request: RuntimeIngestionRequest) -> RuntimeState:
+    """Helper to build a RuntimeState from a RuntimeIngestionRequest."""
     events = [
         RuntimeEvent(
             runtime_id=ev.runtime_id,
@@ -37,15 +33,22 @@ async def ingest_runtime(
         for ev in request.events
     ]
 
-    state = RuntimeState(
+    return RuntimeState(
         runtime_id=request.runtime_id or uuid4(),
         events=events,
         resource_usage=request.usage,
         metadata=request.metadata,
     )
 
-    repository.save(state)
 
+@router.put('')
+async def ingest_runtime(
+    request: RuntimeIngestionRequest,
+    repository: Annotated[RuntimeStateRepository, Depends(get_runtime_state_repo)],
+) -> RuntimeIngestionResponse:
+    """Ingest a runtime."""
+    state = _build_runtime_state(request)
+    repository.save(state)
     return RuntimeIngestionResponse(runtime_id=state.runtime_id)
 
 
@@ -57,24 +60,7 @@ async def ingest_runtimes_batch(
     """Ingest a batch of runtimes."""
     responses: list[RuntimeIngestionResponse] = []
     for request in requests:
-        events = [
-            RuntimeEvent(
-                runtime_id=ev.runtime_id,
-                payload=ev.payload,
-                timestamp=ev.timestamp,
-            )
-            for ev in request.events
-        ]
-
-        print(len(events))
-
-        state = RuntimeState(
-            runtime_id=request.runtime_id or uuid4(),
-            events=events,
-            resource_usage=request.usage,
-            metadata=request.metadata,
-        )
-
+        state = _build_runtime_state(request)
         repository.save(state)
         responses.append(RuntimeIngestionResponse(runtime_id=state.runtime_id))
 
@@ -173,15 +159,14 @@ def get_runtime_variables(
     return result
 
 
-@router.delete('/{runtime_id}')
+@router.delete('/{runtime_id}', status_code=204)
 def delete_runtime(
     runtime_id: UUID,
     repo: Annotated[RuntimeStateRepository, Depends(get_runtime_state_repo)],
-) -> dict[str, str]:
+) -> None:
     """Delete a runtime state trace."""
     try:
         repo.delete(runtime_id)
-        return {'status': 'success', 'message': f'Runtime state {runtime_id} deleted.'}
     except Exception as e:
         raise HTTPException(
             status_code=500,

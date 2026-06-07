@@ -6,6 +6,7 @@ from app.api.dependencies import get_metric_repo
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.eval_engine.models import Metric
+from app.core.eval_engine.ports import MetricRepository
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -16,11 +17,8 @@ from app.core.exceptions import DomainError, NotFoundError
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup: Seed default metrics
-    repo = get_metric_repo()
-    default_metrics_dir = settings.fixtures_dir / 'default_metrics'
+def seed_default_metrics(repo: MetricRepository, default_metrics_dir) -> None:
+    """Seed default metrics from YAML files if not already present."""
     if default_metrics_dir.exists():
         adapter = TypeAdapter(Metric)
         for yaml_file in default_metrics_dir.glob('*.yaml'):
@@ -38,6 +36,14 @@ async def lifespan(app: FastAPI):
                                 repo.save(new_metric)
             except Exception as e:
                 logger.error(f"Failed to seed metric from {yaml_file}: {e}")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Seed default metrics
+    repo = get_metric_repo()
+    default_metrics_dir = settings.fixtures_dir / 'default_metrics'
+    seed_default_metrics(repo, default_metrics_dir)
     yield
 
 app = FastAPI(

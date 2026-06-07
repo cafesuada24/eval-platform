@@ -197,6 +197,7 @@ class Dataset:
     name: str
     cases: list[TestCase]
     schema: dict[str, Any] = field(default_factory=dict[str, Any])
+    description: str | None = None
 
 
 @dataclass(slots=True)
