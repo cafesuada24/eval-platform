@@ -54,8 +54,8 @@ async function getDatasets() {
 
 async function getApiStatus(): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE_URL}/v1/configs/metrics`, {
-      method: "HEAD",
+    const res = await fetch(`${API_BASE_URL}/healthz`, {
+      method: "GET",
       cache: "no-store",
     });
     return res.ok;
