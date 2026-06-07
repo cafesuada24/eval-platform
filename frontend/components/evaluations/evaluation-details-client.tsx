@@ -217,7 +217,7 @@ export function EvaluationDetailsClient({
       />
 
       {/* Main Split Pane Layout */}
-      <div className="h-[750px] w-full min-w-0 border border-border bg-card/10 rounded-[2px] overflow-hidden flex flex-row shrink-0">
+      <div className="h-[calc(100vh-16rem)] min-h-[500px] max-h-[750px] w-full min-w-0 border border-border bg-card/10 rounded-[2px] overflow-hidden flex flex-row shrink-0">
           
           {/* Left Master Pane: Run List */}
           <div className="w-[30%] min-w-[280px] max-w-[400px] flex flex-col bg-card shrink-0 border-r border-border">
