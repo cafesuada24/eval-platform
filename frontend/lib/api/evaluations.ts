@@ -1,4 +1,4 @@
-import { BatchRunResult } from "../types";
+import { BatchRunResult, Pipeline } from "../types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/v1";
 
@@ -92,6 +92,26 @@ export async function getEvaluationMetrics(evaluationId: string, metricId: strin
   });
   if (!res.ok) {
     throw new Error(`Failed to fetch evaluation metric results: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function getPipelines(): Promise<Pipeline[]> {
+  const res = await fetch(`${API_BASE_URL}/configs/pipelines`, {
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch pipelines: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function getPipeline(pipelineId: string): Promise<Pipeline> {
+  const res = await fetch(`${API_BASE_URL}/configs/pipelines/${pipelineId}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch pipeline: ${res.statusText}`);
   }
   return res.json();
 }

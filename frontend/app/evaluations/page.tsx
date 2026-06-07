@@ -1,4 +1,5 @@
-import { getEvaluations } from "@/lib/api/evaluations";
+import { getEvaluations, getPipelines } from "@/lib/api/evaluations";
+import { fetchDatasets } from "@/lib/api/datasets";
 import { BatchRunResult } from "@/lib/types";
 import {
   Table,
@@ -53,8 +54,22 @@ export default async function EvaluationsPage(props: {
   const sort = searchParams.sort || "created_at"; // Default sort by run time
   const order = searchParams.order || "desc"; // Default descending order (newest first)
 
-  // Fetch all runs
-  let runs = await getEvaluations();
+  // Fetch all runs, pipelines, and datasets in parallel
+  const [allRuns, pipelines, datasets] = await Promise.all([
+    getEvaluations(),
+    getPipelines().catch(() => []),
+    fetchDatasets().catch(() => []),
+  ]);
+
+  const pipelineMap = new Map(pipelines.map((p) => [p.id, p.name]));
+  const datasetMap = new Map(datasets.map((d) => [d.id, d.name]));
+
+  // Populate names on run results
+  let runs = allRuns.map((run) => ({
+    ...run,
+    pipeline_name: pipelineMap.get(run.pipeline_id) || run.pipeline_name,
+    dataset_name: datasetMap.get(run.dataset_id) || run.dataset_name,
+  }));
 
   // Basic client-side filtering if search query exists
   if (q) {
@@ -164,8 +179,22 @@ export default async function EvaluationsPage(props: {
                       </Link>
                       {run.job_id.split("-")[0]}...
                     </TableCell>
-                    <TableCell className="font-medium text-xs py-3.5">{pipelineStr}</TableCell>
-                    <TableCell className="text-muted-foreground text-xs py-3.5">{datasetStr}</TableCell>
+                    <TableCell className="font-medium text-xs py-3.5">
+                      <Link
+                        href={`/pipelines/${run.pipeline_id}`}
+                        className="z-20 relative hover:underline text-primary"
+                      >
+                        {pipelineStr}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-xs py-3.5">
+                      <Link
+                        href={`/datasets/${run.dataset_id}`}
+                        className="z-20 relative hover:underline text-primary"
+                      >
+                        {datasetStr}
+                      </Link>
+                    </TableCell>
                     <TableCell className="py-3.5">
                       <Badge
                         variant="secondary"

@@ -102,3 +102,9 @@ export async function fetchDatasetFiles(datasetId: string): Promise<FileAsset[]>
   if (!res.ok) throw new Error("Failed to fetch dataset files");
   return res.json();
 }
+
+export async function fetchDatasets(): Promise<Dataset[]> {
+  const res = await fetch(`${BASE_URL}/`, { cache: "no-store" });
+  if (!res.ok) throw new Error("Failed to fetch datasets");
+  return res.json();
+}

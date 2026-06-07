@@ -2,6 +2,7 @@ import {
   getEvaluation,
   getEvaluationPipelines,
   getEvaluationSummary,
+  getPipeline,
 } from "@/lib/api/evaluations";
 import { fetchDataset } from "@/lib/api/datasets";
 import { getRuntimes } from "@/lib/api/runtimes";
@@ -37,11 +38,12 @@ export default async function EvaluationDetailsPage(props: {
     );
   }
 
-  // Fetch pipelines, full job details, and runtimes in parallel
-  const [pipelines, job, runtimes] = await Promise.all([
+  // Fetch pipelines, full job details, runtimes, and pipeline config in parallel
+  const [pipelines, job, runtimes, pipeline] = await Promise.all([
     getEvaluationPipelines(evaluationId).catch(() => []),
     getEvaluation(evaluationId).catch(() => null),
     getRuntimes().catch(() => []),
+    getPipeline(summary.pipeline_id).catch(() => null),
   ]);
 
   // If we found the job, fetch the corresponding dataset
@@ -61,7 +63,30 @@ export default async function EvaluationDetailsPage(props: {
         <PageHeader
           preTitle="Diagnostics / Evaluation details"
           title={`Job: ${summary.job_id.split("-")[0]}`}
-          description={`Pipeline ID: ${summary.pipeline_id}`}
+          description={
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-xs font-mono mt-1 text-muted-foreground">
+              <div>
+                <span>Pipeline: </span>
+                <Link
+                  href={`/pipelines/${summary.pipeline_id}`}
+                  className="text-primary hover:underline font-semibold"
+                >
+                  {pipeline ? pipeline.name : summary.pipeline_id.split("-")[0]}
+                </Link>
+              </div>
+              {dataset && (
+                <div>
+                  <span>Dataset: </span>
+                  <Link
+                    href={`/datasets/${dataset.id}`}
+                    className="text-primary hover:underline font-semibold"
+                  >
+                    {dataset.name}
+                  </Link>
+                </div>
+              )}
+            </div>
+          }
         />
       </div>
 
