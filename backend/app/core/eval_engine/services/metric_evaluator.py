@@ -13,6 +13,11 @@ from app.core.eval_engine.models import (
 )
 from app.core.eval_engine.ports import AIJudgeService
 from app.core.eval_engine.services.formula_evaluator import FormulaEvaluatorService
+from app.core.eval_engine.services.multi_step_evaluators import (
+    evaluate_faithfulness_rigorous,
+    evaluate_answer_relevancy_rigorous,
+    evaluate_context_recall_rigorous,
+)
 from jinja2 import Template
 
 
@@ -187,6 +192,38 @@ class MetricEvaluatorService:
             assertion_status=assertion_status,
         )
 
+    async def __evaluate_strategy_metric(
+        self,
+        metric: Metric,
+        context: EvaluationContext,
+        threshold: MetricThreshold | None = None,
+    ) -> MetricRunResult:
+        bindings = self.__resolve_bindings(
+            metric.required_inputs,
+            context,
+            as_float=False,
+        )
+        if metric.evaluation_strategy == "faithfulness_rigorous":
+            judge_output = await evaluate_faithfulness_rigorous(metric, bindings)
+        elif metric.evaluation_strategy == "answer_relevancy_rigorous":
+            judge_output = await evaluate_answer_relevancy_rigorous(metric, bindings)
+        elif metric.evaluation_strategy == "context_recall_rigorous":
+            judge_output = await evaluate_context_recall_rigorous(metric, bindings)
+        else:
+            raise ValueError(f"Unknown evaluation strategy {metric.evaluation_strategy}")
+
+        assertion_status = self.__class__.__evaluate_threshold(judge_output.score, threshold)
+        
+        return MetricRunResult(
+            metric_id=metric.id,
+            metric_name=metric.name,
+            score=judge_output.score,
+            justification='\n'.join(judge_output.justification),
+            evidence='\n'.join(judge_output.evidence) if judge_output.evidence else None,
+            improvements='\n'.join(judge_output.improvements) if judge_output.improvements else None,
+            assertion_status=assertion_status,
+        )
+
     async def evaluate(
         self,
         metric: Metric,
@@ -195,6 +232,23 @@ class MetricEvaluatorService:
         building_mode: bool = False,
     ) -> MetricRunResult:
         """Evaluate a metric against a runtime state."""
+        if metric.evaluation_strategy:
+            try:
+                return await self.__evaluate_strategy_metric(
+                    metric=metric,
+                    context=context,
+                    threshold=threshold,
+                )
+            except Exception as e:
+                return MetricRunResult(
+                    metric_id=metric.id,
+                    metric_name=metric.name,
+                    score=0.0,
+                    justification=f"Strategy execution failed: {str(e)}",
+                    evidence=None,
+                    assertion_status=AssertionStatus.FAIL,
+                )
+
         attempts = 3
         last_error = None
         is_value_error = False
