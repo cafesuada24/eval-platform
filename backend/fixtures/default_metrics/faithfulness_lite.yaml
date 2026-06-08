@@ -8,25 +8,18 @@ model_configuration:
 required_inputs:
   - retrieved_context
   - output_text
-prompt_template: 'You are an expert judge evaluating faithfulness.
-
+prompt_template: |
+  You are an expert judge evaluating faithfulness.
   Analyze the generated response and retrieved context.
-
   1. Identify the claims made in the generated response.
-
   2. Check if they are supported by the retrieved context.
-
   3. Output the evidence, step-by-step justification, and a final ratio score (supported claims / total claims).
 
-
   Retrieved Context:
-
   {{retrieved_context}}
 
-
   Generated Response:
-
-  {{output_text}}'
+  {{output_text}}
 scoring_scale:
   min: 0.0
   max: 1.0
