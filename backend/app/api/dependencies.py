@@ -67,20 +67,24 @@ def get_runtime_state_repo() -> RuntimeStateRepository:
     """Get the runtime state repository singleton."""
     return YamlRuntimeStateRepository(settings.runtimes_dir)
 
+
 @lru_cache
 def get_chat_session_repo() -> ChatSessionRepository:
     """Get the chat session repository singleton."""
     return LocalJsonChatSessionRepository(settings.sessions_dir)
+
 
 @lru_cache
 def get_dataset_repo() -> DatasetRepository:
     """Get the dataset repository singleton."""
     return LocalJsonDatasetRepository(settings.datasets_dir)
 
+
 @lru_cache
 def get_batch_result_repo() -> BatchResultRepository:
     """Get the batch result repository singleton."""
     return LocalJsonBatchResultRepository(settings.batch_results_dir)
+
 
 @lru_cache
 def get_document_repo() -> DocumentRepository:
@@ -94,6 +98,12 @@ def get_vector_storage() -> VectorStoragePort:
     return ChromaVectorStorage(settings.chromadb_dir)
 
 
+@lru_cache
+def get_ai_judge_service() -> AIJudgeService:
+    """Get the AI judge service singleton."""
+    return LiteLLMAIJudge()
+
+
 # --- Per-request: services with request-scoped state or composed from injected singletons ---
 def get_document_service(
     document_repo: Annotated[DocumentRepository, Depends(get_document_repo)],
@@ -101,12 +111,6 @@ def get_document_service(
 ) -> DocumentService:
     """Get the document service."""
     return DocumentService(document_repo=document_repo, vector_storage=vector_storage)
-
-
-@lru_cache
-def get_ai_judge_service() -> AIJudgeService:
-    """Get the AI judge service singleton."""
-    return LiteLLMAIJudge()
 
 
 def get_metric_evaluator(
@@ -133,8 +137,14 @@ def get_pipeline_evaluator(
 
 def get_evaluation_orchestrator(
     batch_result_repo: Annotated[BatchResultRepository, Depends(get_batch_result_repo)],
-    pipeline_eval_srv: Annotated[PipelineEvaluatorService, Depends(get_pipeline_evaluator)],
-    runtime_state_repo: Annotated[RuntimeStateRepository, Depends(get_runtime_state_repo)],
+    pipeline_eval_srv: Annotated[
+        PipelineEvaluatorService,
+        Depends(get_pipeline_evaluator),
+    ],
+    runtime_state_repo: Annotated[
+        RuntimeStateRepository,
+        Depends(get_runtime_state_repo),
+    ],
     dataset_repo: Annotated[DatasetRepository, Depends(get_dataset_repo)],
     pipeline_repo: Annotated[PipelineRepository, Depends(get_pipeline_repo)],
 ) -> EvaluationOrchestratorService:

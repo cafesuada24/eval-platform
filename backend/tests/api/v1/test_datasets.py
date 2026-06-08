@@ -91,3 +91,107 @@ def test_dataset_file_upload_and_retrieve():
     assert get_response.status_code == 200
     assert get_response.content == file_content
     assert "image/png" in get_response.headers.get("content-type", "")
+
+
+def test_upload_jsonl_dataset():
+    jsonl_content = '{"inputs": {"query": "hello_jsonl"}, "outputs": {"expected_output": "world_jsonl"}}\n{"inputs": {"query": "hello_jsonl2"}, "outputs": {"expected_output": "world_jsonl2"}}'
+    response = client.post(
+        "/v1/datasets/upload",
+        files={"file": ("test.jsonl", jsonl_content.encode("utf-8"), "application/jsonl")},
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["name"] == "test.jsonl"
+    assert len(data["cases"]) == 2
+    assert data["cases"][0]["inputs"]["query"] == "hello_jsonl"
+    assert data["cases"][1]["inputs"]["query"] == "hello_jsonl2"
+
+
+def test_upload_with_column_mapping():
+    csv_content = "prompt,response,tag\nhello_csv,world_csv,testing"
+    response = client.post(
+        "/v1/datasets/upload",
+        files={"file": ("test_map.csv", csv_content.encode("utf-8"), "text/csv")},
+        data={"column_mapping": '{"prompt": "query", "response": "expected_output", "tag": "metadata.category"}'}
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert len(data["cases"]) == 1
+    assert data["cases"][0]["inputs"]["query"] == "hello_csv"
+    assert data["cases"][0]["expected_outputs"]["expected_output"] == "world_csv"
+    assert data["cases"][0]["metadata"]["category"] == "testing"
+
+
+def test_upload_with_column_mapping_missing_query():
+    csv_content = "prompt,response\nhello_csv,world_csv"
+    response = client.post(
+        "/v1/datasets/upload",
+        files={"file": ("test_map_fail.csv", csv_content.encode("utf-8"), "text/csv")},
+        data={"column_mapping": '{"response": "expected_output"}'}
+    )
+    assert response.status_code == 400
+
+
+def test_create_metric_without_id():
+    metric_data = {
+        "name": "Test Metric DTO",
+        "description": "Metric created via DTO",
+        "type": "primitive",
+        "required_inputs": ["query", "response"],
+        "scoring_scale": {"min": 0, "max": 5, "data_type": "integer"},
+        "formula": "1"
+    }
+    response = client.post("/v1/configs/metrics", json=metric_data)
+    assert response.status_code == 201
+    data = response.json()
+    assert data["name"] == "Test Metric DTO"
+    assert "id" in data
+
+    # Clean up
+    client.delete(f"/v1/configs/metrics/{data['id']}")
+
+
+def test_patch_dataset_partial():
+    # Create dataset
+    dataset_response = client.post(
+        "/v1/datasets/",
+        json={"name": "Original Name", "schema": {"inputs": {}, "outputs": {}}}
+    )
+    dataset_id = dataset_response.json()["id"]
+
+    # Partial update name only
+    patch_response = client.patch(
+        f"/v1/datasets/{dataset_id}",
+        json={"name": "Updated Name"}
+    )
+    assert patch_response.status_code == 200
+    assert patch_response.json()["name"] == "Updated Name"
+    # Description should stay None (or not change if it was set)
+    assert patch_response.json()["description"] is None
+
+    # Partial update description only
+    patch_response2 = client.patch(
+        f"/v1/datasets/{dataset_id}",
+        json={"description": "Updated Description"}
+    )
+    assert patch_response2.status_code == 200
+    assert patch_response2.json()["name"] == "Updated Name"
+    assert patch_response2.json()["description"] == "Updated Description"
+
+
+def test_delete_endpoints_204():
+    # Ingest a runtime
+    runtime_data = {
+        "runtime_id": str(uuid4()),
+        "events": [],
+        "usage": {"cpu_percent": 0, "memory_bytes": 0}
+    }
+    put_response = client.put("/v1/runtimes", json=runtime_data)
+    assert put_response.status_code == 200
+    runtime_id = put_response.json()["runtime_id"]
+
+    # Delete runtime should return 204
+    delete_response = client.delete(f"/v1/runtimes/{runtime_id}")
+    assert delete_response.status_code == 204
+    assert delete_response.content == b""
+

@@ -9,8 +9,8 @@ class Settings(BaseSettings):
     """Application settings."""
 
     # Project directories
-    # Default to the backend directory's fixtures folder
-    fixtures_dir: Path = Path('./fixtures')
+    # Default to the backend directory's fixtures folder (relative to this config file)
+    fixtures_dir: Path = Path(__file__).resolve().parent.parent.parent / 'fixtures'
 
     # API Keys
     google_api_key: str | None = None
