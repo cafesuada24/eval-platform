@@ -1,0 +1,33 @@
+name: faithfulness_lite
+type: ai-judge
+description: A fast, single-call evaluation of whether the output is factually grounded in the retrieved context.
+model_configuration:
+  provider: openai
+  model: gpt-4o
+  temperature: 0.0
+required_inputs:
+  - retrieved_context
+  - output_text
+prompt_template: 'You are an expert judge evaluating faithfulness.
+
+  Analyze the generated response and retrieved context.
+
+  1. Identify the claims made in the generated response.
+
+  2. Check if they are supported by the retrieved context.
+
+  3. Output the evidence, step-by-step justification, and a final ratio score (supported claims / total claims).
+
+
+  Retrieved Context:
+
+  {{retrieved_context}}
+
+
+  Generated Response:
+
+  {{output_text}}'
+scoring_scale:
+  min: 0.0
+  max: 1.0
+  data_type: float

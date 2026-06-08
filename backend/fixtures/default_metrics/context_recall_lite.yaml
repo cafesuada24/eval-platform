@@ -1,0 +1,29 @@
+name: context_recall_lite
+type: ai-judge
+description: A fast, single-call evaluation of whether the retrieved context contains all necessary facts from the ground truth expected output.
+model_configuration:
+  provider: openai
+  model: gpt-4o
+  temperature: 0.0
+required_inputs:
+  - retrieved_context
+  - testcase.expected_outputs.expected_output
+prompt_template: 'You are an expert judge checking retrieval recall quality.
+
+  Analyze the ground truth expected output and the retrieved context.
+
+  Determine if the facts in expected output are present in context.
+
+
+  Retrieved Context:
+
+  {{retrieved_context}}
+
+
+  Expected Output (Ground Truth):
+
+  {{testcase.expected_outputs.expected_output}}'
+scoring_scale:
+  min: 0.0
+  max: 1.0
+  data_type: float
