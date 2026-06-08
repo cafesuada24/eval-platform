@@ -1,12 +1,12 @@
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from app.core.eval_engine.models import Metric, EvaluationContext, TestCase, ModelConfiguration
 from app.core.eval_engine.services.metric_evaluator import MetricEvaluatorService
 
 @pytest.mark.asyncio
 @patch("app.core.eval_engine.services.metric_evaluator.evaluate_faithfulness_rigorous")
 async def test_routing_in_evaluator_service(mock_evaluate_faithfulness):
-    from app.core.eval_engine.models import MetricRunResult, AssertionStatus, JudgeResult
+    from app.core.eval_engine.models import AssertionStatus, JudgeResult
     
     mock_evaluate_faithfulness.return_value = JudgeResult(
         score=0.9,
@@ -15,12 +15,12 @@ async def test_routing_in_evaluator_service(mock_evaluate_faithfulness):
         improvements=None
     )
 
-    rs_extractor = AsyncMock()
+    rs_extractor = MagicMock()
     rs_extractor.extract_variable.side_effect = lambda variable, context: "some_value"
     
     evaluator = MetricEvaluatorService(
         rs_extractor=rs_extractor,
-        formula_evaluator=AsyncMock(),
+        formula_evaluator=MagicMock(),
         ai_judge_service=AsyncMock()
     )
 
@@ -56,12 +56,12 @@ async def test_routing_evaluates_thresholds_appropriately(mock_evaluate_faithful
         improvements=None
     )
 
-    rs_extractor = AsyncMock()
+    rs_extractor = MagicMock()
     rs_extractor.extract_variable.side_effect = lambda variable, context: "some_value"
     
     evaluator = MetricEvaluatorService(
         rs_extractor=rs_extractor,
-        formula_evaluator=AsyncMock(),
+        formula_evaluator=MagicMock(),
         ai_judge_service=AsyncMock()
     )
 
@@ -97,12 +97,12 @@ async def test_routing_handles_exceptions(mock_evaluate_faithfulness):
     
     mock_evaluate_faithfulness.side_effect = Exception("LLM call failed")
 
-    rs_extractor = AsyncMock()
+    rs_extractor = MagicMock()
     rs_extractor.extract_variable.side_effect = lambda variable, context: "some_value"
     
     evaluator = MetricEvaluatorService(
         rs_extractor=rs_extractor,
-        formula_evaluator=AsyncMock(),
+        formula_evaluator=MagicMock(),
         ai_judge_service=AsyncMock()
     )
 
@@ -128,17 +128,17 @@ async def test_routing_handles_exceptions(mock_evaluate_faithfulness):
 @patch("app.core.eval_engine.services.metric_evaluator.evaluate_answer_relevancy_rigorous")
 @patch("app.core.eval_engine.services.metric_evaluator.evaluate_context_recall_rigorous")
 async def test_routing_for_other_strategies(mock_recall, mock_relevancy):
-    from app.core.eval_engine.models import JudgeResult, AssertionStatus
+    from app.core.eval_engine.models import JudgeResult
     
-    mock_relevancy.return_value = JudgeResult(score=0.8, justification=["R"], evidence=None)
-    mock_recall.return_value = JudgeResult(score=0.7, justification=["C"], evidence=None)
+    mock_relevancy.return_value = JudgeResult(score=0.8, justification=["R"], evidence=[])
+    mock_recall.return_value = JudgeResult(score=0.7, justification=["C"], evidence=[])
 
-    rs_extractor = AsyncMock()
+    rs_extractor = MagicMock()
     rs_extractor.extract_variable.side_effect = lambda variable, context: "some_value"
     
     evaluator = MetricEvaluatorService(
         rs_extractor=rs_extractor,
-        formula_evaluator=AsyncMock(),
+        formula_evaluator=MagicMock(),
         ai_judge_service=AsyncMock()
     )
 
