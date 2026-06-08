@@ -21,6 +21,7 @@ from app.core.eval_engine.extractors.runtime_state_extractor import (
 from app.core.kernel.builders.runtime_builder import RuntimeStateBuilder
 from app.core.kernel.models import GenerationPayload, RetrievalPayload
 from app.core.kernel.ports import RuntimeStateRepository
+from app.core.shared.retry import with_retry
 from app.core.vector_storage.models import QueryResult, RAGParameters
 from app.core.vector_storage.ports import VectorStoragePort
 from google import genai
@@ -176,11 +177,16 @@ class GeminiMetricHelper:
             }
 
             response_time_start = time.perf_counter()
-            response = await self.__client.aio.models.generate_content(
-                model=self.__model,
-                contents=formatted_contents,
-                config=config,
-            )
+
+            @with_retry()
+            async def _call_model() -> types.GenerateContentResponse:
+                return await self.__client.aio.models.generate_content(
+                    model=self.__model,
+                    contents=formatted_contents,
+                    config=config,
+                )
+
+            response = await _call_model()
             response_time_fin = time.perf_counter()
 
             if response.usage_metadata is not None:

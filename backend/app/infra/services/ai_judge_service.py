@@ -2,6 +2,7 @@
 
 import litellm
 from app.core.eval_engine.models import JudgeResult, Metric
+from app.core.shared.retry import with_retry
 from pydantic import TypeAdapter
 
 
@@ -28,6 +29,7 @@ class LiteLLMAIJudge:
     def __init__(self) -> None:
         litellm.drop_params = True
 
+    @with_retry()
     async def evaluate(
         self,
         metric: Metric,
