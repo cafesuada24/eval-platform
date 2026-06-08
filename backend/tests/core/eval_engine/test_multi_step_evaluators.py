@@ -43,7 +43,29 @@ async def test_faithfulness_rigorous_success(mock_acompletion):
 
     result = await evaluate_faithfulness_rigorous(metric, bindings)
     assert result.score == 1.0
-    assert "supported" in result.justification
+    assert any("supported" in item.lower() for item in result.justification)
+
+@pytest.mark.asyncio
+@patch("litellm.acompletion")
+async def test_faithfulness_rigorous_empty_claims(mock_acompletion):
+    mock_extraction = mock_litellm_response('{"claims": []}')
+    mock_acompletion.side_effect = [mock_extraction]
+
+    metric = Metric(
+        name="faithfulness_rigorous",
+        description="F",
+        type="ai-judge",
+        required_inputs=["retrieved_context", "output_text"],
+        model_configuration=ModelConfiguration(provider="openai", model="gpt-4o")
+    )
+    bindings = {
+        "retrieved_context": "Doc 1: The model is fast. Doc 2: The model has 12 tests.",
+        "output_text": "No facts here."
+    }
+
+    result = await evaluate_faithfulness_rigorous(metric, bindings)
+    assert result.score == 1.0
+    assert any("no claims" in item.lower() for item in result.justification)
 
 @pytest.mark.asyncio
 @patch("litellm.acompletion")
@@ -71,6 +93,29 @@ async def test_answer_relevancy_rigorous(mock_acompletion):
 
     result = await evaluate_answer_relevancy_rigorous(metric, bindings)
     assert result.score == 0.5
+    assert any("relevant" in item.lower() for item in result.justification)
+
+@pytest.mark.asyncio
+@patch("litellm.acompletion")
+async def test_answer_relevancy_rigorous_empty_statements(mock_acompletion):
+    mock_extraction = mock_litellm_response('{"statements": []}')
+    mock_acompletion.side_effect = [mock_extraction]
+
+    metric = Metric(
+        name="answer_relevancy_rigorous",
+        description="AR",
+        type="ai-judge",
+        required_inputs=["input_text", "output_text"],
+        model_configuration=ModelConfiguration(provider="openai", model="gpt-4o")
+    )
+    bindings = {
+        "input_text": "Tell me about Paris",
+        "output_text": ""
+    }
+
+    result = await evaluate_answer_relevancy_rigorous(metric, bindings)
+    assert result.score == 1.0
+    assert any("no statements" in item.lower() for item in result.justification)
 
 @pytest.mark.asyncio
 @patch("litellm.acompletion")
@@ -98,3 +143,26 @@ async def test_context_recall_rigorous(mock_acompletion):
 
     result = await evaluate_context_recall_rigorous(metric, bindings)
     assert result.score == 0.5
+    assert any("recalled" in item.lower() for item in result.justification)
+
+@pytest.mark.asyncio
+@patch("litellm.acompletion")
+async def test_context_recall_rigorous_empty_claims(mock_acompletion):
+    mock_extraction = mock_litellm_response('{"claims": []}')
+    mock_acompletion.side_effect = [mock_extraction]
+
+    metric = Metric(
+        name="context_recall_rigorous",
+        description="CR",
+        type="ai-judge",
+        required_inputs=["retrieved_context", "testcase.expected_outputs.expected_output"],
+        model_configuration=ModelConfiguration(provider="openai", model="gpt-4o")
+    )
+    bindings = {
+        "retrieved_context": "Fact A is true.",
+        "testcase.expected_outputs.expected_output": ""
+    }
+
+    result = await evaluate_context_recall_rigorous(metric, bindings)
+    assert result.score == 1.0
+    assert any("no claims" in item.lower() for item in result.justification)

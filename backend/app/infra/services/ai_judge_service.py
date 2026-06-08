@@ -10,11 +10,14 @@ def _get_litellm_model_name(config: Metric) -> str:
 
     e.g., 'anthropic/claude-3-5-sonnet' or 'google/gemini-1.5-pro'
     """
+    if not config.model_configuration:
+        return 'openai/gpt-4o'
     provider = config.model_configuration.provider.lower()
     if provider == 'google':
         provider = 'gemini'
     model = config.model_configuration.model
-    if model.lower().startswith(f'{provider}/'):
+    if '/' in model:
+        # Already prefixed
         return model
     return f'{provider}/{model}'
 

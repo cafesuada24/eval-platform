@@ -4,6 +4,7 @@ from typing import Any, Literal
 import litellm
 from pydantic import BaseModel, TypeAdapter
 from app.core.eval_engine.models import JudgeResult, Metric
+from app.infra.services.ai_judge_service import _get_litellm_model_name
 
 
 # --- Pydantic Schema Models for Structured Output Validation ---
@@ -56,22 +57,6 @@ class RecallVerificationResponse(BaseModel):
 
 # --- Helper Methods ---
 
-def _get_litellm_model_name(config: Metric) -> str:
-    """Format provider and model name properly for litellm.
-
-    e.g., 'anthropic/claude-3-5-sonnet' or 'google/gemini-1.5-pro'
-    """
-    if not config.model_configuration:
-        return "openai/gpt-4o"
-    provider = config.model_configuration.provider.lower()
-    if provider == "google":
-        provider = "gemini"
-    model = config.model_configuration.model
-    if model.lower().startswith(f"{provider}/"):
-        return model
-    return f"{provider}/{model}"
-
-
 async def _call_llm_structured(
     metric: Metric,
     system_prompt: str,
@@ -79,7 +64,6 @@ async def _call_llm_structured(
     response_schema: type[BaseModel],
 ) -> Any:
     """Calls LiteLLM's structured generation with a strict Pydantic JSON schema."""
-    litellm.drop_params = True
     model_name = _get_litellm_model_name(metric)
     temperature = (
         metric.model_configuration.temperature
@@ -104,6 +88,9 @@ async def _call_llm_structured(
         },
         temperature=temperature,
     )
+
+    if not response.choices or response.choices[0].message.content is None:
+        raise ValueError("LLM returned an empty or invalid response")
 
     content = response.choices[0].message.content
     return ta.validate_json(content)
@@ -160,7 +147,7 @@ async def evaluate_faithfulness_rigorous(
     if not claims:
         return JudgeResult(
             score=1.0,
-            justification=["No claims extracted from output_text.", "supported"],
+            justification=["No claims extracted from output_text."],
             evidence=["No claims extracted."],
             improvements=None,
         )
@@ -199,8 +186,6 @@ async def evaluate_faithfulness_rigorous(
     for v in verifications:
         detail = f"Claim: '{v.claim}' | Verdict: {v.verdict} | Reason: {v.reason}"
         justification.append(detail)
-        # Ensure raw verdict is present in the list to satisfy the test assertions
-        justification.append(v.verdict.lower())
         evidence.append(detail)
 
     return JudgeResult(
