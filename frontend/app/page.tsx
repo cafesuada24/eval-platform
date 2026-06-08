@@ -143,7 +143,7 @@ export default async function Home() {
           <Card className="bg-card/20 border-border/50 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-border/30">
               <div>
-                <CardTitle className="text-sm font-semibold tracking-tight uppercase font-mono">Recent Batch runs</CardTitle>
+                <CardTitle className="text-sm font-semibold tracking-tight uppercase font-mono">Recent Evaluation runs</CardTitle>
                 <CardDescription className="text-xs">Observe latest evaluation logs and target pass rates.</CardDescription>
               </div>
               <Link href="/evaluations">
@@ -291,6 +291,7 @@ export default async function Home() {
                 <span className="text-foreground/80">{pipelines.length} Configured</span>
               </div>
               <div className="flex items-center justify-between text-xs font-mono border-t border-border/30 pt-3">
+                <span className="text-muted-foreground">METRICS</span>
                 <span className="text-foreground/80">{metrics.length} Loaded</span>
               </div>
               <div className="flex items-center justify-between text-xs font-mono border-t border-border/30 pt-3">

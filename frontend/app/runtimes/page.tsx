@@ -1,6 +1,5 @@
 import { getRuntimes } from "@/lib/api/runtimes";
 import { RuntimeTable } from "@/components/runtimes/runtime-table";
-import { Terminal } from "lucide-react";
 
 import { PageHeader } from "@/components/ui/page-header";
 
