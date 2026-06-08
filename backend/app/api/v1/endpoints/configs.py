@@ -53,6 +53,7 @@ def create_metric(
         model_configuration=metric_in.model_configuration,
         prompt_template=metric_in.prompt_template,
         formula=metric_in.formula,
+        evaluation_strategy=metric_in.evaluation_strategy,
     )
     metric_repo.save(metric)
     return metric

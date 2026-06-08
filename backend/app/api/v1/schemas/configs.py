@@ -17,6 +17,7 @@ class MetricCreate(BaseModel):
     model_configuration: ModelConfiguration | None = None
     prompt_template: str | None = None
     formula: str | None = None
+    evaluation_strategy: str | None = None
 
 
 class PipelineCreate(BaseModel):

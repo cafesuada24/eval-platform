@@ -109,6 +109,8 @@ class Metric:
     # primitive only
     formula: str | None = None
 
+    evaluation_strategy: str | None = None
+
     id: UUID = field(default_factory=uuid4)
     is_system_default: bool = False
 
