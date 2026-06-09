@@ -99,7 +99,7 @@ export function MetricDetail({ metric }: MetricDetailProps) {
                     variant="outline"
                     className="font-mono text-[11px] rounded-[2px]"
                   >
-                    {`{{${input}}}`}
+                    {input}
                   </Badge>
                 ))}
               </div>
@@ -169,19 +169,18 @@ export function MetricDetail({ metric }: MetricDetailProps) {
         {/* Actions */}
         <Separator className="opacity-40" />
         <div className="flex gap-2">
+          <Button
+            render={<Link href={`/playground?metric=${encodeURIComponent(metric.name)}`} className="flex-1" />}
+            nativeButton={false}
+            size="sm"
+            className="rounded-[2px] gap-2 flex-1"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+            Edit in Playground
+          </Button>
+
           {isAiJudge ? (
-            <>
-              <Button
-                render={<Link href={`/playground?metric=${encodeURIComponent(metric.name)}`} className="flex-1" />}
-                nativeButton={false}
-                size="sm"
-                className="rounded-[2px] gap-2 flex-1"
-              >
-                <Pencil className="w-3.5 h-3.5" />
-                Edit in Playground
-              </Button>
-              <DeleteMetricButton metricId={metric.id} metricName={metric.name} />
-            </>
+            <DeleteMetricButton metricId={metric.id} metricName={metric.name} />
           ) : (
             <TooltipProvider>
               <Tooltip>
@@ -189,7 +188,7 @@ export function MetricDetail({ metric }: MetricDetailProps) {
                   render={
                     <span
                       tabIndex={0}
-                      className="flex-1 cursor-not-allowed focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-[2px]"
+                      className="cursor-not-allowed focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-[2px]"
                       aria-label="Primitive metric information"
                     />
                   }
@@ -198,13 +197,13 @@ export function MetricDetail({ metric }: MetricDetailProps) {
                     size="sm"
                     variant="outline"
                     disabled
-                    className="w-full rounded-[2px] opacity-50 pointer-events-none"
+                    className="rounded-[2px] opacity-50 pointer-events-none"
                   >
                     System metric — read only
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Primitive metrics cannot be edited or deleted</p>
+                  <p>Primitive metrics cannot be deleted</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
