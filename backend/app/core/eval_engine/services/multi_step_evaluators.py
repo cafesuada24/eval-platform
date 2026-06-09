@@ -64,6 +64,7 @@ async def _call_llm_structured(
     response_schema: type[BaseModel],
 ) -> Any:
     """Calls LiteLLM's structured generation with a strict Pydantic JSON schema."""
+    import json
     model_name = _get_litellm_model_name(metric)
     temperature = (
         metric.model_configuration.temperature
@@ -71,12 +72,21 @@ async def _call_llm_structured(
         else 0.0
     )
 
+    ta = TypeAdapter(response_schema)
+    schema_str = json.dumps(ta.json_schema())
+    
+    # Inject JSON schema instructions into system prompt
+    enhanced_system_prompt = (
+        f"{system_prompt}\n\n"
+        "You MUST return your output ONLY as a JSON object matching this JSON schema:\n"
+        f"{schema_str}\n\n"
+        "Do not include any markdown styling, code block wrappers (such as ```json), conversational filler, or extra text. Output ONLY raw, valid JSON."
+    )
+
     messages = [
-        {"role": "system", "content": system_prompt},
+        {"role": "system", "content": enhanced_system_prompt},
         {"role": "user", "content": user_prompt},
     ]
-
-    ta = TypeAdapter(response_schema)
 
     response = await litellm.acompletion(
         model=model_name,
@@ -92,7 +102,17 @@ async def _call_llm_structured(
     if not response.choices or response.choices[0].message.content is None:
         raise ValueError("LLM returned an empty or invalid response")
 
-    content = response.choices[0].message.content
+    content = response.choices[0].message.content.strip()
+    
+    # Strip markdown wrappers if present
+    if content.startswith("```json"):
+        content = content[7:]
+    elif content.startswith("```"):
+        content = content[3:]
+    if content.endswith("```"):
+        content = content[:-3]
+    content = content.strip()
+
     return ta.validate_json(content)
 
 
