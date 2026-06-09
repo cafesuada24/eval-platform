@@ -128,6 +128,28 @@ def extract_latency_ms(context: EvaluationContext) -> int | None:
     return total if found else None
 
 
+@extractor('input_artifacts_ocr')
+def extract_input_artifacts_ocr(context: EvaluationContext) -> str | None:
+    events = context.events_by_type.get(RuntimeEventType.FILE_PROCESSED, [])
+
+    ocr_texts = []
+    for ev in events:
+        if (
+            isinstance(ev.payload, FileProcessedPayload)
+            and ev.payload.processor == 'ocr'
+        ):
+            ocr_texts.append(ev.payload.content)
+
+    if ocr_texts:
+        return '\n'.join(ocr_texts)
+
+    for state in context.runtime_states:
+        if state.metadata and 'input_artifacts_ocr' in state.metadata:
+            return state.metadata['input_artifacts_ocr']
+
+    return None
+
+
 # ==========
 class RuntimeStateExtractorService:
     """Runtime state extractor."""
