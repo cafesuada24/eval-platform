@@ -9,7 +9,8 @@ import {
   ListTree, 
   Database, 
   Activity, 
-  Terminal
+  Terminal,
+  Sliders
 } from "lucide-react"
 
 import {
@@ -52,6 +53,11 @@ const data = {
           title: "Pipelines",
           url: "/pipelines",
           icon: ListTree,
+        },
+        {
+          title: "Metrics",
+          url: "/metrics",
+          icon: Sliders,
         },
         {
           title: "Datasets",
