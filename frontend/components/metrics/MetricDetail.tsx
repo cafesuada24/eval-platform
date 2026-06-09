@@ -170,13 +170,13 @@ export function MetricDetail({ metric }: MetricDetailProps) {
         <Separator className="opacity-40" />
         <div className="flex gap-2">
           <Button
-            render={<Link href={`/playground?metric=${encodeURIComponent(metric.name)}`} className="flex-1" />}
+            render={<Link href={`/metric-builder?metric=${encodeURIComponent(metric.name)}`} className="flex-1" />}
             nativeButton={false}
             size="sm"
             className="rounded-[2px] gap-2 flex-1"
           >
             <Pencil className="w-3.5 h-3.5" />
-            Edit in Playground
+            Edit in Metric Builder
           </Button>
 
           {isAiJudge ? (

@@ -40,8 +40,8 @@ const data = {
           icon: LayoutDashboard,
         },
         {
-          title: "Playground",
-          url: "/playground",
+          title: "Metric Builder",
+          url: "/metric-builder",
           icon: Bot,
         },
       ],

@@ -16,7 +16,7 @@
 ## 2. Domain Lexicon (UI Context)
 
 ### Core Components
-* **`Metric Playground`**: The flagship UI view. A resizable split-pane layout with the Agent Chat on the left and the Tabbed Configurator on the right.
+* **`Metric Builder`**: The flagship UI view. A resizable split-pane layout with the Agent Chat on the left and the Tabbed Configurator on the right.
 * **`Tool Interceptor`**: The frontend logic (via Vercel AI SDK's `toolInvocations`) that listens for backend tool calls and patches the `react-hook-form` state.
 * **`Semantic Threshold Builder`**: A custom form component allowing users to add assertion rules (e.g., "Fail if > 4.0") to metrics within a pipeline.
 
@@ -48,11 +48,11 @@ frontend/
 │   ├── app/
 │   │   ├── metrics/                # Metrics Table View
 │   │   ├── pipelines/              # Pipeline List & Detail View
-│   │   ├── playground/[id]/        # The Split-Pane Metric Editor
+│   │   ├── metric-builder/         # The Split-Pane Metric Editor
 │   │   └── layout.tsx              # Sidebar Navigation Shell
 │   ├── components/
 │   │   ├── ui/                     # shadcn/ui primitives (Button, Input, Slider)
-│   │   ├── playground/             # AgentChat, MetricConfigurator, ToolInterceptor
+│   │   ├── metric-builder/         # AgentChat, MetricConfigurator, ToolInterceptor
 │   │   └── pipelines/              # ThresholdBuilder, PipelineMetricCard
 │   └── lib/
 │       └── utils.ts                # Tailwind merge utils (cn)

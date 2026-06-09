@@ -12,7 +12,7 @@ import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { UseFormReturn } from "react-hook-form"
-import { MetricConfig } from "@/app/playground/page"
+import { MetricConfig } from "@/app/metric-builder/page"
 import { Button } from "@/components/ui/button"
 
 const systemExtractors = ["output_text", "user_prompt", "context_documents"]

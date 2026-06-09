@@ -5,8 +5,8 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable"
-import { AgentChat } from "@/components/playground/AgentChat"
-import { MetricConfigurator } from "@/components/playground/MetricConfigurator"
+import { AgentChat } from "@/components/metric-builder/AgentChat"
+import { MetricConfigurator } from "@/components/metric-builder/MetricConfigurator"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Save } from "lucide-react"
@@ -49,7 +49,7 @@ function applyMetricDraft(
   if (draft.scoring_scale_type !== undefined) setValue("data_type", draft.scoring_scale_type, { shouldValidate: true, shouldDirty: true });
 }
 
-function PlaygroundContent() {
+function MetricBuilderContent() {
   const searchParams = useSearchParams();
   const initialMetricName = searchParams.get("metric");
 
@@ -321,7 +321,7 @@ function PlaygroundContent() {
     <div className="flex flex-col h-[calc(100vh-3.5rem)]">
       <div className="flex items-center justify-between px-4 py-2 border-b border-border/50 bg-background shrink-0">
         <div className="flex items-center gap-4">
-          <h1 className="text-sm font-semibold tracking-tight">Metric Playground</h1>
+          <h1 className="text-sm font-semibold tracking-tight">Metric Builder</h1>
           <div className="flex items-center gap-2">
             <span className={`flex h-2 w-2 rounded-full ${isLoading ? "bg-amber-500 animate-pulse" : "bg-emerald-500 animate-pulse"}`} />
             <span className="text-xs text-muted-foreground font-medium">
@@ -368,10 +368,10 @@ function PlaygroundContent() {
   )
 }
 
-export default function PlaygroundPage() {
+export default function MetricBuilderPage() {
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <PlaygroundContent />
+      <MetricBuilderContent />
     </Suspense>
   )
 }

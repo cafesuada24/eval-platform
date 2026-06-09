@@ -233,12 +233,12 @@ export default async function Home() {
               <CardDescription className="text-xs">Quick setup triggers for pipeline components.</CardDescription>
             </CardHeader>
             <CardContent className="pt-6 space-y-4">
-              <Link href="/playground" className="block">
+              <Link href="/metric-builder" className="block">
                 <div className="p-4 rounded-[2px] border border-border/50 bg-card/30 hover:border-primary/50 transition-all cursor-pointer group flex items-start justify-between">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <Bot className="h-4 w-4 text-primary" />
-                      <span className="font-semibold text-xs uppercase tracking-wider">AI Judge Playground</span>
+                      <span className="font-semibold text-xs uppercase tracking-wider">AI Judge Metric Builder</span>
                     </div>
                     <p className="text-xs text-muted-foreground">Draft and debug custom LLM-as-a-judge metrics with the interactive agent.</p>
                   </div>

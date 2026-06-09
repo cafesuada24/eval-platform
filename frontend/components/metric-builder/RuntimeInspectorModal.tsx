@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Loader2, TestTube, CheckCircle2, FileText, Lightbulb } from "lucide-react";
 import { toast } from "sonner";
-import { MetricConfig } from "@/app/playground/page";
+import { MetricConfig } from "@/app/metric-builder/page";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { motion, AnimatePresence } from "framer-motion";
 

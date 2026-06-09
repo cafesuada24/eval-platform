@@ -144,10 +144,10 @@ function MetricPreviewSheet({ metric, open, onClose }: { metric: Metric | null; 
           <Separator className="opacity-50" />
           <div className="flex gap-2 pt-1">
             {isAiJudge ? (
-              <Link href={`/playground?metric=${metric.name}`} className="flex-1">
+              <Link href={`/metric-builder?metric=${metric.name}`} className="flex-1">
                 <Button size="sm" className="w-full rounded-[2px] gap-2">
                   <Pencil className="w-3.5 h-3.5" />
-                  Edit in Playground
+                  Edit in Metric Builder
                 </Button>
               </Link>
             ) : (
@@ -242,7 +242,7 @@ function MetricRow({
             </TooltipProvider>
           ) : (
             <>
-              <Link href={`/playground?metric=${metric.name}`}>
+              <Link href={`/metric-builder?metric=${metric.name}`}>
                 <Button variant="ghost" size="icon" className="hover:text-primary hover:bg-primary/10">
                   <Pencil className="w-4 h-4" />
                   <span className="sr-only">Edit</span>

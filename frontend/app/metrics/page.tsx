@@ -32,7 +32,7 @@ export default async function MetricsPage() {
         title="Metrics Registry"
         description="Browse and manage your primitive and AI-judged evaluation metrics."
         actions={
-          <Link href="/playground">
+          <Link href="/metric-builder">
             <Button size="sm" className="h-9 shadow-sm rounded-[2px]">
               <Settings2 className="w-4 h-4 mr-2" />
               Create Custom Metric
