@@ -28,9 +28,9 @@ export function PageHeader({
           {title}
         </h1>
         {description && (
-          <p className="text-xs text-muted-foreground leading-relaxed">
+          <div className="text-xs text-muted-foreground leading-relaxed">
             {description}
-          </p>
+          </div>
         )}
       </div>
       {actions && (
