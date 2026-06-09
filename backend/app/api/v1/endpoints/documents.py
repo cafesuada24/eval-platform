@@ -6,6 +6,8 @@ from app.core.documents.services import DocumentService
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from google import genai
 from google.genai import types
+from app.core.shared.retry import with_retry
+
 
 router = APIRouter()
 
@@ -53,13 +55,18 @@ async def upload_file(
         if not text_content.strip():
             try:
                 client = genai.Client()
-                response = client.models.generate_content(
-                    model='gemini-3.1-flash-lite',
-                    contents=[
-                        types.Part.from_bytes(data=file_bytes, mime_type=mime_type),
-                        'Extract all text from this document/image. Preserve formatting where appropriate but output ONLY the raw extracted text. Do not add conversational filler, introductions, or markdown wraps. Output ONLY the extracted text contents.',
-                    ],
-                )
+
+                @with_retry()
+                async def _call_gemini_ocr() -> types.GenerateContentResponse:
+                    return await client.aio.models.generate_content(
+                        model='gemini-3.1-flash-lite',
+                        contents=[
+                            types.Part.from_bytes(data=file_bytes, mime_type=mime_type),
+                            'Extract all text from this document/image. Preserve formatting where appropriate but output ONLY the raw extracted text. Do not add conversational filler, introductions, or markdown wraps. Output ONLY the extracted text contents.',
+                        ],
+                    )
+
+                response = await _call_gemini_ocr()
                 text_content = response.text or ''
             except Exception as e:
                 raise HTTPException(
