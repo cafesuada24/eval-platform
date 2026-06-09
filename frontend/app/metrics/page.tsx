@@ -26,7 +26,7 @@ export default async function MetricsPage() {
   const metrics = await getMetrics();
 
   return (
-    <div className="p-8 max-w-6xl mx-auto flex flex-col h-[calc(100vh-3.5rem)] gap-6 bg-background">
+    <div className="p-8 w-full flex flex-col h-[calc(100vh-3.5rem)] gap-6 bg-background">
       <PageHeader
         preTitle="Evaluation Core"
         title="Metrics Registry"
