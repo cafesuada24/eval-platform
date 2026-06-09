@@ -13,9 +13,10 @@ interface MetricsListProps {
   metrics: Metric[]
   selectedId: string | null
   onSelect: (id: string) => void
+  className?: string
 }
 
-export function MetricsList({ metrics, selectedId, onSelect }: MetricsListProps) {
+export function MetricsList({ metrics, selectedId, onSelect, className }: MetricsListProps) {
   const [query, setQuery] = useState("")
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all")
 
@@ -47,7 +48,7 @@ export function MetricsList({ metrics, selectedId, onSelect }: MetricsListProps)
   ]
 
   return (
-    <div className="flex flex-col h-full border-r border-border/40">
+    <div className={cn("flex flex-col h-full border-r border-border/40", className)}>
       {/* Search + filter header */}
       <div className="p-3 space-y-2 shrink-0 border-b border-border/40 bg-card/20">
         <div className="relative">
