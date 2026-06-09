@@ -1,6 +1,8 @@
 """AI judge service implementations."""
 
 import litellm
+
+litellm.num_retries = 0
 from app.core.eval_engine.models import JudgeResult, Metric
 from app.core.shared.retry import with_retry
 from pydantic import TypeAdapter
@@ -28,6 +30,7 @@ class LiteLLMAIJudge:
 
     def __init__(self) -> None:
         litellm.drop_params = True
+        litellm.num_retries = 0
 
     @with_retry()
     async def evaluate(
@@ -49,7 +52,8 @@ You are an **objective AI evaluation judge**. Your task is to evaluate the provi
 
 <instructions>
 To ensure a rigorous and detailed evaluation, you must follow a step-by-step reasoning process **BEFORE** assigning a score.
-You must return your output ONLY as a JSON object. Do not include any markdown styling for the code block (such as ```json), conversational filler, or extra text. Output ONLY the raw, valid JSON.
+You MUST return your output ONLY as a JSON object. Do not include any markdown styling for the code block (such as ```json), conversational filler, or extra text. Output ONLY the raw, valid JSON.
+You MUST respond in user's language.
 </instructions>
 
 <output_contract>
@@ -81,6 +85,7 @@ The JSON object MUST contain exactly these four fields in this EXACT order:
                 'strict': True,
             },
             temperature=temperature,
+            num_retries=0,
         )
 
         content = response.choices[0].message.content

@@ -1,27 +1,44 @@
-name: "ocr_readability_judge"
-type: "ai-judge"
-description: "Evaluates the raw text quality of the ingested files to determine if the PDF/Image parsing was successful or if it resulted in garbled, unreadable nonsense."
-model_configuration:
-  provider: "anthropic"
-  model: "claude-3-5-sonnet"
-  temperature: 0.0
+name: ocr_readability_judge
+description: Custom AI judge metric for ocr_readability_judge
+type: ai-judge
 required_inputs:
-  - "input_artifacts_ocr"
+- input_artifacts_ocr
 scoring_scale:
-  min: 1
-  max: 5
-  data_type: "integer"
-prompt_template: |
-  You are a data-ingestion quality assurance judge. Your task is to evaluate the readability and coherence of text extracted from an uploaded document or image via OCR.
-  
+  min: 1.0
+  max: 5.0
+  data_type: integer
+model_configuration:
+  provider: google
+  model: gemini-3.1-flash-lite
+  temperature: 0.0
+prompt_template: 'You are a data-ingestion quality assurance judge. Your task is to
+  evaluate the readability and coherence of text extracted from an uploaded document
+  or image via OCR.
+
+
   Extracted Text:
+
   {{ input_artifacts_ocr }}
-  
+
+
   Evaluate the text using the following scale:
-  1 - Complete garbage: Mostly random characters, missing spaces, or completely unreadable formatting.
-  2 - Poor: Severe formatting issues, many words are fused together, but a few concepts are decipherable.
-  3 - Fair: Readable, but contains frequent spelling errors, broken sentences, or disjointed paragraphs due to bad parsing.
-  4 - Good: Mostly coherent and readable with only minor artifacting (e.g., occasional weird line breaks or stray headers).
+
+  1 - Complete garbage: Mostly random characters, missing spaces, or completely unreadable
+  formatting.
+
+  2 - Poor: Severe formatting issues, many words are fused together, but a few concepts
+  are decipherable.
+
+  3 - Fair: Readable, but contains frequent spelling errors, broken sentences, or
+  disjointed paragraphs due to bad parsing.
+
+  4 - Good: Mostly coherent and readable with only minor artifacting (e.g., occasional
+  weird line breaks or stray headers).
+
   5 - Perfect: Flawless, human-readable text with no obvious extraction errors.
-  
+
+
   Provide your score and a brief justification quoting any garbled text if applicable.
+
+  '
+is_system_default: false

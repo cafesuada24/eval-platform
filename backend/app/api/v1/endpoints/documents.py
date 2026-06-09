@@ -3,11 +3,10 @@ from typing import Annotated
 from app.api.dependencies import get_document_service
 from app.api.v1.schemas.documents_dtos import UploadedFileMetadata
 from app.core.documents.services import DocumentService
+from app.core.shared.retry import with_retry
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from google import genai
 from google.genai import types
-from app.core.shared.retry import with_retry
-
 
 router = APIRouter()
 

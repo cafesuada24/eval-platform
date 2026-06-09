@@ -1,40 +1,48 @@
 """Multi-step evaluators for rigorous evaluation of RAG metrics."""
 
+import json
 from typing import Any, Literal
+
 import litellm
-from pydantic import BaseModel, TypeAdapter
 from app.core.eval_engine.models import JudgeResult, Metric
-from app.infra.services.ai_judge_service import _get_litellm_model_name
+
+litellm.num_retries = 0
 from app.core.shared.retry import with_retry
-
-
+from app.infra.services.ai_judge_service import _get_litellm_model_name
+from pydantic import BaseModel, TypeAdapter
 
 # --- Pydantic Schema Models for Structured Output Validation ---
 
+
 class ClaimsList(BaseModel):
     """Pydantic schema representing a list of claims/facts extracted from text."""
+
     claims: list[str]
 
 
 class ClaimVerdict(BaseModel):
     """Factual verification result for a single claim against the context."""
+
     claim: str
-    verdict: Literal["supported", "refuted", "neutral"]
+    verdict: Literal['supported', 'refuted', 'neutral']
     reason: str
 
 
 class ClaimVerificationResponse(BaseModel):
     """Wrapper response schema for claims verification."""
+
     verifications: list[ClaimVerdict]
 
 
 class StatementsList(BaseModel):
     """Pydantic schema representing a list of statements extracted from text."""
+
     statements: list[str]
 
 
 class StatementVerdict(BaseModel):
     """Relevancy verification result for a single statement against the query."""
+
     statement: str
     relevant: bool
     reason: str
@@ -42,11 +50,13 @@ class StatementVerdict(BaseModel):
 
 class StatementRelevancyResponse(BaseModel):
     """Wrapper response schema for statement relevancy."""
+
     verdicts: list[StatementVerdict]
 
 
 class RecallVerdict(BaseModel):
     """Recall verification result for a ground-truth claim in the retrieved context."""
+
     claim: str
     recalled: bool
     reason: str
@@ -54,10 +64,12 @@ class RecallVerdict(BaseModel):
 
 class RecallVerificationResponse(BaseModel):
     """Wrapper response schema for context recall."""
+
     verdicts: list[RecallVerdict]
 
 
 # --- Helper Methods ---
+
 
 @with_retry()
 async def _call_llm_structured(
@@ -67,52 +79,50 @@ async def _call_llm_structured(
     response_schema: type[BaseModel],
 ) -> Any:
     """Calls LiteLLM's structured generation with a strict Pydantic JSON schema."""
-    import json
     model_name = _get_litellm_model_name(metric)
     temperature = (
-        metric.model_configuration.temperature
-        if metric.model_configuration
-        else 0.0
+        metric.model_configuration.temperature if metric.model_configuration else 0.0
     )
 
     ta = TypeAdapter(response_schema)
     schema_str = json.dumps(ta.json_schema())
-    
+
     # Inject JSON schema instructions into system prompt
     enhanced_system_prompt = (
-        f"{system_prompt}\n\n"
-        "You MUST return your output ONLY as a JSON object matching this JSON schema:\n"
-        f"{schema_str}\n\n"
-        "Do not include any markdown styling, code block wrappers (such as ```json), conversational filler, or extra text. Output ONLY raw, valid JSON."
+        f'{system_prompt}\n\n'
+        'You MUST return your output ONLY as a JSON object matching this JSON schema:\n'
+        f'{schema_str}\n\n'
+        'Do not include any markdown styling, code block wrappers (such as ```json), conversational filler, or extra text. Output ONLY raw, valid JSON.'
     )
 
     messages = [
-        {"role": "system", "content": enhanced_system_prompt},
-        {"role": "user", "content": user_prompt},
+        {'role': 'system', 'content': enhanced_system_prompt},
+        {'role': 'user', 'content': user_prompt},
     ]
 
     response = await litellm.acompletion(
         model=model_name,
         messages=messages,
         response_format={
-            "type": "json_schema",
-            "json_schema": ta.json_schema(),
-            "strict": True,
+            'type': 'json_schema',
+            'json_schema': ta.json_schema(),
+            'strict': True,
         },
         temperature=temperature,
+        num_retries=0,
     )
 
     if not response.choices or response.choices[0].message.content is None:
-        raise ValueError("LLM returned an empty or invalid response")
+        raise ValueError('LLM returned an empty or invalid response')
 
-    content = response.choices[0].message.content.strip()
-    
+    content: str = response.choices[0].message.content.strip()
+
     # Strip markdown wrappers if present
-    if content.startswith("```json"):
+    if content.startswith('```json'):
         content = content[7:]
-    elif content.startswith("```"):
+    elif content.startswith('```'):
         content = content[3:]
-    if content.endswith("```"):
+    if content.endswith('```'):
         content = content[:-3]
     content = content.strip()
 
@@ -130,7 +140,7 @@ def _get_binding_value(
 
     # Check dotted notation ending in the key (e.g. testcase.expected_outputs.expected_output matches expected_output)
     for k, v in bindings.items():
-        if k.endswith(f".{key}"):
+        if k.endswith(f'.{key}'):
             return str(v)
 
     if fallback_substrings:
@@ -139,25 +149,28 @@ def _get_binding_value(
                 if f_sub in k:
                     return str(v)
 
-    raise KeyError(f"Required key '{key}' not found in bindings: {list(bindings.keys())}")
+    raise KeyError(
+        f"Required key '{key}' not found in bindings: {list(bindings.keys())}"
+    )
 
 
 # --- Workflow Implementations ---
+
 
 async def evaluate_faithfulness_rigorous(
     metric: Metric,
     bindings: dict[str, Any],
 ) -> JudgeResult:
     """Rigorous Faithfulness Metric: Checks that output claims are supported by context."""
-    retrieved_context = _get_binding_value(bindings, "retrieved_context", ["context"])
-    output_text = _get_binding_value(bindings, "output_text", ["output", "response"])
+    retrieved_context = _get_binding_value(bindings, 'retrieved_context', ['context'])
+    output_text = _get_binding_value(bindings, 'output_text', ['output', 'response'])
 
     # Step 1: Claim Extraction
     system_prompt_extract = (
-        "You are a helpful assistant. Your task is to extract all atomic factual claims from the given text. "
-        "Each claim should be a single, simple, standalone fact."
+        'You are a helpful assistant. Your task is to extract all atomic factual claims from the given text. '
+        'Each claim should be a single, simple, standalone fact.'
     )
-    user_prompt_extract = f"Text:\n{output_text}"
+    user_prompt_extract = f'Text:\n{output_text}'
 
     claims_response = await _call_llm_structured(
         metric=metric,
@@ -170,20 +183,19 @@ async def evaluate_faithfulness_rigorous(
     if not claims:
         return JudgeResult(
             score=1.0,
-            justification=["No claims extracted from output_text."],
-            evidence=["No claims extracted."],
+            justification=['No claims extracted from output_text.'],
+            evidence=['No claims extracted.'],
             improvements=None,
         )
 
     # Step 2: Claim Verification
     system_prompt_verify = (
-        "You are an objective AI evaluation judge. Your task is to verify each claim against the retrieved context. "
+        'You are an objective AI evaluation judge. Your task is to verify each claim against the retrieved context. '
         "For each claim, decide if it is 'supported', 'refuted', or 'neutral' based strictly on the context. "
-        "Provide a clear reasoning for each verdict."
+        'Provide a clear reasoning for each verdict.'
     )
-    user_prompt_verify = (
-        f"Context:\n{retrieved_context}\n\n"
-        f"Claims:\n" + "\n".join(f"- {c}" for c in claims)
+    user_prompt_verify = f'Context:\n{retrieved_context}\n\nClaims:\n' + '\n'.join(
+        f'- {c}' for c in claims
     )
 
     verification_response = await _call_llm_structured(
@@ -196,9 +208,7 @@ async def evaluate_faithfulness_rigorous(
     verifications = verification_response.verifications
 
     # Calculate ratio score
-    supported_count = sum(
-        1 for v in verifications if v.verdict.lower() == "supported"
-    )
+    supported_count = sum(1 for v in verifications if v.verdict.lower() == 'supported')
     total_claims = len(verifications)
     score = supported_count / total_claims if total_claims > 0 else 1.0
 
@@ -224,15 +234,15 @@ async def evaluate_answer_relevancy_rigorous(
     bindings: dict[str, Any],
 ) -> JudgeResult:
     """Rigorous Answer Relevancy Metric: Evaluates if generated statements address the query."""
-    input_text = _get_binding_value(bindings, "input_text", ["input", "query"])
-    output_text = _get_binding_value(bindings, "output_text", ["output", "response"])
+    input_text = _get_binding_value(bindings, 'input_text', ['input', 'query'])
+    output_text = _get_binding_value(bindings, 'output_text', ['output', 'response'])
 
     # Step 1: Statement Extraction
     system_prompt_extract = (
-        "You are a helpful assistant. Your task is to extract all standalone sentences/statements from the output text. "
-        "Each statement should represent a single point made."
+        'You are a helpful assistant. Your task is to extract all standalone sentences/statements from the output text. '
+        'Each statement should represent a single point made.'
     )
-    user_prompt_extract = f"Output text:\n{output_text}"
+    user_prompt_extract = f'Output text:\n{output_text}'
 
     statements_response = await _call_llm_structured(
         metric=metric,
@@ -245,20 +255,19 @@ async def evaluate_answer_relevancy_rigorous(
     if not statements:
         return JudgeResult(
             score=1.0,
-            justification=["No statements extracted from output_text."],
-            evidence=["No statements extracted."],
+            justification=['No statements extracted from output_text.'],
+            evidence=['No statements extracted.'],
             improvements=None,
         )
 
     # Step 2: Relevancy Assessment
     system_prompt_verify = (
-        "You are an objective AI evaluation judge. Your task is to assess whether each statement from the response "
-        "is relevant to answering the user query. Classify each statement as relevant (true) or irrelevant (false) "
-        "along with the reasoning."
+        'You are an objective AI evaluation judge. Your task is to assess whether each statement from the response '
+        'is relevant to answering the user query. Classify each statement as relevant (true) or irrelevant (false) '
+        'along with the reasoning.'
     )
-    user_prompt_verify = (
-        f"Query:\n{input_text}\n\n"
-        f"Statements:\n" + "\n".join(f"- {s}" for s in statements)
+    user_prompt_verify = f'Query:\n{input_text}\n\nStatements:\n' + '\n'.join(
+        f'- {s}' for s in statements
     )
 
     relevancy_response = await _call_llm_structured(
@@ -280,7 +289,7 @@ async def evaluate_answer_relevancy_rigorous(
     evidence: list[str] = []
 
     for v in verdicts:
-        status = "relevant" if v.relevant else "irrelevant"
+        status = 'relevant' if v.relevant else 'irrelevant'
         detail = (
             f"Statement: '{v.statement}' | Relevancy: {status} | Reason: {v.reason}"
         )
@@ -300,19 +309,19 @@ async def evaluate_context_recall_rigorous(
     bindings: dict[str, Any],
 ) -> JudgeResult:
     """Rigorous Context Recall Metric: Assesses if ground-truth facts are recalled in context."""
-    retrieved_context = _get_binding_value(bindings, "retrieved_context", ["context"])
+    retrieved_context = _get_binding_value(bindings, 'retrieved_context', ['context'])
     expected_output = _get_binding_value(
         bindings,
-        "testcase.expected_outputs.expected_output",
-        ["expected_output", "ground_truth"],
+        'testcase.expected_outputs.expected_output',
+        ['expected_output', 'ground_truth'],
     )
 
     # Step 1: Claim Extraction from Ground Truth
     system_prompt_extract = (
-        "You are a helpful assistant. Your task is to extract all atomic factual claims from the expected output. "
-        "Each claim should represent a single fact/statement of truth."
+        'You are a helpful assistant. Your task is to extract all atomic factual claims from the expected output. '
+        'Each claim should represent a single fact/statement of truth.'
     )
-    user_prompt_extract = f"Expected output:\n{expected_output}"
+    user_prompt_extract = f'Expected output:\n{expected_output}'
 
     claims_response = await _call_llm_structured(
         metric=metric,
@@ -325,20 +334,20 @@ async def evaluate_context_recall_rigorous(
     if not claims:
         return JudgeResult(
             score=1.0,
-            justification=["No claims extracted from expected output."],
-            evidence=["No claims extracted."],
+            justification=['No claims extracted from expected output.'],
+            evidence=['No claims extracted.'],
             improvements=None,
         )
 
     # Step 2: Recall Verification
     system_prompt_verify = (
-        "You are an objective AI evaluation judge. Your task is to verify whether each claim extracted from the expected output "
-        "can be recalled/found in the retrieved context. For each claim, decide if it is recalled (true) or not recalled (false) "
-        "based strictly on the context, providing a clear reason."
+        'You are an objective AI evaluation judge. Your task is to verify whether each claim extracted from the expected output '
+        'can be recalled/found in the retrieved context. For each claim, decide if it is recalled (true) or not recalled (false) '
+        'based strictly on the context, providing a clear reason.'
     )
     user_prompt_verify = (
-        f"Retrieved context:\n{retrieved_context}\n\n"
-        f"Claims to verify:\n" + "\n".join(f"- {c}" for c in claims)
+        f'Retrieved context:\n{retrieved_context}\n\n'
+        f'Claims to verify:\n' + '\n'.join(f'- {c}' for c in claims)
     )
 
     recall_response = await _call_llm_structured(
@@ -360,10 +369,8 @@ async def evaluate_context_recall_rigorous(
     evidence: list[str] = []
 
     for v in verdicts:
-        status = "recalled" if v.recalled else "not recalled"
-        detail = (
-            f"Claim: '{v.claim}' | Recall status: {status} | Reason: {v.reason}"
-        )
+        status = 'recalled' if v.recalled else 'not recalled'
+        detail = f"Claim: '{v.claim}' | Recall status: {status} | Reason: {v.reason}"
         justification.append(detail)
         evidence.append(detail)
 

@@ -49,7 +49,7 @@ RETRYABLE_EXCEPTIONS: tuple[type[BaseException], ...] = (
     litellm.BadGatewayError,
     litellm.InternalServerError,
     litellm.APIConnectionError,  # also catches litellm.Timeout (subclass)
-    litellm.BadRequestError,      # catches mapped quota/request errors
+    litellm.BadRequestError,  # catches mapped quota/request errors
     genai_errors.ServerError,
     TimeoutError,
     ConnectionError,
@@ -61,7 +61,9 @@ def with_retry(
     base_delay: float = 1.2,
     max_delay: float = 30.0,
     exceptions: tuple[type[BaseException], ...] = RETRYABLE_EXCEPTIONS,
-) -> Callable[[Callable[P, Coroutine[Any, Any, R]]], Callable[P, Coroutine[Any, Any, R]]]:
+) -> Callable[
+    [Callable[P, Coroutine[Any, Any, R]]], Callable[P, Coroutine[Any, Any, R]]
+]:
     """Decorator factory for async exponential-backoff retries with full jitter.
 
     Args:
@@ -88,12 +90,8 @@ def with_retry(
                         raise
 
                     # For BadRequestError, only retry if it corresponds to a 429 Rate/Quota Limit
-                    if isinstance(exc, litellm.BadRequestError):
-                        status_code = getattr(exc, "status_code", None)
-                        code = getattr(exc, "code", None)
-                        msg = str(exc).lower()
-                        if status_code != 429 and code != 429 and code != "429" and "429" not in msg:
-                            raise
+                    if isinstance(exc, litellm.BadRequestError) and exc.code != '429':
+                        raise
 
                     last_exc = exc
                     # Full-jitter backoff: sleep = random(0, min(cap, base * 2^(attempt-1)))

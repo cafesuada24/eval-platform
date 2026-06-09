@@ -3,8 +3,8 @@ type: ai-judge
 description: A highly precise, multi-call evaluation that extracts sentences, classifies their individual relevance to the user prompt, and computes the exact score mathematically.
 evaluation_strategy: answer_relevancy_rigorous
 model_configuration:
-  provider: openai
-  model: gpt-4o
+  provider: google
+  model: gemini-3.1-flash-lite
   temperature: 0.0
 required_inputs:
   - input_text
