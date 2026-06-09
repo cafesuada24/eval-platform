@@ -55,6 +55,7 @@ export function MetricsList({ metrics, selectedId, onSelect, className }: Metric
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
             placeholder="Search metrics..."
+            aria-label="Search metrics"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="pl-8 h-8 text-xs rounded-[2px] bg-background"
@@ -90,7 +91,7 @@ export function MetricsList({ metrics, selectedId, onSelect, className }: Metric
       </div>
 
       {/* List */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto" role="list" aria-label="Metrics">
         {filtered.length === 0 ? (
           <div className="flex items-center justify-center h-32 text-xs text-muted-foreground">
             No metrics match your search.
@@ -100,43 +101,44 @@ export function MetricsList({ metrics, selectedId, onSelect, className }: Metric
             const isSelected = metric.id === selectedId
             const isAiJudge = metric.type === "ai-judge"
             return (
-              <button
-                key={metric.id}
-                onClick={() => onSelect(metric.id)}
-                aria-current={isSelected ? "true" : undefined}
-                className={cn(
-                  "w-full text-left px-4 py-3 border-b border-border/30 transition-colors",
-                  isSelected
-                    ? "bg-primary/8 border-l-2 border-l-primary"
-                    : "border-l-2 border-l-transparent hover:bg-muted/30"
-                )}
-              >
-                <div className="flex items-center justify-between gap-2 mb-1">
-                  <span
-                    className={cn(
-                      "text-xs font-semibold truncate",
-                      isSelected ? "text-foreground" : "text-foreground/80"
-                    )}
-                    title={metric.name}
-                  >
-                    {metric.name}
-                  </span>
-                  <Badge
-                    variant={isAiJudge ? "default" : "secondary"}
-                    className={cn(
-                      "text-[9px] rounded-[2px] font-mono shrink-0 px-1.5",
-                      isAiJudge ? "bg-primary/10 text-primary border-primary/20" : ""
-                    )}
-                  >
-                    {isAiJudge ? "AI JUDGE" : "PRIMITIVE"}
-                  </Badge>
-                </div>
-                {metric.description && (
-                  <p className="text-[10px] text-muted-foreground line-clamp-1 leading-relaxed">
-                    {metric.description}
-                  </p>
-                )}
-              </button>
+              <div key={metric.id} role="listitem">
+                <button
+                  onClick={() => onSelect(metric.id)}
+                  aria-current={isSelected ? "true" : undefined}
+                  className={cn(
+                    "w-full text-left px-4 py-3 border-b border-border/30 transition-colors",
+                    isSelected
+                      ? "bg-primary/8 border-l-2 border-l-primary"
+                      : "border-l-2 border-l-transparent hover:bg-muted/30"
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span
+                      className={cn(
+                        "text-xs font-semibold truncate",
+                        isSelected ? "text-foreground" : "text-foreground/80"
+                      )}
+                      title={metric.name}
+                    >
+                      {metric.name}
+                    </span>
+                    <Badge
+                      variant={isAiJudge ? "default" : "secondary"}
+                      className={cn(
+                        "text-[9px] rounded-[2px] font-mono shrink-0 px-1.5",
+                        isAiJudge ? "bg-primary/10 text-primary border-primary/20" : ""
+                      )}
+                    >
+                      {isAiJudge ? "AI JUDGE" : "PRIMITIVE"}
+                    </Badge>
+                  </div>
+                  {metric.description && (
+                    <p className="text-[10px] text-muted-foreground line-clamp-1 leading-relaxed">
+                      {metric.description}
+                    </p>
+                  )}
+                </button>
+              </div>
             )
           })
         )}

@@ -19,9 +19,9 @@ interface MetricDetailProps {
   metric: Metric | null
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function SectionLabel({ children, id }: { children: React.ReactNode; id?: string }) {
   return (
-    <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+    <h3 id={id} className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
       {children}
     </h3>
   )
@@ -137,12 +137,30 @@ export function MetricDetail({ metric }: MetricDetailProps) {
           <>
             <Separator className="opacity-40" />
             <section className="space-y-3">
-              <SectionLabel>Prompt Template</SectionLabel>
+              <SectionLabel id="prompt-template-header">Prompt Template</SectionLabel>
               <pre
                 tabIndex={0}
+                aria-labelledby="prompt-template-header"
                 className="text-xs font-mono bg-muted/30 p-3 rounded-[2px] whitespace-pre-wrap leading-relaxed max-h-72 overflow-y-auto border border-border/30 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 {metric.prompt_template}
+              </pre>
+            </section>
+          </>
+        )}
+
+        {/* Formula (Primitive/System metrics only) */}
+        {metric.formula && (
+          <>
+            <Separator className="opacity-40" />
+            <section className="space-y-3">
+              <SectionLabel id="formula-header">Evaluation Formula</SectionLabel>
+              <pre
+                tabIndex={0}
+                aria-labelledby="formula-header"
+                className="text-xs font-mono bg-muted/30 p-3 rounded-[2px] whitespace-pre-wrap leading-relaxed border border-border/30 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                {metric.formula}
               </pre>
             </section>
           </>
@@ -154,7 +172,7 @@ export function MetricDetail({ metric }: MetricDetailProps) {
           {isAiJudge ? (
             <>
               <Button
-                render={<Link href={`/playground?metric=${metric.name}`} className="flex-1" />}
+                render={<Link href={`/playground?metric=${encodeURIComponent(metric.name)}`} className="flex-1" />}
                 size="sm"
                 className="rounded-[2px] gap-2 flex-1"
               >
