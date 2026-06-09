@@ -5,6 +5,8 @@ import litellm
 from pydantic import BaseModel, TypeAdapter
 from app.core.eval_engine.models import JudgeResult, Metric
 from app.infra.services.ai_judge_service import _get_litellm_model_name
+from app.core.shared.retry import with_retry
+
 
 
 # --- Pydantic Schema Models for Structured Output Validation ---
@@ -57,6 +59,7 @@ class RecallVerificationResponse(BaseModel):
 
 # --- Helper Methods ---
 
+@with_retry()
 async def _call_llm_structured(
     metric: Metric,
     system_prompt: str,
