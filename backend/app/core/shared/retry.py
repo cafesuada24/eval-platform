@@ -49,6 +49,7 @@ RETRYABLE_EXCEPTIONS: tuple[type[BaseException], ...] = (
     litellm.BadGatewayError,
     litellm.InternalServerError,
     litellm.APIConnectionError,  # also catches litellm.Timeout (subclass)
+    litellm.BadRequestError,      # catches mapped quota/request errors
     genai_errors.ServerError,
     TimeoutError,
     ConnectionError,
@@ -56,8 +57,8 @@ RETRYABLE_EXCEPTIONS: tuple[type[BaseException], ...] = (
 
 
 def with_retry(
-    max_attempts: int = 3,
-    base_delay: float = 1.0,
+    max_attempts: int = 5,
+    base_delay: float = 1.2,
     max_delay: float = 30.0,
     exceptions: tuple[type[BaseException], ...] = RETRYABLE_EXCEPTIONS,
 ) -> Callable[[Callable[P, Coroutine[Any, Any, R]]], Callable[P, Coroutine[Any, Any, R]]]:
