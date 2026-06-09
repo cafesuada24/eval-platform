@@ -1,13 +1,21 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { Search } from "lucide-react"
+import { Search, ArrowUpDown, Check } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import { Metric } from "@/lib/types"
 
 type TypeFilter = "all" | "ai-judge" | "primitive"
+type SortOption = "name-asc" | "name-desc" | "type-ai" | "type-primitive"
 
 interface MetricsListProps {
   metrics: Metric[]
@@ -19,10 +27,11 @@ interface MetricsListProps {
 export function MetricsList({ metrics, selectedId, onSelect, className }: MetricsListProps) {
   const [query, setQuery] = useState("")
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all")
+  const [sortBy, setSortBy] = useState<SortOption>("name-asc")
 
-  const filtered = useMemo(() => {
+  const filteredAndSorted = useMemo(() => {
     const q = query.toLowerCase()
-    return metrics.filter((m) => {
+    const filtered = metrics.filter((m) => {
       const matchesQuery =
         !q ||
         m.name.toLowerCase().includes(q) ||
@@ -30,7 +39,28 @@ export function MetricsList({ metrics, selectedId, onSelect, className }: Metric
       const matchesType = typeFilter === "all" || m.type === typeFilter
       return matchesQuery && matchesType
     })
-  }, [metrics, query, typeFilter])
+
+    return [...filtered].sort((a, b) => {
+      switch (sortBy) {
+        case "name-asc":
+          return a.name.localeCompare(b.name)
+        case "name-desc":
+          return b.name.localeCompare(a.name)
+        case "type-ai":
+          if (a.type !== b.type) {
+            return a.type === "ai-judge" ? -1 : 1
+          }
+          return a.name.localeCompare(b.name)
+        case "type-primitive":
+          if (a.type !== b.type) {
+            return a.type === "primitive" ? -1 : 1
+          }
+          return a.name.localeCompare(b.name)
+        default:
+          return 0
+      }
+    })
+  }, [metrics, query, typeFilter, sortBy])
 
   const aiJudgeCount = useMemo(
     () => metrics.filter((m) => m.type === "ai-judge").length,
@@ -51,15 +81,60 @@ export function MetricsList({ metrics, selectedId, onSelect, className }: Metric
     <div className={cn("flex flex-col h-full border-r border-border/40", className)}>
       {/* Search + filter header */}
       <div className="p-3 space-y-2 shrink-0 border-b border-border/40 bg-card/20">
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            placeholder="Search metrics..."
-            aria-label="Search metrics"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="pl-8 h-8 text-xs rounded-[2px] bg-background"
-          />
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Search metrics..."
+              aria-label="Search metrics"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="pl-8 h-8 text-xs rounded-[2px] bg-background"
+            />
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 rounded-[2px] border-border/40 bg-background hover:bg-muted/50 shrink-0"
+                />
+              }
+            >
+              <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem
+                onClick={() => setSortBy("name-asc")}
+                className="flex items-center justify-between text-xs cursor-pointer"
+              >
+                <span>Name (A - Z)</span>
+                {sortBy === "name-asc" && <Check className="h-3 w-3" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setSortBy("name-desc")}
+                className="flex items-center justify-between text-xs cursor-pointer"
+              >
+                <span>Name (Z - A)</span>
+                {sortBy === "name-desc" && <Check className="h-3 w-3" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setSortBy("type-ai")}
+                className="flex items-center justify-between text-xs cursor-pointer"
+              >
+                <span>Type (AI Judge First)</span>
+                {sortBy === "type-ai" && <Check className="h-3 w-3" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setSortBy("type-primitive")}
+                className="flex items-center justify-between text-xs cursor-pointer"
+              >
+                <span>Type (Primitive First)</span>
+                {sortBy === "type-primitive" && <Check className="h-3 w-3" />}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         <div className="flex gap-1">
           {tabs.map((tab) => (
@@ -92,12 +167,12 @@ export function MetricsList({ metrics, selectedId, onSelect, className }: Metric
 
       {/* List */}
       <div className="flex-1 overflow-y-auto" role="list" aria-label="Metrics">
-        {filtered.length === 0 ? (
+        {filteredAndSorted.length === 0 ? (
           <div className="flex items-center justify-center h-32 text-xs text-muted-foreground">
             No metrics match your search.
           </div>
         ) : (
-          filtered.map((metric) => {
+          filteredAndSorted.map((metric) => {
             const isSelected = metric.id === selectedId
             const isAiJudge = metric.type === "ai-judge"
             return (
