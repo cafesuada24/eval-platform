@@ -21,9 +21,9 @@ interface MetricDetailProps {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+    <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
       {children}
-    </h4>
+    </h3>
   )
 }
 
@@ -56,7 +56,7 @@ export function MetricDetail({ metric }: MetricDetailProps) {
           <div className="flex items-center gap-2 flex-wrap">
             <h2 className="text-lg font-bold tracking-tight">{metric.name}</h2>
             <Badge
-              variant={isAiJudge ? "default" : "secondary"}
+              variant="outline"
               className={cn(
                 "text-[10px] rounded-[2px] font-mono",
                 isAiJudge ? "bg-primary/15 text-primary border-primary/20" : ""
@@ -138,7 +138,10 @@ export function MetricDetail({ metric }: MetricDetailProps) {
             <Separator className="opacity-40" />
             <section className="space-y-3">
               <SectionLabel>Prompt Template</SectionLabel>
-              <pre className="text-xs font-mono bg-muted/30 p-3 rounded-[2px] whitespace-pre-wrap leading-relaxed max-h-72 overflow-y-auto border border-border/30">
+              <pre
+                tabIndex={0}
+                className="text-xs font-mono bg-muted/30 p-3 rounded-[2px] whitespace-pre-wrap leading-relaxed max-h-72 overflow-y-auto border border-border/30 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
                 {metric.prompt_template}
               </pre>
             </section>
@@ -150,23 +153,33 @@ export function MetricDetail({ metric }: MetricDetailProps) {
         <div className="flex gap-2">
           {isAiJudge ? (
             <>
-              <Link href={`/playground?metric=${metric.name}`} className="flex-1">
-                <Button size="sm" className="w-full rounded-[2px] gap-2">
-                  <Pencil className="w-3.5 h-3.5" />
-                  Edit in Playground
-                </Button>
-              </Link>
+              <Button
+                render={<Link href={`/playground?metric=${metric.name}`} className="flex-1" />}
+                size="sm"
+                className="rounded-[2px] gap-2 flex-1"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+                Edit in Playground
+              </Button>
               <DeleteMetricButton metricId={metric.id} metricName={metric.name} />
             </>
           ) : (
             <TooltipProvider>
               <Tooltip>
-                <TooltipTrigger render={<span className="flex-1" />}>
+                <TooltipTrigger
+                  render={
+                    <span
+                      tabIndex={0}
+                      className="flex-1 cursor-not-allowed focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-[2px]"
+                      aria-label="Primitive metric information"
+                    />
+                  }
+                >
                   <Button
                     size="sm"
                     variant="outline"
                     disabled
-                    className="w-full rounded-[2px] opacity-50 cursor-not-allowed"
+                    className="w-full rounded-[2px] opacity-50 pointer-events-none"
                   >
                     System metric — read only
                   </Button>
