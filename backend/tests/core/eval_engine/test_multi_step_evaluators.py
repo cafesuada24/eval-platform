@@ -166,3 +166,39 @@ async def test_context_recall_rigorous_empty_claims(mock_acompletion):
     result = await evaluate_context_recall_rigorous(metric, bindings)
     assert result.score == 1.0
     assert any("no claims" in item.lower() for item in result.justification)
+
+
+@pytest.mark.asyncio
+@patch("litellm.acompletion")
+async def test_call_llm_structured_robustness(mock_acompletion):
+    from app.core.eval_engine.services.multi_step_evaluators import _call_llm_structured, ClaimsList
+    
+    # Mock return value wrapped in markdown code blocks
+    mock_response = mock_litellm_response('```json\n{"claims": ["Robust claim 1", "Robust claim 2"]}\n```')
+    mock_acompletion.return_value = mock_response
+    
+    metric = Metric(
+        name="faithfulness_rigorous",
+        description="F",
+        type="ai-judge",
+        required_inputs=["retrieved_context", "output_text"],
+        model_configuration=ModelConfiguration(provider="openai", model="gpt-4o")
+    )
+    
+    result = await _call_llm_structured(
+        metric=metric,
+        system_prompt="Extract claims.",
+        user_prompt="Input text",
+        response_schema=ClaimsList
+    )
+    
+    # Assert result is correctly parsed into Pydantic model
+    assert isinstance(result, ClaimsList)
+    assert result.claims == ["Robust claim 1", "Robust claim 2"]
+    
+    # Assert system prompt was enhanced with instructions and JSON schema
+    called_messages = mock_acompletion.call_args.kwargs["messages"]
+    system_message = next(msg for msg in called_messages if msg["role"] == "system")
+    assert "You MUST return your output ONLY as a JSON object matching this JSON schema:" in system_message["content"]
+    assert '"required": ["claims"]' in system_message["content"]
+
