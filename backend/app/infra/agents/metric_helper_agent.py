@@ -28,6 +28,10 @@ from google import genai
 from google.genai import types
 from pydantic import TypeAdapter, ValidationError
 
+from logging import getLogger
+
+logger = getLogger(__name__)
+
 
 def format_query_results(results: list[QueryResult]) -> str:
     """Helper to convert chunks into an LLM-friendly string format."""
@@ -44,7 +48,7 @@ def format_query_results(results: list[QueryResult]) -> str:
     return '\n'.join(formatted)
 
 
-SYS_INSTRUCTION_TEMPLATE = Template(
+DEFAULT_TEMPLATE = Template(
     """<instruction>
 You are an expert AI Metric Builder, who helps user build metrics based on their preference.
 </instruction>
@@ -65,6 +69,14 @@ $allowed_variables
 </rules>
 """,
 )
+
+prompt_path = settings.prompt_dir / 'metric_builder/v1/system.txt'
+
+if not prompt_path.exists() or not prompt_path.is_dir():
+    logger.warning('System prompt file not found, using default template.')
+    builder_sysinstruct_template = DEFAULT_TEMPLATE
+else:
+    builder_sysinstruct_template = Template(str(prompt_path.resolve()))
 
 
 class GeminiMetricHelper:
@@ -97,7 +109,7 @@ class GeminiMetricHelper:
             ),
         )
 
-        system_instruction = SYS_INSTRUCTION_TEMPLATE.substitute(
+        system_instruction = builder_sysinstruct_template.substitute(
             allowed_variables=allowed_vars,
         )
 
@@ -258,11 +270,14 @@ class GeminiMetricHelper:
                         query=ev.query,
                         chunks=[
                             {
-                                'document': chunk.document.metadata.get('filename', chunk.document.id) or 'unknown',
+                                'document': chunk.document.metadata.get(
+                                    'filename', chunk.document.id,
+                                )
+                                or 'unknown',
                                 'content': chunk.document.text,
                                 'confidence': chunk.score,
-                            } for chunk in results
-
+                            }
+                            for chunk in results
                         ],
                         latency_ms=retrieval_latency_ms,
                     ),

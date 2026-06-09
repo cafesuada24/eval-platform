@@ -63,6 +63,10 @@ class Settings(BaseSettings):
     def batch_results_dir(self) -> Path:
         return self.fixtures_dir / 'batch_results'
 
+    @property
+    def prompt_dir(self) -> Path:
+        return self.fixtures_dir / 'prompts'
+
 
 # Global settings instance
 settings = Settings()
