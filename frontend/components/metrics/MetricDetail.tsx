@@ -173,6 +173,7 @@ export function MetricDetail({ metric }: MetricDetailProps) {
             <>
               <Button
                 render={<Link href={`/playground?metric=${encodeURIComponent(metric.name)}`} className="flex-1" />}
+                nativeButton={false}
                 size="sm"
                 className="rounded-[2px] gap-2 flex-1"
               >
