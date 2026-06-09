@@ -87,6 +87,14 @@ def with_retry(
                     if not isinstance(exc, exceptions) or attempt == max_attempts:
                         raise
 
+                    # For BadRequestError, only retry if it corresponds to a 429 Rate/Quota Limit
+                    if isinstance(exc, litellm.BadRequestError):
+                        status_code = getattr(exc, "status_code", None)
+                        code = getattr(exc, "code", None)
+                        msg = str(exc).lower()
+                        if status_code != 429 and code != 429 and code != "429" and "429" not in msg:
+                            raise
+
                     last_exc = exc
                     # Full-jitter backoff: sleep = random(0, min(cap, base * 2^(attempt-1)))
                     window = min(max_delay, base_delay * (2 ** (attempt - 1)))
