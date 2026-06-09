@@ -64,6 +64,7 @@ export function MetricsList({ metrics, selectedId, onSelect }: MetricsListProps)
             <button
               key={tab.value}
               onClick={() => setTypeFilter(tab.value)}
+              aria-pressed={typeFilter === tab.value}
               className={cn(
                 "flex items-center gap-1.5 px-2.5 py-1 rounded-[2px] text-[10px] font-mono transition-colors",
                 typeFilter === tab.value
@@ -101,6 +102,7 @@ export function MetricsList({ metrics, selectedId, onSelect }: MetricsListProps)
               <button
                 key={metric.id}
                 onClick={() => onSelect(metric.id)}
+                aria-current={isSelected ? "true" : undefined}
                 className={cn(
                   "w-full text-left px-4 py-3 border-b border-border/30 transition-colors",
                   isSelected
