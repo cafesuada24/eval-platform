@@ -220,3 +220,5 @@ __marimo__/
 .streamlit/secrets.toml
 
 fixtures/**/*
+!fixtures/default_metrics/*
+!fixtures/prompts/**/*.txt
