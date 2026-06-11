@@ -8,6 +8,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+import fitz  # type: ignore[import-untyped]
 import pymupdf4llm  # type: ignore[import-untyped]
 from embedder import generate_embeddings
 from google import genai
@@ -114,7 +115,7 @@ def extract_and_caption_bytes(image_bytes: bytes, mime_type: str) -> ExtractionR
 
 
 def ingest_pdf_document(file_path: str) -> tuple[str, list[dict[str, Any]]]:
-    """Parses a PDF document, extracts images, generates captions, and replaces references inline."""
+    """Parses a PDF document, extracts images, generates captions, and replaces references inline. Runs page-level OCR for scanned/empty pages."""
     pdf_basename = os.path.splitext(os.path.basename(file_path))[0]
     extracted_images_dir = os.path.join("assets/extracted_images", pdf_basename)
     os.makedirs(extracted_images_dir, exist_ok=True)
@@ -130,11 +131,45 @@ def ingest_pdf_document(file_path: str) -> tuple[str, list[dict[str, Any]]]:
     unified_markdown_parts = []
 
     img_pattern = re.compile(r"!\[.*?\]\(([^)]+)\)")
+    
+    # Open document via fitz for dynamic page rendering on scanned pages
+    doc_fitz = None
 
     for page_idx, chunk in enumerate(chunks):
         page_num = chunk.get("metadata", {}).get("page_number", page_idx + 1)
         page_text = chunk.get("text", "")
 
+        # Check if the page is scanned (i.e. contains no actual text content after removing image tags and whitespace)
+        clean_text = img_pattern.sub("", page_text).strip()
+        
+        if len(clean_text) < 100:
+            # Scanned page - render page to image and perform OCR + captioning
+            try:
+                if doc_fitz is None:
+                    doc_fitz = fitz.open(file_path)
+                
+                if page_num - 1 < len(doc_fitz):
+                    page_fitz = doc_fitz[page_num - 1]
+                    pix = page_fitz.get_pixmap(dpi=150)
+                    img_bytes = pix.tobytes("png")
+                    
+                    ocr_result = extract_and_caption_bytes(img_bytes, "image/png")
+                    
+                    ocr_text = ocr_result.extracted_text
+                    ocr_caption = ocr_result.visual_caption
+                    
+                    page_parts = []
+                    if ocr_text.strip():
+                        page_parts.append(ocr_text)
+                    if ocr_caption.strip():
+                        page_parts.append(f"**Page Caption/Visual Elements:** {ocr_caption}")
+                    
+                    if page_parts:
+                        page_text = "\n\n".join(page_parts)
+            except Exception as ocr_err:
+                print(f"Failed to perform page-level OCR on page {page_num}: {ocr_err}")
+
+        # Process any embedded images extracted by pymupdf4llm
         matches = img_pattern.findall(page_text)
 
         for index, img_ref in enumerate(matches):
@@ -150,7 +185,18 @@ def ingest_pdf_document(file_path: str) -> tuple[str, list[dict[str, Any]]]:
                 try:
                     os.rename(src_path, dest_path)
                     try:
-                        caption = generate_image_caption(dest_path)
+                        with open(dest_path, "rb") as img_f:
+                            img_bytes = img_f.read()
+                        
+                        # Determine mime type
+                        mime_type = "image/png"
+                        if ext == ".webp":
+                            mime_type = "image/webp"
+                        elif ext in [".jpg", ".jpeg"]:
+                            mime_type = "image/jpeg"
+                            
+                        caption_res = extract_and_caption_bytes(img_bytes, mime_type)
+                        caption = caption_res.visual_caption or caption_res.extracted_text or "[Image caption empty]"
                     except Exception as caption_err:
                         print(f"Failed to generate caption for {dest_path}: {caption_err}")
                         caption = "[Image caption generation failed]"
@@ -172,6 +218,9 @@ def ingest_pdf_document(file_path: str) -> tuple[str, list[dict[str, Any]]]:
 
         page_marker = f"\n\n<!-- PAGE_{page_num} -->\n\n"
         unified_markdown_parts.append(page_marker + page_text)
+
+    if doc_fitz is not None:
+        doc_fitz.close()
 
     return "".join(unified_markdown_parts), images_metadata
 

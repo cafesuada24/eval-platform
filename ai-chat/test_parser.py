@@ -93,35 +93,37 @@ def test_generate_image_caption_rate_limit_retry(mock_genai_client_class, mock_i
     assert mock_client.models.generate_content.call_count == 2
     mock_sleep.assert_called_once_with(1)
 
-@patch("parser.generate_image_caption")
+@patch("parser.extract_and_caption_bytes")
 @patch("parser.pymupdf4llm.to_markdown")
 @patch("parser.os.rename")
 @patch("parser.os.path.exists")
 @patch("parser.os.makedirs")
-def test_ingest_pdf_document(mock_makedirs, mock_exists, mock_rename, mock_to_markdown, mock_generate_caption):
+def test_ingest_pdf_document(mock_makedirs, mock_exists, mock_rename, mock_to_markdown, mock_extract):
     mock_to_markdown.return_value = [
         {
-            "text": "This is page 1.\nHere is an image: ![](assets/extracted_images/image-page0-0.png)\nAnd another: ![](assets/extracted_images/image-page0-1.png)",
+            "text": "This is page 1. " + "A" * 100 + "\nHere is an image: ![](assets/extracted_images/image-page0-0.png)\nAnd another: ![](assets/extracted_images/image-page0-1.png)",
             "metadata": {"page_number": 1},
         },
         {
-            "text": "This is page 2.\nNo images here.",
+            "text": "This is page 2. " + "B" * 100 + "\nNo images here.",
             "metadata": {"page_number": 2},
         },
         {
-            "text": "This is page 3.\nLast image: ![](assets/extracted_images/image-page2-0.png)",
+            "text": "This is page 3. " + "C" * 100 + "\nLast image: ![](assets/extracted_images/image-page2-0.png)",
             "metadata": {"page_number": 3},
         },
     ]
 
     mock_exists.return_value = True
-    mock_generate_caption.side_effect = [
-        "Caption for page 1 img 0",
-        "Caption for page 1 img 1",
-        "Caption for page 3 img 0",
+    mock_extract.side_effect = [
+        ExtractionResult(extracted_text="", visual_caption="Caption for page 1 img 0"),
+        ExtractionResult(extracted_text="", visual_caption="Caption for page 1 img 1"),
+        ExtractionResult(extracted_text="", visual_caption="Caption for page 3 img 0"),
     ]
 
-    markdown, metadata = ingest_pdf_document("path/to/test_doc.pdf")
+    from unittest.mock import mock_open
+    with patch("builtins.open", mock_open(read_data=b"mock image bytes")):
+        markdown, metadata = ingest_pdf_document("path/to/test_doc.pdf")
 
     mock_makedirs.assert_called_with("assets/extracted_images/test_doc", exist_ok=True)
 
@@ -138,9 +140,10 @@ def test_ingest_pdf_document(mock_makedirs, mock_exists, mock_rename, mock_to_ma
     assert rename_calls[0][0][0] == "assets/extracted_images/test_doc/image-page0-0.png"
     assert rename_calls[0][0][1] == "assets/extracted_images/test_doc/test_doc_page_1_img_0.png"
 
-    caption_calls = mock_generate_caption.call_args_list
+    caption_calls = mock_extract.call_args_list
     assert len(caption_calls) == 3
-    assert caption_calls[0][0][0] == "assets/extracted_images/test_doc/test_doc_page_1_img_0.png"
+    assert caption_calls[0][0][0] == b"mock image bytes"
+    assert caption_calls[0][0][1] == "image/png"
 
     assert "assets/extracted_images/test_doc/test_doc_page_1_img_0.png" in markdown
     assert "**Image Caption:** Caption for page 1 img 0" in markdown
@@ -159,6 +162,47 @@ def test_ingest_pdf_document(mock_makedirs, mock_exists, mock_rename, mock_to_ma
         "page_number": 1,
         "caption": "Caption for page 1 img 0",
     }
+
+
+
+@patch("parser.extract_and_caption_bytes")
+@patch("parser.fitz.open")
+@patch("parser.pymupdf4llm.to_markdown")
+@patch("parser.os.makedirs")
+def test_ingest_pdf_document_scanned(mock_makedirs, mock_to_markdown, mock_fitz_open, mock_extract):
+    import fitz
+    # Mock pymupdf4llm to return a page chunk with empty text (scanned PDF)
+    mock_to_markdown.return_value = [
+        {
+            "text": "",
+            "metadata": {"page_number": 1},
+        }
+    ]
+    
+    # Mock fitz opening and page rendering
+    mock_doc = MagicMock()
+    mock_page = MagicMock()
+    mock_pixmap = MagicMock()
+    mock_pixmap.tobytes.return_value = b"fake scanned page png"
+    mock_page.get_pixmap.return_value = mock_pixmap
+    mock_doc.__len__.return_value = 1
+    mock_doc.__getitem__.return_value = mock_page
+    mock_fitz_open.return_value = mock_doc
+
+    # Mock Gemini extraction
+    mock_extract.return_value = ExtractionResult(
+        extracted_text="OCR Scanned Content",
+        visual_caption="Scanned document page description"
+    )
+
+    markdown, metadata = ingest_pdf_document("path/to/scanned.pdf")
+
+    mock_fitz_open.assert_called_once_with("path/to/scanned.pdf")
+    mock_page.get_pixmap.assert_called_once_with(dpi=150)
+    mock_extract.assert_called_once_with(b"fake scanned page png", "image/png")
+
+    assert "OCR Scanned Content" in markdown
+    assert "Scanned document page description" in markdown
 
 
 @patch("parser.MarkdownTextSplitter")
