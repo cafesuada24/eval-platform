@@ -35,46 +35,15 @@ def extract_text_from_pdf_fallback(file_path: str) -> tuple[str, list[dict[str, 
         unified_markdown_parts.append(page_marker + page_text)
     return "".join(unified_markdown_parts), []
 
-def generate_image_caption(image_path: str) -> str:
-    """Generates a detailed semantic description of the image using Gemini API."""
-    client = genai.Client()
-
-    try:
-        image = Image.open(image_path)
-    except Exception as e:
-        raise RuntimeError(f"Failed to open image at {image_path}: {e}") from e
-
-    prompt = (
-        "Analyze this image within the context of a technical document repository. "
-        "Provide a highly detailed, dense semantic description, captioning all visual charts, "
-        "figures, text within images, and structural meaning. Output purely descriptive text."
-    )
-
-    max_retries = 3
-    wait_time = 1
-    for attempt in range(max_retries + 1):
-        try:
-            response = client.models.generate_content(
-                model="gemini-3.1-flash-lite",
-                contents=[image, prompt],  # type: ignore[arg-type]
-            )
-            if response and response.text:
-                return response.text.strip()
-            raise ValueError("Empty response received from GenAI model.")
-        except Exception as e:
-            if attempt == max_retries:
-                raise e
-            time.sleep(wait_time)
-            wait_time *= 2
-    return ""
-
 
 class ExtractionResult(BaseModel):
+    """Pydantic model representing structured document page extraction results."""
+
     extracted_text: str = Field(
-        description="The exact raw text extracted from the document page/image. Preserve structure where appropriate."
+        description="The exact raw text extracted from the document page/image. Preserve structure where appropriate.",
     )
     visual_caption: str = Field(
-        description="A detailed description/caption of any charts, drawings, flowcharts, or visual components present. Leave empty if none."
+        description="A detailed description/caption of any charts, drawings, flowcharts, or visual components present. Leave empty if none.",
     )
 
 
@@ -96,11 +65,11 @@ def extract_and_caption_bytes(image_bytes: bytes, mime_type: str) -> ExtractionR
                 contents=[
                     genai.types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
                     prompt,
-                ],
+                ],  # type: ignore[arg-type]
                 config=genai.types.GenerateContentConfig(
                     response_mime_type="application/json",
                     response_schema=ExtractionResult,
-                )
+                ),
             )
             if response and response.text:
                 return ExtractionResult.model_validate_json(response.text.strip())
@@ -111,7 +80,10 @@ def extract_and_caption_bytes(image_bytes: bytes, mime_type: str) -> ExtractionR
                 raise e
             time.sleep(wait_time)
             wait_time *= 2
+    return ExtractionResult(extracted_text="", visual_caption="")
 
+
+SCANNED_PAGE_TEXT_THRESHOLD = 100
 
 
 def ingest_pdf_document(file_path: str) -> tuple[str, list[dict[str, Any]]]:
@@ -131,96 +103,100 @@ def ingest_pdf_document(file_path: str) -> tuple[str, list[dict[str, Any]]]:
     unified_markdown_parts = []
 
     img_pattern = re.compile(r"!\[.*?\]\(([^)]+)\)")
-    
+
     # Open document via fitz for dynamic page rendering on scanned pages
     doc_fitz = None
 
-    for page_idx, chunk in enumerate(chunks):
-        page_num = chunk.get("metadata", {}).get("page_number", page_idx + 1)
-        page_text = chunk.get("text", "")
+    try:
+        for page_idx, chunk in enumerate(chunks):
+            page_num = chunk.get("metadata", {}).get("page_number", page_idx + 1)
+            page_text = chunk.get("text", "")
 
-        # Check if the page is scanned (i.e. contains no actual text content after removing image tags and whitespace)
-        clean_text = img_pattern.sub("", page_text).strip()
-        
-        if len(clean_text) < 100:
-            # Scanned page - render page to image and perform OCR + captioning
-            try:
-                if doc_fitz is None:
-                    doc_fitz = fitz.open(file_path)
-                
-                if page_num - 1 < len(doc_fitz):
-                    page_fitz = doc_fitz[page_num - 1]
-                    pix = page_fitz.get_pixmap(dpi=150)
-                    img_bytes = pix.tobytes("png")
-                    
-                    ocr_result = extract_and_caption_bytes(img_bytes, "image/png")
-                    
-                    ocr_text = ocr_result.extracted_text
-                    ocr_caption = ocr_result.visual_caption
-                    
-                    page_parts = []
-                    if ocr_text.strip():
-                        page_parts.append(ocr_text)
-                    if ocr_caption.strip():
-                        page_parts.append(f"**Page Caption/Visual Elements:** {ocr_caption}")
-                    
-                    if page_parts:
-                        page_text = "\n\n".join(page_parts)
-            except Exception as ocr_err:
-                print(f"Failed to perform page-level OCR on page {page_num}: {ocr_err}")
+            # Check if the page is scanned (i.e. contains no actual text content after removing image tags and whitespace)
+            clean_text = img_pattern.sub("", page_text).strip()
 
-        # Process any embedded images extracted by pymupdf4llm
-        matches = img_pattern.findall(page_text)
-
-        for index, img_ref in enumerate(matches):
-            _, ext = os.path.splitext(img_ref)
-            basename = os.path.basename(img_ref)
-            src_path = os.path.join(extracted_images_dir, basename)
-
-            new_filename = f"{pdf_basename}_page_{page_num}_img_{index}{ext}"
-            dest_path = os.path.join(extracted_images_dir, new_filename)
-
-            caption = ""
-            if os.path.exists(src_path):
+            if len(clean_text) < SCANNED_PAGE_TEXT_THRESHOLD:
+                # Scanned page - render page to image and perform OCR + captioning
                 try:
-                    os.rename(src_path, dest_path)
+                    if doc_fitz is None:
+                        doc_fitz = fitz.open(file_path)
+
+                    if 0 <= page_num - 1 < len(doc_fitz):
+                        page_fitz = doc_fitz[page_num - 1]
+                        pix = page_fitz.get_pixmap(dpi=150)
+                        img_bytes = pix.tobytes("png")
+
+                        ocr_result = extract_and_caption_bytes(img_bytes, "image/png")
+
+                        ocr_text = ocr_result.extracted_text
+                        ocr_caption = ocr_result.visual_caption
+
+                        page_parts = []
+                        if ocr_text.strip():
+                            page_parts.append(ocr_text)
+                        if ocr_caption.strip():
+                            page_parts.append(f"**Page Caption/Visual Elements:** {ocr_caption}")
+
+                        if page_parts:
+                            # Prepend OCR text to original text, preserving embedded image tags
+                            ocr_page_text = "\n\n".join(page_parts)
+                            page_text = ocr_page_text + "\n\n" + page_text
+                except Exception as ocr_err:
+                    print(f"Failed to perform page-level OCR on page {page_num}: {ocr_err}")
+
+            # Process any embedded images extracted by pymupdf4llm
+            matches = img_pattern.findall(page_text)
+
+            for index, img_ref in enumerate(matches):
+                _, ext = os.path.splitext(img_ref)
+                ext = ext.lower()
+                basename = os.path.basename(img_ref)
+                src_path = os.path.join(extracted_images_dir, basename)
+
+                new_filename = f"{pdf_basename}_page_{page_num}_img_{index}{ext}"
+                dest_path = os.path.join(extracted_images_dir, new_filename)
+
+                caption = ""
+                if os.path.exists(src_path):
                     try:
-                        with open(dest_path, "rb") as img_f:
-                            img_bytes = img_f.read()
-                        
-                        # Determine mime type
-                        mime_type = "image/png"
-                        if ext == ".webp":
-                            mime_type = "image/webp"
-                        elif ext in [".jpg", ".jpeg"]:
-                            mime_type = "image/jpeg"
-                            
-                        caption_res = extract_and_caption_bytes(img_bytes, mime_type)
-                        caption = caption_res.visual_caption or caption_res.extracted_text or "[Image caption empty]"
-                    except Exception as caption_err:
-                        print(f"Failed to generate caption for {dest_path}: {caption_err}")
-                        caption = "[Image caption generation failed]"
+                        os.rename(src_path, dest_path)
+                        try:
+                            with open(dest_path, "rb") as img_f:
+                                img_bytes = img_f.read()
 
-                    images_metadata.append({
-                        "asset_path": dest_path,
-                        "page_number": page_num,
-                        "caption": caption,
-                    })
-                except Exception as file_err:
-                    print(f"Failed to rename file {src_path} to {dest_path}: {file_err}")
+                            # Determine mime type
+                            mime_type = "image/png"
+                            if ext == ".webp":
+                                mime_type = "image/webp"
+                            elif ext in [".jpg", ".jpeg"]:
+                                mime_type = "image/jpeg"
 
-            # Find the actual ref string to replace. Since alt text can vary, we search for the specific match
-            ref_match = re.search(r"!\[.*?\]\(" + re.escape(img_ref) + r"\)", page_text)
-            if ref_match:
-                old_ref_str = ref_match.group(0)
-                new_ref_str = f"![]({dest_path})\n\n**Image Caption:** {caption}"
-                page_text = page_text.replace(old_ref_str, new_ref_str, 1)
+                            caption_res = extract_and_caption_bytes(img_bytes, mime_type)
+                            caption = caption_res.visual_caption or caption_res.extracted_text or "[Image caption empty]"
+                        except Exception as caption_err:
+                            print(f"Failed to generate caption for {dest_path}: {caption_err}")
+                            caption = "[Image caption generation failed]"
 
-        page_marker = f"\n\n<!-- PAGE_{page_num} -->\n\n"
-        unified_markdown_parts.append(page_marker + page_text)
+                        images_metadata.append({
+                            "asset_path": dest_path,
+                            "page_number": page_num,
+                            "caption": caption,
+                        })
+                    except Exception as file_err:
+                        print(f"Failed to rename file {src_path} to {dest_path}: {file_err}")
 
-    if doc_fitz is not None:
-        doc_fitz.close()
+                # Find the actual ref string to replace. Since alt text can vary, we search for the specific match
+                ref_match = re.search(r"!\[.*?\]\(" + re.escape(img_ref) + r"\)", page_text)
+                if ref_match:
+                    old_ref_str = ref_match.group(0)
+                    new_ref_str = f"![]({dest_path})\n\n**Image Caption:** {caption}"
+                    page_text = page_text.replace(old_ref_str, new_ref_str, 1)
+
+            page_marker = f"\n\n<!-- PAGE_{page_num} -->\n\n"
+            unified_markdown_parts.append(page_marker + page_text)
+    finally:
+        if doc_fitz is not None:
+            doc_fitz.close()
 
     return "".join(unified_markdown_parts), images_metadata
 

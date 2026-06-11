@@ -9,7 +9,7 @@ import streamlit as st
 from dotenv import load_dotenv
 from evalplatform_sdk.client import EvalClient
 from evalplatform_sdk.helpers import trace
-from parser import generate_image_caption, ingest_file
+from parser import ingest_file
 from rag_engine import generate_answer, retrieve_context
 from vector_store import collection
 

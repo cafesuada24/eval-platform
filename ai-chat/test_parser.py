@@ -6,7 +6,6 @@ from parser import (
     extract_and_caption_bytes,
     extract_text_from_pdf_fallback,
     extract_text_from_txt,
-    generate_image_caption,
     ingest_file,
     ingest_pdf_document,
 )
@@ -42,57 +41,6 @@ def test_extract_text_from_pdf_fallback_failure():
     # Test on a missing/invalid file
     with pytest.raises(FileNotFoundError):
         extract_text_from_pdf_fallback("non_existent_file.pdf")
-
-@patch("parser.Image.open")
-@patch("parser.genai.Client")
-def test_generate_image_caption(mock_genai_client_class, mock_image_open):
-    mock_client = MagicMock()
-    mock_genai_client_class.return_value = mock_client
-
-    mock_response = MagicMock()
-    mock_response.text = "This is a detailed mock description of the image."
-    mock_client.models.generate_content.return_value = mock_response
-
-    mock_image = MagicMock()
-    mock_image_open.return_value = mock_image
-
-    caption = generate_image_caption("dummy_image.png")
-
-    mock_image_open.assert_called_once_with("dummy_image.png")
-    mock_client.models.generate_content.assert_called_once()
-
-    args, kwargs = mock_client.models.generate_content.call_args
-    assert kwargs.get("model") == "gemini-3.1-flash-lite"
-    contents = kwargs.get("contents")
-    assert contents[0] == mock_image
-    assert "Analyze this image within the context of a technical document repository." in contents[1]
-
-    assert caption == "This is a detailed mock description of the image."
-
-@patch("parser.time.sleep")
-@patch("parser.Image.open")
-@patch("parser.genai.Client")
-def test_generate_image_caption_rate_limit_retry(mock_genai_client_class, mock_image_open, mock_sleep):
-    mock_client = MagicMock()
-    mock_genai_client_class.return_value = mock_client
-
-    mock_response = MagicMock()
-    mock_response.text = "Success after rate limit."
-
-    mock_client.models.generate_content.side_effect = [
-        Exception("API rate limit exceeded (429)"),
-        mock_response,
-    ]
-
-    mock_image = MagicMock()
-    mock_image_open.return_value = mock_image
-
-    caption = generate_image_caption("dummy_image.png")
-
-    assert caption == "Success after rate limit."
-    assert mock_client.models.generate_content.call_count == 2
-    mock_sleep.assert_called_once_with(1)
-
 @patch("parser.extract_and_caption_bytes")
 @patch("parser.pymupdf4llm.to_markdown")
 @patch("parser.os.rename")
@@ -170,15 +118,14 @@ def test_ingest_pdf_document(mock_makedirs, mock_exists, mock_rename, mock_to_ma
 @patch("parser.pymupdf4llm.to_markdown")
 @patch("parser.os.makedirs")
 def test_ingest_pdf_document_scanned(mock_makedirs, mock_to_markdown, mock_fitz_open, mock_extract):
-    import fitz
     # Mock pymupdf4llm to return a page chunk with empty text (scanned PDF)
     mock_to_markdown.return_value = [
         {
             "text": "",
             "metadata": {"page_number": 1},
-        }
+        },
     ]
-    
+
     # Mock fitz opening and page rendering
     mock_doc = MagicMock()
     mock_page = MagicMock()
@@ -192,7 +139,7 @@ def test_ingest_pdf_document_scanned(mock_makedirs, mock_to_markdown, mock_fitz_
     # Mock Gemini extraction
     mock_extract.return_value = ExtractionResult(
         extracted_text="OCR Scanned Content",
-        visual_caption="Scanned document page description"
+        visual_caption="Scanned document page description",
     )
 
     markdown, metadata = ingest_pdf_document("path/to/scanned.pdf")
@@ -241,7 +188,7 @@ def test_ingest_file_txt(mock_extract, mock_embed, mock_add, mock_splitter_class
 def test_ingest_file_image(mock_copy2, mock_extract, mock_embed, mock_add, tmp_path):
     mock_extract.return_value = ExtractionResult(
         extracted_text="Invoice #1234\nTotal: $50.00",
-        visual_caption="A scan of a business invoice receipt."
+        visual_caption="A scan of a business invoice receipt.",
     )
     mock_embed.return_value = [[0.1], [0.2]]
 
@@ -267,7 +214,7 @@ def test_ingest_file_image(mock_copy2, mock_extract, mock_embed, mock_add, tmp_p
 def test_ingest_file_webp(mock_copy2, mock_extract, mock_embed, mock_add, tmp_path):
     mock_extract.return_value = ExtractionResult(
         extracted_text="Sunset raw text",
-        visual_caption="A gorgeous sunset."
+        visual_caption="A gorgeous sunset.",
     )
     mock_embed.return_value = [[0.15], [0.25]]
 
@@ -304,7 +251,7 @@ def test_extract_and_caption_bytes(mock_genai_client_class):
     assert kwargs.get("model") == "gemini-3.1-flash-lite"
     assert kwargs.get("config").response_mime_type == "application/json"
     assert kwargs.get("config").response_schema == ExtractionResult
-    
+
     contents = kwargs.get("contents")
     assert len(contents) == 2
     assert contents[1] == "Analyze this document page/image. Perform OCR to extract all readable text exactly, and write a detailed descriptive caption for any charts, diagrams, drawings, or figures."
@@ -319,7 +266,7 @@ def test_extract_and_caption_bytes_failure(mock_genai_client_class, mock_sleep):
 
     with pytest.raises(Exception) as exc_info:
         extract_and_caption_bytes(b"dummy bytes", "image/png")
-    
+
     assert "API failure" in str(exc_info.value)
     assert mock_client.models.generate_content.call_count == 4
     assert mock_sleep.call_count == 3
