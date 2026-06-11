@@ -2,7 +2,7 @@
 
 import logging
 import pytest
-from benchmark import calculate_precision_recall, parse_semantic_score
+from benchmark import calculate_precision_recall, parse_semantic_score, retry_api_call
 
 
 def test_calculate_precision_recall_happy_path() -> None:
@@ -106,3 +106,37 @@ def test_parse_semantic_score_not_found_warning(caplog: pytest.LogCaptureFixture
         assert score == 0.0
         assert len(caplog.records) == 1
         assert "warning" in caplog.text.lower() or "no" in caplog.text.lower()
+
+
+def test_retry_api_call_succeeds() -> None:
+    """Verify retry_api_call succeeds after a failure and sleeps once."""
+    from unittest.mock import patch
+
+    calls = []
+    def mock_func():
+        calls.append(1)
+        if len(calls) == 1:
+            raise ValueError("First call fails")
+        return "success"
+
+    with patch("time.sleep") as mock_sleep:
+        result = retry_api_call(mock_func)
+        assert result == "success"
+        assert len(calls) == 2
+        mock_sleep.assert_called_once_with(2.0)
+
+
+def test_retry_api_call_aborts_after_retries() -> None:
+    """Verify retry_api_call propagates exception after max retries with exponential backoff."""
+    from unittest.mock import MagicMock, patch
+
+    mock_func = MagicMock(side_effect=ValueError("Persistent error"))
+
+    with patch("time.sleep") as mock_sleep:
+        with pytest.raises(ValueError, match="Persistent error"):
+            retry_api_call(mock_func)
+
+        assert mock_func.call_count == 6  # 1 initial + 5 retries
+        assert mock_sleep.call_count == 5
+        delays = [call[0][0] for call in mock_sleep.call_args_list]
+        assert delays == [2.0, 4.0, 8.0, 16.0, 32.0]
