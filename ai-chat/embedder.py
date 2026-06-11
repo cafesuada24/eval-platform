@@ -3,6 +3,7 @@
 import time
 
 from google import genai
+from google.genai import types
 
 
 def generate_embeddings(texts: list[str]) -> list[list[float]]:
@@ -20,9 +21,13 @@ def generate_embeddings(texts: list[str]) -> list[list[float]]:
 
     for attempt in range(max_retries + 1):
         try:
+            contents = [
+                types.Content(parts=[types.Part.from_text(text=t)])
+                for t in texts
+            ]
             response = client.models.embed_content(
                 model='gemini-embedding-2',
-                contents=texts,  # type: ignore[arg-type]
+                contents=contents,
             )
             embeddings = response.embeddings
             if not embeddings:

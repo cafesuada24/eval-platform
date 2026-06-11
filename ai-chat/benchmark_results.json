@@ -2,10 +2,10 @@
   {
     "id": "TC_001",
     "query": "What does the text document list as the primary system requirements?",
-    "precision": 1.0,
+    "precision": 0.3333333333333333,
     "recall": 1.0,
     "quality_score": 1.0,
-    "candidate_answer": "The primary system requirements are Python 3.12+ and 16GB of RAM.",
+    "candidate_answer": "The primary system requirements for the Multi-Modal RAG system are Python 3.12+ and 16GB of RAM.",
     "reference_answer": "The primary requirements are Python 3.12+ and 16GB RAM.",
     "status": "success"
   }

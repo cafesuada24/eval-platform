@@ -30,10 +30,13 @@ def test_generate_embeddings_single(mock_client_class: MagicMock) -> None:
 
     res = generate_embeddings(['hello'])
     assert res == [SINGLE_VALS]
-    mock_client.models.embed_content.assert_called_once_with(
-        model='gemini-embedding-2',
-        contents=['hello'],
-    )
+    
+    mock_client.models.embed_content.assert_called_once()
+    call_kwargs = mock_client.models.embed_content.call_args.kwargs
+    assert call_kwargs['model'] == 'gemini-embedding-2'
+    contents = call_kwargs['contents']
+    assert len(contents) == 1
+    assert contents[0].parts[0].text == 'hello'
 
 
 @patch('embedder.genai.Client')
@@ -53,10 +56,14 @@ def test_generate_embeddings_batch(mock_client_class: MagicMock) -> None:
 
     res = generate_embeddings(['hello', 'world'])
     assert res == [BATCH_VALS_1, BATCH_VALS_2]
-    mock_client.models.embed_content.assert_called_once_with(
-        model='gemini-embedding-2',
-        contents=['hello', 'world'],
-    )
+    
+    mock_client.models.embed_content.assert_called_once()
+    call_kwargs = mock_client.models.embed_content.call_args.kwargs
+    assert call_kwargs['model'] == 'gemini-embedding-2'
+    contents = call_kwargs['contents']
+    assert len(contents) == 2
+    assert contents[0].parts[0].text == 'hello'
+    assert contents[1].parts[0].text == 'world'
 
 
 def test_generate_embeddings_empty() -> None:
