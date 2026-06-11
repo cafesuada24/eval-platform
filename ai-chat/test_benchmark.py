@@ -140,3 +140,34 @@ def test_retry_api_call_aborts_after_retries() -> None:
         assert mock_sleep.call_count == 5
         delays = [call[0][0] for call in mock_sleep.call_args_list]
         assert delays == [2.0, 4.0, 8.0, 16.0, 32.0]
+
+
+def test_clear_database() -> None:
+    """Verify clear_database deletes items only if count > 0."""
+    from unittest.mock import patch
+    with patch("benchmark.collection") as mock_collection:
+        # Case 1: Count is 0 -> should not call delete
+        mock_collection.count.return_value = 0
+        from benchmark import clear_database
+        clear_database()
+        mock_collection.delete.assert_not_called()
+
+        # Case 2: Count is > 0 -> should call delete
+        mock_collection.count.return_value = 5
+        clear_database()
+        mock_collection.delete.assert_called_once_with(where={})
+
+
+def test_evaluate_response_quality() -> None:
+    """Verify evaluate_response_quality calls Gemini and parses the score."""
+    from unittest.mock import MagicMock, patch
+    with patch("benchmark.genai.Client") as mock_client_class:
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+        mock_response = MagicMock()
+        mock_response.text = "0.85"
+        mock_client.models.generate_content.return_value = mock_response
+
+        from benchmark import evaluate_response_quality
+        score = evaluate_response_quality("candidate", "reference")
+        assert score == pytest.approx(0.85)
