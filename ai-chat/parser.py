@@ -13,6 +13,7 @@ from embedder import generate_embeddings
 from google import genai
 from langchain_text_splitters import MarkdownTextSplitter
 from PIL import Image
+from pydantic import BaseModel, Field
 from pypdf import PdfReader
 from vector_store import add_chunks_to_db
 
@@ -65,6 +66,52 @@ def generate_image_caption(image_path: str) -> str:
             time.sleep(wait_time)
             wait_time *= 2
     return ""
+
+
+class ExtractionResult(BaseModel):
+    extracted_text: str = Field(
+        description="The exact raw text extracted from the document page/image. Preserve structure where appropriate."
+    )
+    visual_caption: str = Field(
+        description="A detailed description/caption of any charts, drawings, flowcharts, or visual components present. Leave empty if none."
+    )
+
+
+def extract_and_caption_bytes(image_bytes: bytes, mime_type: str) -> ExtractionResult:
+    """Uses Gemini API to perform both OCR (raw text extraction) and visual captioning in one structured response."""
+    client = genai.Client()
+
+    prompt = (
+        "Analyze this document page/image. Perform OCR to extract all readable text exactly, "
+        "and write a detailed descriptive caption for any charts, diagrams, drawings, or figures."
+    )
+
+    max_retries = 3
+    wait_time = 1
+    for attempt in range(max_retries + 1):
+        try:
+            response = client.models.generate_content(
+                model="gemini-3.1-flash-lite",
+                contents=[
+                    genai.types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
+                    prompt,
+                ],
+                config=genai.types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_schema=ExtractionResult,
+                )
+            )
+            if response and response.text:
+                return ExtractionResult.model_validate_json(response.text.strip())
+            raise ValueError("Empty response received from GenAI model.")
+        except Exception as e:
+            if attempt == max_retries:
+                print(f"Failed to extract and caption bytes after {max_retries} retries: {e}")
+                raise e
+            time.sleep(wait_time)
+            wait_time *= 2
+
+
 
 def ingest_pdf_document(file_path: str) -> tuple[str, list[dict[str, Any]]]:
     """Parses a PDF document, extracts images, generates captions, and replaces references inline."""

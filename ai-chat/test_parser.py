@@ -2,6 +2,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from parser import (
+    ExtractionResult,
+    extract_and_caption_bytes,
     extract_text_from_pdf_fallback,
     extract_text_from_txt,
     generate_image_caption,
@@ -226,4 +228,43 @@ def test_ingest_file_webp(mock_copy2, mock_caption, mock_embed, mock_add, tmp_pa
     mock_caption.assert_called_once()
     mock_copy2.assert_called_once()
     mock_add.assert_called_once()
+
+
+@patch("parser.genai.Client")
+def test_extract_and_caption_bytes(mock_genai_client_class):
+    mock_client = MagicMock()
+    mock_genai_client_class.return_value = mock_client
+
+    mock_response = MagicMock()
+    mock_response.text = '{"extracted_text": "Important text content", "visual_caption": "Flowchart diagram explanation"}'
+    mock_client.models.generate_content.return_value = mock_response
+
+    result = extract_and_caption_bytes(b"dummy bytes", "image/png")
+    assert result.extracted_text == "Important text content"
+    assert result.visual_caption == "Flowchart diagram explanation"
+
+    args, kwargs = mock_client.models.generate_content.call_args
+    assert kwargs.get("model") == "gemini-3.1-flash-lite"
+    assert kwargs.get("config").response_mime_type == "application/json"
+    assert kwargs.get("config").response_schema == ExtractionResult
+    
+    contents = kwargs.get("contents")
+    assert len(contents) == 2
+    assert contents[1] == "Analyze this document page/image. Perform OCR to extract all readable text exactly, and write a detailed descriptive caption for any charts, diagrams, drawings, or figures."
+
+
+@patch("parser.time.sleep")
+@patch("parser.genai.Client")
+def test_extract_and_caption_bytes_failure(mock_genai_client_class, mock_sleep):
+    mock_client = MagicMock()
+    mock_genai_client_class.return_value = mock_client
+    mock_client.models.generate_content.side_effect = Exception("API failure")
+
+    with pytest.raises(Exception) as exc_info:
+        extract_and_caption_bytes(b"dummy bytes", "image/png")
+    
+    assert "API failure" in str(exc_info.value)
+    assert mock_client.models.generate_content.call_count == 4
+    assert mock_sleep.call_count == 3
+
 
