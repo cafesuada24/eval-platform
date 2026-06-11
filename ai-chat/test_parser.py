@@ -192,30 +192,39 @@ def test_ingest_file_txt(mock_extract, mock_embed, mock_add, mock_splitter_class
 
 @patch("parser.add_chunks_to_db")
 @patch("parser.generate_embeddings")
-@patch("parser.generate_image_caption")
+@patch("parser.extract_and_caption_bytes")
 @patch("parser.shutil.copy2")
-def test_ingest_file_image(mock_copy2, mock_caption, mock_embed, mock_add, tmp_path):
-    mock_caption.return_value = "A cute kitten."
+def test_ingest_file_image(mock_copy2, mock_extract, mock_embed, mock_add, tmp_path):
+    mock_extract.return_value = ExtractionResult(
+        extracted_text="Invoice #1234\nTotal: $50.00",
+        visual_caption="A scan of a business invoice receipt."
+    )
     mock_embed.return_value = [[0.1], [0.2]]
 
-    image_file = tmp_path / "kitten.png"
+    image_file = tmp_path / "invoice.png"
     image_file.write_text("dummy image data")
 
-    with patch("parser.Path.mkdir") as mock_mkdir:
+    with patch("parser.Path.mkdir"):
         count = ingest_file(str(image_file))
 
     assert count == 2
-    mock_caption.assert_called_once()
+    mock_extract.assert_called_once_with(b"dummy image data", "image/png")
     mock_copy2.assert_called_once()
     mock_add.assert_called_once()
+    args, kwargs = mock_add.call_args
+    assert "Invoice #1234" in kwargs["chunks"][0]
+    assert "A scan of a business invoice receipt." in kwargs["chunks"][1]
 
 
 @patch("parser.add_chunks_to_db")
 @patch("parser.generate_embeddings")
-@patch("parser.generate_image_caption")
+@patch("parser.extract_and_caption_bytes")
 @patch("parser.shutil.copy2")
-def test_ingest_file_webp(mock_copy2, mock_caption, mock_embed, mock_add, tmp_path):
-    mock_caption.return_value = "A gorgeous sunset."
+def test_ingest_file_webp(mock_copy2, mock_extract, mock_embed, mock_add, tmp_path):
+    mock_extract.return_value = ExtractionResult(
+        extracted_text="Sunset raw text",
+        visual_caption="A gorgeous sunset."
+    )
     mock_embed.return_value = [[0.15], [0.25]]
 
     webp_file = tmp_path / "sunset.webp"
@@ -225,9 +234,13 @@ def test_ingest_file_webp(mock_copy2, mock_caption, mock_embed, mock_add, tmp_pa
         count = ingest_file(str(webp_file))
 
     assert count == 2
-    mock_caption.assert_called_once()
+    mock_extract.assert_called_once_with(b"fake webp bytes", "image/webp")
     mock_copy2.assert_called_once()
     mock_add.assert_called_once()
+    args, kwargs = mock_add.call_args
+    assert "Sunset raw text" in kwargs["chunks"][0]
+    assert "A gorgeous sunset." in kwargs["chunks"][1]
+
 
 
 @patch("parser.genai.Client")

@@ -193,17 +193,32 @@ def ingest_file(file_path: str) -> int:
 
         shutil.copy2(file_path, dest_path)
 
-        try:
-            caption = generate_image_caption(str(dest_path))
-        except Exception as caption_err:
-            print(f"Failed to generate caption for {dest_path}: {caption_err}")
-            caption = "[Image caption generation failed]"
+        # Determine mime type
+        mime_type = "image/png"
+        if ext == ".webp":
+            mime_type = "image/webp"
+        elif ext in [".jpg", ".jpeg"]:
+            mime_type = "image/jpeg"
 
-        markdown_text = f"**Standalone Image Caption ({filename}):** {caption}"
+        with open(file_path, "rb") as img_f:
+            img_bytes = img_f.read()
+
+        result = extract_and_caption_bytes(img_bytes, mime_type)
+
+        extracted_txt = result.extracted_text
+        visual_cap = result.visual_caption
+
+        markdown_parts = []
+        if extracted_txt.strip():
+            markdown_parts.append(f"**Extracted Text from Image ({filename}):**\n{extracted_txt}")
+        if visual_cap.strip():
+            markdown_parts.append(f"**Image Caption ({filename}):** {visual_cap}")
+
+        markdown_text = "\n\n".join(markdown_parts) if markdown_parts else f"[Empty image: {filename}]"
         images_metadata = [{
-            "asset_path": str(dest_path.resolve().absolute()),
+            "asset_path": str(dest_path),
             "page_number": 1,
-            "caption": caption,
+            "caption": visual_cap,
         }]
     elif ext == ".pdf":
         markdown_text, images_metadata = ingest_pdf_document(file_path)
@@ -233,13 +248,15 @@ def ingest_file(file_path: str) -> int:
         })
 
     for img_info in images_metadata:
-        final_chunks.append(img_info["caption"])
-        final_metadatas.append({
-            "source_file": filename,
-            "page_number": img_info["page_number"],
-            "content_type": "image_caption",
-            "asset_path": img_info["asset_path"],
-        })
+        if img_info["caption"] and img_info["caption"].strip():
+            final_chunks.append(img_info["caption"])
+            final_metadatas.append({
+                "source_file": filename,
+                "page_number": img_info["page_number"],
+                "content_type": "image_caption",
+                "asset_path": img_info["asset_path"],
+            })
+
 
     embeddings = generate_embeddings(final_chunks)
 
