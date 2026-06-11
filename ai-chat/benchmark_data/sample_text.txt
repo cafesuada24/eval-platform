@@ -1,0 +1,2 @@
+The Multi-Modal RAG system requires Python 3.12+ and 16GB of RAM.
+The primary API key should be stored in the GOOGLE_API_KEY environment variable.

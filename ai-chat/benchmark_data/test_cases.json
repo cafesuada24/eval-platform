@@ -1,0 +1,14 @@
+[
+  {
+    "id": "TC_001",
+    "query": "What does the text document list as the primary system requirements?",
+    "expected_sources": [
+      "sample_text.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "The primary requirements are Python 3.12+ and 16GB RAM.",
+    "category": "text_retrieval"
+  }
+]
