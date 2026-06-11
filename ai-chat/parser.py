@@ -137,7 +137,7 @@ def ingest_file(file_path: str) -> int:
 
     if ext == ".txt":
         markdown_text = extract_text_from_txt(file_path)
-    elif ext in [".png", ".jpg", ".jpeg"]:
+    elif ext in [".png", ".jpg", ".jpeg", ".webp"]:
         standalone_dir = Path("assets/extracted_images/standalone")
         standalone_dir.mkdir(parents=True, exist_ok=True)
 

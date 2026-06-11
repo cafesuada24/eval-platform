@@ -206,3 +206,24 @@ def test_ingest_file_image(mock_copy2, mock_caption, mock_embed, mock_add, tmp_p
     mock_caption.assert_called_once()
     mock_copy2.assert_called_once()
     mock_add.assert_called_once()
+
+
+@patch("parser.add_chunks_to_db")
+@patch("parser.generate_embeddings")
+@patch("parser.generate_image_caption")
+@patch("parser.shutil.copy2")
+def test_ingest_file_webp(mock_copy2, mock_caption, mock_embed, mock_add, tmp_path):
+    mock_caption.return_value = "A gorgeous sunset."
+    mock_embed.return_value = [[0.15], [0.25]]
+
+    webp_file = tmp_path / "sunset.webp"
+    webp_file.write_text("fake webp bytes")
+
+    with patch("parser.Path.mkdir"):
+        count = ingest_file(str(webp_file))
+
+    assert count == 2
+    mock_caption.assert_called_once()
+    mock_copy2.assert_called_once()
+    mock_add.assert_called_once()
+

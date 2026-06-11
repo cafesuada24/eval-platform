@@ -38,7 +38,7 @@ with st.sidebar:
     st.header('Upload Document')
     uploaded_file = st.file_uploader(
         'Choose a file',
-        type=['txt', 'png', 'jpg', 'jpeg', 'pdf'],
+        type=['txt', 'png', 'jpg', 'jpeg', 'webp', 'pdf'],
     )
 
     if uploaded_file is not None and st.button('Process & Ingest'):
