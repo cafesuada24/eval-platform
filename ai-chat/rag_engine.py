@@ -2,11 +2,11 @@
 
 import logging
 import time
-from PIL import Image
-from google import genai
-from evalplatform_sdk.models import RuntimeState
 
 from embedder import generate_embeddings
+from evalplatform_sdk.models import RuntimeState
+from google import genai
+from PIL import Image
 from vector_store import query_vector_store
 
 logger = logging.getLogger(__name__)
@@ -39,7 +39,7 @@ def retrieve_context(state: RuntimeState, query: str, n_results: int = 3) -> tup
             dist = distances[i] if i < len(distances) and distances[i] is not None else 1.0
 
             rt.add_chunk(
-                document=meta.get("source_file"),
+                document=str(meta.get("source_file", "")),
                 content=doc,
                 confidence=float(dist),
             )
@@ -91,7 +91,7 @@ Question:
             try:
                 response = client.models.generate_content(
                     model=model_name,
-                    contents=contents,
+                    contents=contents,  # type: ignore[arg-type]
                 )
                 break
             except Exception as e:

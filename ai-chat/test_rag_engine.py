@@ -1,14 +1,15 @@
 """Tests for the RAG engine module."""
 
 from unittest.mock import MagicMock, patch
+
 import pytest
-from PIL import Image
 
 # We must import RuntimeState for typing/spec verification
 from evalplatform_sdk.models import RuntimeState
+from PIL import Image
 
 # Import functions under test
-from rag_engine import retrieve_context, generate_answer
+from rag_engine import generate_answer, retrieve_context
 
 # Constants to avoid magic values
 QUERY_VECTOR = [0.1, 0.2, 0.3]
@@ -34,14 +35,14 @@ def test_retrieve_context_success() -> None:
         "documents": [[RETRIEVED_TEXT_1, RETRIEVED_TEXT_2]],
         "metadatas": [[
             {"source_file": "doc1.txt", "content_type": "text"},
-            {"source_file": "doc2.txt", "content_type": "image_caption", "asset_path": IMAGE_PATH_VAL}
+            {"source_file": "doc2.txt", "content_type": "image_caption", "asset_path": IMAGE_PATH_VAL},
         ]],
-        "distances": [[0.1, 0.2]]
+        "distances": [[0.1, 0.2]],
     }
 
     with patch("rag_engine.generate_embeddings", return_value=mock_embeddings) as mock_embed, \
          patch("rag_engine.query_vector_store", return_value=mock_query_results) as mock_query:
-        
+
         context, image_paths = retrieve_context(mock_state, query, n_results=n_results)
 
         # Assert correct embedding generation & query calls
@@ -55,12 +56,12 @@ def test_retrieve_context_success() -> None:
         mock_rt.add_chunk.assert_any_call(
             document="doc1.txt",
             content=RETRIEVED_TEXT_1,
-            confidence=0.1
+            confidence=0.1,
         )
         mock_rt.add_chunk.assert_any_call(
             document="doc2.txt",
             content=RETRIEVED_TEXT_2,
-            confidence=0.2
+            confidence=0.2,
         )
 
         # Assert returned context and images
@@ -136,7 +137,7 @@ def test_generate_answer_success(mock_client_class: MagicMock, mock_image_open: 
 def test_generate_answer_retries_and_succeeds(
     mock_client_class: MagicMock,
     mock_image_open: MagicMock,
-    mock_sleep: MagicMock
+    mock_sleep: MagicMock,
 ) -> None:
     """Verify generate_answer performs exponential backoff and succeeds on a retry."""
     mock_state = MagicMock(spec=RuntimeState)
@@ -154,7 +155,7 @@ def test_generate_answer_retries_and_succeeds(
     mock_client.models.generate_content.side_effect = [
         Exception("API Error 1"),
         Exception("API Error 2"),
-        mock_response
+        mock_response,
     ]
 
     answer = generate_answer(mock_state, "query", "context", [])
@@ -174,7 +175,7 @@ def test_generate_answer_retries_and_succeeds(
 def test_generate_answer_retries_failure(
     mock_client_class: MagicMock,
     mock_image_open: MagicMock,
-    mock_sleep: MagicMock
+    mock_sleep: MagicMock,
 ) -> None:
     """Verify generate_answer fails and propagates exception after maximum retries."""
     mock_state = MagicMock(spec=RuntimeState)
@@ -189,7 +190,7 @@ def test_generate_answer_retries_failure(
         Exception("Error 1"),
         Exception("Error 2"),
         Exception("Error 3"),
-        Exception("Error 4")
+        Exception("Error 4"),
     ]
 
     with pytest.raises(Exception, match="Error 4"):

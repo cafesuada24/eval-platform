@@ -22,12 +22,15 @@ def generate_embeddings(texts: list[str]) -> list[list[float]]:
         try:
             response = client.models.embed_content(
                 model='gemini-embedding-2',
-                contents=texts,
+                contents=texts,  # type: ignore[arg-type]
             )
-            return [embedding.values for embedding in response.embeddings]
+            embeddings = response.embeddings
+            if not embeddings:
+                return []
+            return [list(embedding.values) for embedding in embeddings if embedding.values is not None]
         except Exception as e:
             if attempt == max_retries:
-                raise e
+                raise e from e
             time.sleep(delay)
             delay *= 2
 

@@ -1,13 +1,16 @@
+"""Evaluation module for local pipeline evaluation."""
+
 import os
 
 from dotenv import load_dotenv
 from evalplatform_sdk.client import EvalClient
 from evalplatform_sdk.helpers import trace
 from evalplatform_sdk.management import DatasetClient
-from rag import generate_answer, retrieve_context
+from rag_engine import generate_answer, retrieve_context
 
 
-def main():
+def main() -> None:
+    """Runs the main evaluation pipeline with the test cases dataset."""
     load_dotenv()
 
     # 1. Initialize the client
@@ -40,10 +43,10 @@ def main():
             query = case['inputs']['query']
 
             # Retrieve context (automatically tracks retrieval via state)
-            context = retrieve_context(state, query)
+            context, image_paths = retrieve_context(state, query)
 
             # Generate answer (automatically tracks generation via state)
-            answer = generate_answer(state, query, context)
+            answer = generate_answer(state, query, context, image_paths)
 
             print(f'  Q: {query}')
             print(f'  A: {answer.strip()}')

@@ -2,6 +2,7 @@
 
 import os
 import uuid
+from typing import Any
 
 import chromadb
 
@@ -14,7 +15,7 @@ collection = chroma_client.get_or_create_collection(name="ai_chat_docs")
 def add_chunks_to_db(
     chunks: list[str],
     embeddings: list[list[float]],
-    metadatas: list[dict] | None,
+    metadatas: list[dict[str, Any]] | None,
     source: str,
 ) -> None:
     """Adds text chunks with pre-computed embeddings and metadata to ChromaDB."""
@@ -39,20 +40,20 @@ def add_chunks_to_db(
     # Add to ChromaDB collection
     collection.add(
         documents=chunks,
-        embeddings=embeddings,
-        metadatas=metadatas,
+        embeddings=embeddings,  # type: ignore[arg-type]
+        metadatas=metadatas,  # type: ignore[arg-type]
         ids=ids,
     )
 
 
-def query_vector_store(query_vector: list[float], n_results: int = 3) -> dict:
+def query_vector_store(query_vector: list[float], n_results: int = 3) -> dict[str, Any]:
     """Queries the ChromaDB collection with a query vector, limiting n_results to collection size."""
     count = collection.count()
     if count == 0:
         return {}
 
     # Call query with single query vector
-    return collection.query(
-        query_embeddings=[query_vector],
+    return collection.query(  # type: ignore[return-value]
+        query_embeddings=[query_vector],  # type: ignore[arg-type]
         n_results=min(n_results, count),
     )

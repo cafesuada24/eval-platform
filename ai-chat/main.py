@@ -1,3 +1,6 @@
+"""Streamlit frontend and pipeline demo for Multi-Modal RAG."""
+
+import contextlib
 import os
 import tempfile
 import uuid
@@ -6,16 +9,17 @@ import streamlit as st
 from dotenv import load_dotenv
 from evalplatform_sdk.client import EvalClient
 from evalplatform_sdk.helpers import trace
-from ingest import extract_text_from_image, ingest_file
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from rag import add_chunks_to_db, collection, generate_answer, retrieve_context
+from parser import generate_image_caption, ingest_file
+from rag_engine import generate_answer, retrieve_context
+from vector_store import collection
 
 load_dotenv()
 
 
 # Initialize Telemetry
 @st.cache_resource
-def init_telemetry():
+def init_telemetry() -> EvalClient:
+    """Initializes and returns the evaluation platform client."""
     return EvalClient(
         api_key=os.environ.get('EVAL_API_KEY', 'dummy_key'),
         base_url=os.environ.get('EVAL_BASE_URL', 'http://localhost:8000'),
@@ -38,32 +42,33 @@ with st.sidebar:
     )
 
     if uploaded_file is not None and st.button('Process & Ingest'):
-        with st.spinner('Processing file...'):
-            with trace() as state:
-                with state.track_file_processed() as file_tracker:
-                    file_tracker.file_info(
-                        file_name=uploaded_file.name,
-                        processor='file_reader',
-                    )
-                    # Save uploaded file to a temporary location
-                    ext = '.' + uploaded_file.name.split('.')[-1]
-                    with tempfile.NamedTemporaryFile(
-                        delete=False, suffix=ext
-                    ) as tmp_file:
-                        tmp_file.write(uploaded_file.getvalue())
-                        tmp_path = tmp_file.name
+        with (
+            st.spinner('Processing file...'),
+            trace() as state,
+            state.track_file_processed() as file_tracker,
+        ):
+            file_tracker.file_info(
+                file_name=uploaded_file.name,
+                processor='file_reader',
+            )
+            # Save uploaded file to a temporary location
+            ext = '.' + uploaded_file.name.split('.')[-1]
+            with tempfile.NamedTemporaryFile(
+                delete=False, suffix=ext,
+            ) as tmp_file:
+                tmp_file.write(uploaded_file.getvalue())
+                tmp_path = tmp_file.name
 
-                    try:
-                        # Ingest and embed
-                        chunks = ingest_file(tmp_path)
-                        add_chunks_to_db(chunks, source=uploaded_file.name)
-                        st.success(
-                            f'Successfully ingested {len(chunks)} chunks from {uploaded_file.name}',
-                        )
-                    except Exception as e:
-                        st.error(f'Error processing file: {e}')
-                    finally:
-                        os.unlink(tmp_path)
+            try:
+                # Ingest and embed
+                chunks_count = ingest_file(tmp_path)
+                st.success(
+                    f'Successfully ingested {chunks_count} chunks from {uploaded_file.name}',
+                )
+            except Exception as e:
+                st.error(f'Error processing file: {e}')
+            finally:
+                os.unlink(tmp_path)
 
 # Create Tabs for Chat and Evaluation
 tab1, tab2 = st.tabs(['💬 Chat', '🧪 Evaluation'])
@@ -86,18 +91,17 @@ with tab1:
             st.markdown(prompt)
 
         # Generate response
-        with st.chat_message('assistant'):
-            with st.spinner('Thinking...'):
-                try:
-                    with trace() as state:
-                        context = retrieve_context(state, prompt)
-                        answer = generate_answer(state, prompt, context)
-                    st.markdown(answer)
-                    st.session_state.messages.append(
-                        {'role': 'assistant', 'content': answer}
-                    )
-                except Exception as e:
-                    st.error(f'Error generating answer: {e}')
+        with st.chat_message('assistant'), st.spinner('Thinking...'):
+            try:
+                with trace() as state:
+                    context, image_paths = retrieve_context(state, prompt)
+                    answer = generate_answer(state, prompt, context, image_paths)
+                st.markdown(answer)
+                st.session_state.messages.append(
+                    {'role': 'assistant', 'content': answer},
+                )
+            except Exception as e:
+                st.error(f'Error generating answer: {e}')
 
 with tab2:
     st.header('🧪 Pipeline Evaluation')
@@ -165,71 +169,62 @@ with tab2:
                 st.write(f'**Case {idx + 1}/{len(cases)} (ID: `{case_id}`):** {query}')
 
                 # Start tracking context for this specific testcase row
-                with evaluation.track_case(case_id) as case_tracker:
-                    with trace() as state:
-                        # Check if this case includes an image file that needs OCR
-                        if file_id:
-                            st.write(
-                                f'  └─ Downloading and processing file: `{file_id}`'
+                with evaluation.track_case(case_id) as case_tracker, trace() as state:
+                    # Check if this case includes an image file that needs OCR
+                    if file_id:
+                        st.write(
+                            f'  └─ Downloading and processing file: `{file_id}`',
+                        )
+                        tmp_dir = tempfile.mkdtemp()
+                        tmp_path = os.path.join(tmp_dir, filename)
+
+                        try:
+                            # Fetch the file from the platform
+                            eval_client.datasets.download_file_to_disk(
+                                dataset_id, file_id, tmp_path,
                             )
-                            ext = os.path.splitext(file_id)[1] or '.png'
 
-                            with tempfile.NamedTemporaryFile(
-                                delete=False, suffix=ext
-                            ) as tmp_file:
-                                tmp_path = tmp_file.name
-
-                            try:
-                                # Fetch the file from the platform
-                                eval_client.datasets.download_file_to_disk(
-                                    dataset_id, file_id, tmp_path
+                            # Trace File processing
+                            with state.track_file_processed() as file_tracker:
+                                file_tracker.file_info(
+                                    file_name=filename, processor='file_reader',
                                 )
+                                chunks_count = ingest_file(tmp_path)
+                                file_tracker.content(f"Ingested {chunks_count} chunks.")
 
-                                # Trace OCR / File processing
-                                with state.track_file_processed() as file_tracker:
-                                    file_tracker.file_info(
-                                        file_name=filename, processor='ocr',
-                                    )
-                                    extracted_text = extract_text_from_image(tmp_path)
-                                    file_tracker.content(extracted_text)
-
-                                # Chunk and index into ChromaDB
-                                splitter = RecursiveCharacterTextSplitter(
-                                    chunk_size=1000, chunk_overlap=100
-                                )
-                                chunks = splitter.split_text(extracted_text)
-                                add_chunks_to_db(chunks, source=filename)
-                                st.write(
-                                    f'  └─ Indexed {len(chunks)} chunks into vector DB.'
-                                )
-
-                            except Exception as e:
-                                st.error(f'  └─ [ERROR] File process / OCR failed: {e}')
-                            finally:
-                                if os.path.exists(tmp_path):
-                                    os.unlink(tmp_path)
-
-                        # Retrieve Context (Traces Retrieval Event internally)
-                        context = retrieve_context(state, query)
-
-                        # Generate Response (Traces Generation Event internally)
-                        answer = generate_answer(state, query, context)
-                        st.write(f'  └─ Q: {query}')
-                        st.write(f'  └─ A: {answer.strip()}')
-
-                        # Cleanup Case-specific vector data to prevent bleeding context
-                        if file_id:
-                            collection.delete(where={'source': filename})
                             st.write(
-                                '  └─ Cleaned up case vector context from ChromaDB.'
+                                f'  └─ Indexed {chunks_count} chunks into vector DB.',
                             )
+
+                        except Exception as e:
+                            st.error(f'  └─ [ERROR] File process failed: {e}')
+                        finally:
+                            if os.path.exists(tmp_path):
+                                os.unlink(tmp_path)
+                            with contextlib.suppress(Exception):
+                                os.rmdir(tmp_dir)
+
+                    # Retrieve Context (Traces Retrieval Event internally)
+                    context, image_paths = retrieve_context(state, query)
+
+                    # Generate Response (Traces Generation Event internally)
+                    answer = generate_answer(state, query, context, image_paths)
+                    st.write(f'  └─ Q: {query}')
+                    st.write(f'  └─ A: {answer.strip()}')
+
+                    # Cleanup Case-specific vector data to prevent bleeding context
+                    if file_id:
+                        collection.delete(where={'source_file': filename})
+                        st.write(
+                            '  └─ Cleaned up case vector context from ChromaDB.',
+                        )
 
                 progress_bar.progress((idx + 1) / len(cases))
 
             st.write('Finalizing evaluation job...')
             evaluation.complete(block=True)
             status_box.update(
-                label='Evaluation completed successfully!', state='complete'
+                label='Evaluation completed successfully!', state='complete',
             )
 
             # Fetch summary
@@ -250,13 +245,13 @@ with tab2:
                         col_m1, col_m2, col_m3 = st.columns(3)
                         with col_m1:
                             st.metric(
-                                label=f'Metric: {m_name}', value=f'{avg_score:.2f}'
+                                label=f'Metric: {m_name}', value=f'{avg_score:.2f}',
                             )
                         with col_m2:
                             st.metric(label='Pass Rate', value=f'{pass_rate:.1f}%')
                         with col_m3:
                             st.markdown(
-                                f'**Passed:** `{pass_count}` | **Warning:** `{warning_count}` | **Failed:** `{fail_count}` (Total: `{total_runs}`)'
+                                f'**Passed:** `{pass_count}` | **Warning:** `{warning_count}` | **Failed:** `{fail_count}` (Total: `{total_runs}`)',
                             )
                 else:
                     st.info('No metrics summary returned from evaluation job.')

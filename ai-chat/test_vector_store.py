@@ -17,7 +17,13 @@ mock_client.get_or_create_collection.return_value = mock_collection
 persistent_client_patcher = patch("chromadb.PersistentClient", return_value=mock_client)
 persistent_client_patcher.start()
 
-# Now import the functions to test safely
+# Now import the functions to test safely, ensuring any previously imported
+# unmocked version is removed from sys.modules to prevent test pollution.
+import sys
+
+if "vector_store" in sys.modules:
+    del sys.modules["vector_store"]
+
 from vector_store import add_chunks_to_db, query_vector_store  # noqa: E402
 
 
