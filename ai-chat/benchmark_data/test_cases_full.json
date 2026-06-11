@@ -1,0 +1,530 @@
+[
+  {
+    "id": "TC_001",
+    "query": "In the essay, the author mentions his early experiences with programming. Describe the first computer he used for programming, the language he used, and the challenges he faced.",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "The first computer the author used for programming was the IBM 1401, which was used by his school district for data processing. He started using it in 9th grade, around the age of 13 or 14. The programming language he used was an early version of Fortran. The author faced several challenges while using this computer. The only form of input to programs was data stored on punched cards, and he didn't have any data stored on punched cards. The only other option was to do things that didn't rely on any input, like calculate approximations of pi, but he didn't know enough math to do anything interesting of that type. Therefore, he couldn't figure out what to do with it and in retrospect, he believes there's not much he could have done with it.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_002",
+    "query": "The author switched his major from philosophy to AI during his college years. What were the two specific influences that led him to develop an interest in AI? Provide a brief description of each.",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "The two specific influences that led the author to develop an interest in AI were a novel and a documentary. The novel was \"The Moon is a Harsh Mistress\" by Heinlein, which featured an intelligent computer named Mike. The author was drawn into the world of the novel and felt it was only a matter of time before we'd have an intelligent computer like Mike. The documentary was a PBS documentary that showed Terry Winograd using SHRDLU, a computer program that used natural language processing. Seeing Winograd use SHRDLU made the author believe that the development of AI was imminent.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_003",
+    "query": "In the essay, the author discusses his initial interest in AI and his eventual disillusionment with it. According to the author, what were the two main influences that initially drew him to AI and what realization led him to believe that the approach to AI during his time was a hoax?",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "The two main influences that initially drew the author to AI were a novel by Heinlein called \"The Moon is a Harsh Mistress,\" which featured an intelligent computer called Mike, and a PBS documentary that showed Terry Winograd using SHRDLU. The realization that led him to believe that the approach to AI during his time was a hoax was that the AI programs of the time, which translated natural language into formal representations and added them to their knowledge base, were not truly understanding natural language. He realized that there was an unbridgeable gap between what these programs could do and actual understanding of natural language.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_004",
+    "query": "The author mentions his shift of interest towards Lisp, a programming language. What reasons does he provide for this shift and how did he further his understanding of Lisp?",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "The author shifted his interest towards Lisp after realizing that the way AI was practiced at the time, with explicit data structures representing concepts, was not going to work. He found that Lisp was interesting for its own sake and not just for its association with AI, which was the main reason people cared about it at the time. To further his understanding of Lisp, he decided to write a book about Lisp hacking. He mentions that writing a book about something can help you learn it. The book he wrote, \"On Lisp,\" was mostly written during his time in grad school.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_005",
+    "query": "In the essay, the author mentions his interest in both computer science and art. Discuss how he attempts to reconcile these two interests during his time in grad school. Provide specific examples from the text.",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "The author in the essay is Paul Graham, who was pursuing a PhD in computer science but also developed an interest in art. He found himself in a complex situation where he was simultaneously exploring different fields and trying to reconcile his interests.\n\nIn terms of computer science, Graham was particularly interested in Lisp, a programming language. He decided to write a book about Lisp hacking, titled \"On Lisp,\" as a way to deepen his understanding of the language. He was also intrigued by the idea of building things that would last, which he felt was a challenge in the field of systems work in computer science as any program written would eventually become obsolete.\n\nOn the other hand, Graham also developed a fascination with art. He was inspired by a visit to the Carnegie Institute where he realized that paintings, unlike software, do not become obsolete and can last for hundreds of years. This realization led him to consider the possibility of becoming an artist himself. Despite having no prior experience, he started taking art classes at Harvard while still being in the PhD program.\n\nGraham found himself working on multiple projects that were not related to his thesis. He was writing his book on Lisp, taking art classes, and still trying to complete his PhD. He was in a dilemma about how to reconcile his varied interests and find a way out of grad school.\n\nA turning point came when his professor asked if he was ready to graduate. Despite not having written a word of his dissertation, Graham decided to write one in the remaining weeks before the deadline, reusing parts of his book \"On Lisp\" where he could. This decision reflects his attempt to reconcile his interests by integrating his work on Lisp into his academic obligations.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_006",
+    "query": "The author discusses his decision to write a book on Lisp hacking despite his limited knowledge about it. What reasons does he give for this decision and how does this reflect his approach to learning and problem-solving?",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "The author decided to write a book on Lisp hacking primarily because he found Lisp interesting in its own right, separate from its association with AI. He also believed that writing a book about something is a good way to learn it. This reflects his approach to learning and problem-solving as being hands-on and experiential. He's not afraid to dive into a subject he's not fully versed in, using the process of writing and explaining to deepen his understanding. This approach suggests a willingness to take risks and learn through doing, rather than relying solely on prior knowledge or expertise.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_007",
+    "query": "In the essay, the author mentions a quick decision he made regarding his graduation. What was the decision and how did he plan to execute it?",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "The author decided to attempt writing his dissertation in the 5 weeks that remained before the deadline, despite not having a single word written yet. He planned to execute this by reusing parts of his work from \"On Lisp\" where he could.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_008",
+    "query": "The author describes the atmosphere and practices at the Accademia di Belli Arti. Based on his account, how did the students and faculty interact and what was the general approach to learning and teaching in this institution?",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "According to the author's account, the students and faculty at the Accademia di Belli Arti had an arrangement where the students wouldn't require the faculty to teach anything, and in return the faculty wouldn't require the students to learn anything. The author describes this as an adherence to the conventions of a 19th century atelier. The students spent their time chatting or occasionally trying to imitate things they'd seen in American art magazines. The author also mentions that hardly anyone else painted the model besides him. This suggests that the general approach to learning and teaching in this institution was rather informal and not very rigorous.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_009",
+    "query": "In the essay, the author discusses his experience with painting still lives. Based on his description, explain how the process of painting a still life differs from painting a person. What does the author suggest is the benefit of painting still lives in terms of visual perception?",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "In the essay, the author explains that painting a still life is different from painting a person because the subject of a still life doesn't move, unlike a person who can't sit still for more than about 15 minutes. When painting people, the traditional method is to know how to paint a generic person, which is then modified to match the specific person being painted. In contrast, a still life can be copied pixel by pixel from what the artist is seeing.\n\nThe author suggests that painting still lives allows for a deeper understanding of visual perception. In everyday life, much of what we see is processed by low-level brain functions that provide a general understanding of what we're seeing, without detailing every aspect. However, when painting a still life, the artist must look more closely and notice details that are usually overlooked. The author notes that this process of careful observation can lead to new discoveries even after days of painting something that people usually take for granted. Therefore, painting still lives can enhance visual perception by encouraging a more detailed and conscious observation of the world.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_010",
+    "query": "The author shares his work experience at a company called Interleaf. Describe the unique feature that Interleaf had added to their software and its significance. Also, discuss the author's role in the company and his self-assessment of his performance.",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "Interleaf, the company where the author worked, had added a unique feature to their software. Inspired by Emacs, they incorporated a scripting language into their software, which was even made as a dialect of Lisp. This bold move was significant as it allowed for more complex and flexible operations within the software.\n\nThe author's role in the company was to write things in this scripting language, essentially functioning as a Lisp hacker. However, the author self-assesses his performance as poor. He admits to being a bad employee, stating that he didn't understand most of the software because their Lisp was just a thin layer on top of a large amount of C code, a language he didn't know and didn't want to learn. Additionally, he confesses to being terribly irresponsible, particularly in relation to the traditional working hours that were expected at the time.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_011",
+    "query": "In the essay, the author discusses his experiences working at Interleaf. What was the author's role at Interleaf and how did his work habits differ from the traditional expectations of a programming job?",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "The author was hired by Interleaf as a Lisp hacker to write scripts in their scripting language, which was a dialect of Lisp. However, the author admits to being a bad employee, as he didn't understand most of the software due to it being primarily written in C, a language he didn't know or want to learn. Additionally, he found the traditional expectations of a programming job, such as showing up every day during certain working hours, unnatural. He often spent his time working on his own project, On Lisp, during work hours. This differed from the traditional expectations of a programming job which typically required focused work on assigned tasks during specified working hours.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_012",
+    "query": "The author discusses the concept of a \"signature style\" in the context of painting. Can you explain what a signature style is and provide an example of an artist who is known for a distinctive signature style?",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "A \"signature style\" is a unique and identifiable aesthetic or approach that an artist applies to their work, making it immediately recognizable as their own. In the context of painting, it's the visual equivalent of what's known as a \"schtick\" in show business - something that immediately identifies the work as belonging to a specific artist. An example given by the author is Roy Lichtenstein, known for his paintings that resemble a certain kind of cartoon. When you see a painting of this type, you can immediately identify it as Lichtenstein's work.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_013",
+    "query": "In the context of the essay, what was the author's initial perception of the World Wide Web and its potential impact on the internet? Provide examples from the text to support your answer.",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "The author initially perceived the World Wide Web as a significant and transformative development. He believed that the web would be a \"big deal\" and could have a similar impact on the internet as graphical user interfaces had on the popularity of microcomputers. This is evident from the text where he says, \"It seemed to me that the web would be a big deal. I'd seen what graphical user interfaces had done for the popularity of microcomputers. It seemed like the web would do the same for the internet.\" The author also saw the web as a potential avenue for wealth creation, referring to it as \"the next train leaving the station\" in terms of financial opportunity.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_014",
+    "query": "According to the author's experience, why was his idea of starting a company to put art galleries online not successful? What reasons does he provide in the text?",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "The author's idea of starting a company to put art galleries online was not successful because, according to his experience, art galleries did not want to be online, especially the fancy ones. He suggests that this is not how they sell their art.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_015",
+    "query": "In the essay by Paul Graham, what was the initial idea for a startup that he and Robert Morris had, and why did it fail?",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "The initial idea for a startup by Paul Graham and Robert Morris was to put art galleries online. The idea failed because art galleries didn't want to be online, especially the fancy ones, as that's not how they sell. They wrote software to generate web sites for galleries and to resize images and set up an http server to serve the pages, but they struggled to sign up galleries. Even when they offered to make sites for free, they couldn't get galleries to pay for the service.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_016",
+    "query": "Describe the pivotal moment in the essay when the author realized the potential of running software on the server and allowing users to control it through their browsers. How did this realization impact the development of their company, Viaweb?",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "The pivotal moment in the essay when the author realized the potential of running software on the server and allowing users to control it through their browsers occurred when he was lying on a mattress in Robert's apartment in Cambridge. He had the idea that if they ran the software on the server and let users control it by clicking on links, they would never have to write anything to run on users' computers. They could generate the sites on the same server they'd serve them from, and users wouldn't need anything more than a browser.\n\nThis realization had a significant impact on the development of their company, Viaweb. They decided to try making a version of their store builder that could be controlled through the browser. A few days later, they had a working prototype. Despite the user interface being horrible, it proved that they could build a whole store through the browser, without any client software or typing anything into the command line on the server. This led them to believe they were onto something big, envisioning a new generation of software working this way. This change in direction led to the creation of Viaweb, a company that worked via the web.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_017",
+    "query": "In the context of the essay, describe the three main parts of the software that the author and his team developed for their online store builder. Who was responsible for each part and what was their function?",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "The three main parts of the software developed for the online store builder were the editor, the shopping cart, and the manager. The author, Paul Graham, was responsible for writing the editor, which people used to build sites. Robert wrote the shopping cart, which presumably handled the purchasing process for customers. Trevor was responsible for the manager, which kept track of orders and statistics.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_018",
+    "query": "The author mentions that their pricing strategy for their ecommerce software was a big attraction for customers and a problem for competitors. Explain why this was the case and how their personal financial situation influenced this strategy.",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "The author and his team priced their ecommerce software at $100 a month for a small store and $300 a month for a big one. This low price was attractive to customers as it was affordable and provided value for money. It posed a problem for competitors because it was challenging for them to match or beat these prices while maintaining profitability. The author's personal financial situation influenced this pricing strategy because they were poor at the time. This caused them to perceive $300 a month as a lot of money, leading them to price their product lower than they might have if they had a better understanding of what businesses typically paid for such services. This lack of knowledge inadvertently led to a competitive pricing strategy.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_019",
+    "query": "In the context of the essay, how did the author's lack of business knowledge inadvertently contribute to the success of Viaweb? Provide examples from the text to support your answer.",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "The author's lack of business knowledge inadvertently contributed to the success of Viaweb in several ways. First, the author and his team set the price of their service low, charging $100 a month for a small store and $300 a month for a big one. This was not a strategic decision based on market research or business acumen, but rather because they were poor and $300 seemed like a lot of money to them. This low price turned out to be a big attraction for customers and a competitive advantage over other businesses.\n\nSecond, the author's lack of understanding about scaling led them to do things that didn't scale, such as building stores for their users. While this seemed humiliating and counterintuitive at the time, it turned out to be beneficial as it helped them understand retail and how their software was used, and it also helped them acquire users.\n\nLastly, the author's lack of business knowledge led them to focus on the absolute number of users rather than the growth rate. While this was a mistake in the author's eyes, it turned out that their growth rate was fine and they were growing 7x a year, which is a good sign for a startup.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_020",
+    "query": "Discuss the author's perspective on the importance of growth rate for a startup, as described in the essay. How did this perspective influence his decisions and the eventual outcome for Viaweb?",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "The author believes that the growth rate is the ultimate test of a startup. He learned that the absolute number of users is important for immediate revenue, but in the long term, a high growth rate will ensure the absolute number increases. He reflects that if he had understood this earlier, he would have advised himself not to stress and not to hire too many people, as the company was growing seven times a year and was on the path to profitability.\n\nHowever, he did hire more people, influenced by investor expectations and the norms of startups during the Internet Bubble. This decision delayed the company's break-even point and left them dependent on investors. The author regrets this, describing the result as a mess. Despite the company being profitable and growing rapidly, the author felt the near-death experiences every few months due to financial stress.\n\nEventually, Yahoo bought Viaweb, which the author describes as a huge relief and a transition from rags to riches. The author's perspective on the importance of growth rate, combined with his lack of understanding of how to value a business and manage growth, led to a stressful journey but ultimately a successful sale of the company.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_021",
+    "query": "In the essay, the author mentions a transition from a grad student lifestyle to a significantly wealthier lifestyle after the sale of his company to Yahoo. Discuss the changes he experienced and how it affected his lifestyle and ambition towards painting.",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "In the essay, the author describes a significant shift in his lifestyle after selling his company to Yahoo. Initially, he lived a grad student lifestyle, which didn't change much even after starting his company. However, after the sale to Yahoo, he experienced a sudden transition from rags to riches. He bought a car, a yellow 1998 VW GTI, which he considered a luxury, and moved to California.\n\nHowever, the following year was the least productive of his life. He was worn out from the stress of running Viaweb and struggled to adapt to Yahoo's work culture. Despite the wealth he had acquired, he felt unfulfilled and decided to leave Yahoo in the summer of 1999 to pursue his passion for painting.\n\nUpon leaving Yahoo, he immediately started painting. However, he found that he lacked energy and ambition. He attributed part of this to his isolation in California, having bought a house in the Santa Cruz Mountains, far from any social connections. In desperation, he returned to New York, where he still had his old apartment.\n\nBack in New York, he resumed his old life, but now he was rich. This wealth opened up new opportunities for him. He no longer had to walk everywhere; he could hail a taxi. He could afford to eat at charming little restaurants. His painting started to improve, and he began experimenting with new techniques.\n\nHowever, despite the financial freedom, the author seemed to struggle with finding fulfillment and maintaining his ambition to paint. The transition from a grad student lifestyle to sudden wealth brought about new opportunities but also new challenges in his pursuit of his passion.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_022",
+    "query": "The author experimented with a new kind of still life painting after moving back to New York. Describe this technique and discuss how it represents the author's creative adaptation to his new circumstances.",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "The author's new approach to still life painting involved creating an initial painting in the traditional manner, then photographing it and printing the image, enlarged, onto a canvas. This printed image served as the underpainting for a second still life, which was painted from the same objects as the first, provided they hadn't decayed. This innovative technique reflects the author's ability to adapt creatively to his new circumstances. Being wealthy, he could afford the resources to experiment with new methods. Furthermore, his return to New York, a city known for its vibrant art scene, might have inspired him to push the boundaries of his craft.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_023",
+    "query": "In the essay, the author discusses an idea for a web application. Can you describe the concept of this web application and explain why the author believed it was the future of web apps?",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "In the essay, the author discusses the idea of creating a web application for making web applications. This would allow people to edit code on the server through the browser, and then host the resulting applications for them. The author also envisioned running various services on the servers that these applications could use just by making an API call, such as making and receiving phone calls, manipulating images, taking credit card payments, etc. The author believed this was the future of web apps because it would streamline the process of creating and hosting web applications, and provide a platform for integrating various services.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_024",
+    "query": "The author mentions a new dialect of Lisp that he worked on, called Arc. What are some reasons he gives for why Lisp hackers often dream of building a new Lisp?",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "The author mentions that Lisp hackers often dream of building a new Lisp partly because one of the distinctive features of the language is that it has dialects. Additionally, he suggests that Lisp hackers may have in their minds a Platonic form of Lisp that all existing dialects fall short of.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_025",
+    "query": "In the context of Paul Graham's essay, explain the significance of his work on the new dialect of Lisp, Arc, and its impact on his perspective towards open source projects.",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "In Paul Graham's essay, his work on the new dialect of Lisp, Arc, is significant as it represents his contribution to the open-source community. He had spent a considerable amount of time thinking about this new architecture and even attempted to write some of it. This experience proved to be very useful when he encountered startups working on parts of this new architecture after starting Y Combinator.\n\nHis work on Arc also reflects his perspective towards open source projects. He saw the potential of building a new Lisp, a dream shared by many Lisp hackers, due to its distinctive feature of having dialects and the idea of a Platonic form of Lisp that all existing dialects fall short of. This shows his belief in the continuous improvement and evolution of open source projects, and his willingness to contribute to this process.\n\nFurthermore, his work on Arc and the subsequent feedback he received from the community may have influenced his perspective on the power of the internet as a platform for sharing ideas and knowledge. This is evident when he started publishing essays online and realized the potential of the web as a medium for publishing, which was not limited by the traditional constraints of print media.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_026",
+    "query": "Analyze the shift in publishing essays from the print era to the digital era as described in the essay. How does Paul Graham view this shift and its implications for future generations of essays?",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "In the essay, Paul Graham describes a significant shift in publishing essays from the print era to the digital era. During the print era, the channel for publishing essays was very narrow, with only a few officially anointed thinkers and specialists in their fields allowed to publish. The digital era, however, opened up the possibility for anyone to publish anything, a concept that Graham admits took him several years to fully comprehend.\n\nGraham views this shift as a revolutionary change that allows for a whole new generation of essays. He acknowledges that it was surprising to realize that if he wrote something and put it on the web, anyone could read it. This realization led him to understand that there were so many essays that had never been written because there had been no way to publish them in the print era. Now, these essays could be written and published online.\n\nDespite recognizing that online essays would be viewed as a marginal medium at first, Graham found this encouraging rather than discouraging. He saw the lack of prestige in online essays as a sign of something real to be discovered and a test of the right kind of motives. He warns against the danger of impure motives, such as the desire to impress people, and suggests that working on things that aren't prestigious can help avoid the most common type of wrong path.\n\nIn summary, Paul Graham views the shift from print to digital publishing as a liberating change that opens up new possibilities for essay writing. He sees it as an opportunity for new voices to be heard and new ideas to be shared, even if they initially lack prestige.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_027",
+    "query": "In the essay by Paul Graham, he discusses his journey towards starting an investment firm. Identify the key events and individuals that influenced this decision and explain their roles in the process.",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "In Paul Graham's essay, several key events and individuals influenced his decision to start an investment firm. \n\nOne of the key individuals was Jessica Livingston, a woman he met at a party at his house. Jessica worked in marketing at a Boston investment bank and was compiling a book of interviews with startup founders. When she had to look for a new job due to financial problems at her bank, Paul began sharing his ideas about what needed to change in venture capital. Jessica's experience and insights from the startup world and her job search played a significant role in shaping their decision to start an investment firm.\n\nAnother key event was a talk Paul gave at the Harvard Computer Society on how to start a startup. During this talk, he shared his belief that the best sources of seed funding were successful startup founders. This talk made him realize that he should stop procrastinating about angel investing, a thought he had been entertaining since Yahoo bought his company.\n\nPaul also mentions his friends Robert and Trevor, with whom he had been scheming about potential projects. Their shared history and desire to collaborate again influenced his decision to start an investment firm, with the idea that they could all work together on this new venture.\n\nFinally, the frustration with the slow decision-making process of traditional venture capitalists (VCs) was a significant factor. This led to the decision to start their own investment firm, where they could implement their ideas and strategies. The lack of established angel investors to learn from in Boston in 2005 also played a role, as it forced them to make their own choices, some of which turned out to be novel.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_028",
+    "query": "Paul Graham mentions a strategy he used for writing essays, which involved giving talks. Discuss how this strategy worked for him and how it influenced his approach towards starting a startup.",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "Paul Graham found that giving talks was an effective strategy for writing essays. The pressure of having to present to a group of people and provide them with valuable information spurred his imagination and helped him generate ideas. This approach also influenced his perspective on starting a startup. When he was asked to give a talk to the Harvard Computer Society, he decided to discuss how to start a startup, hoping to help them avoid common mistakes. During this talk, he suggested that the best sources of seed funding were successful startup founders, as they could also provide advice. This led him to consider angel investing and eventually inspired the idea of starting his own investment firm.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_029",
+    "query": "In the essay by Paul Graham, describe the unique approach that Y Combinator took towards investing in startups, and how it differed from traditional VC firms and angel investors. Provide examples from the text to support your answer.",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "Y Combinator, as described in Paul Graham's essay, took a unique approach towards investing in startups. Unlike traditional VC firms and angel investors, Y Combinator was not organized as a fund and was funded with their own money. This was different from VC firms which were organized companies making large investments, and angels who were individuals making smaller investments on the side. Y Combinator's plan was to make seed investments and also provide support to startups in ways that traditional investors didn't, such as helping them get set up as a company.\n\nAnother distinctive feature of Y Combinator was its batch model. They would fund a group of startups all at once, twice a year, and then spend three months focusing intensively on trying to help them. This was discovered by accident due to their lack of experience as investors. They saw it as a way to gain experience by funding a bunch of startups at once, which was not a common practice among traditional investors.\n\nAn example of this approach in action was the Summer Founders Program, where they invited undergrads to start startups instead of taking up temporary jobs at tech companies during the summer. This program resulted in a surprising number of applications, including from people who had already graduated or were about to. From these, they selected 8 groups to fund, including future successful companies like Reddit and Twitch. This shows how Y Combinator's unique approach allowed them to discover and invest in promising startups at an early stage.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_030",
+    "query": "Discuss the inception and initial implementation of the Summer Founders Program as described in Paul Graham's essay. Who were some of the notable participants in the first batch and what were their contributions to the tech industry?",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "In Paul Graham's essay, the inception of the Summer Founders Program (SFP) came about as a way for Graham and his partners to gain experience as investors. They decided to fund a bunch of startups all at once, twice a year, and spend three months focusing intensively on helping them. The idea was to organize a summer program where undergraduates would start startups instead of getting temporary jobs at tech companies. The building Graham owned in Cambridge was used as headquarters, and weekly dinners and talks by startup experts were organized.\n\nThe SFP was announced on Graham's site, inviting undergraduates to apply. Surprisingly, they received 225 applications, many from people who had already graduated or were about to graduate. They invited about 20 of these groups for in-person interviews and selected 8 to fund.\n\nThe first batch of the SFP included notable participants who made significant contributions to the tech industry. This included the founders of Reddit, Justin Kan and Emmett Shear who later founded Twitch, Aaron Swartz who helped write the RSS spec and became a martyr for open access, and Sam Altman who later became the second president of Y Combinator. Graham notes that the success of the first batch was not entirely due to luck, implying their selection and support process was effective.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_031",
+    "query": "In the Summer Founders Program mentioned in the text, what were the terms of the deal for startups and how was it determined to be fair?",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "The deal for startups in the Summer Founders Program was based on a combination of a previous deal with Julian ($10k for 10%) and what MIT grad students got for the summer ($6k). The program invested $6k per founder, which in the typical two-founder case was $12k, in return for 6%. It was determined to be fair because it was twice as good as the deal that the program organizers had taken themselves. Additionally, during the first summer, the founders were provided with free air conditioners.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_032",
+    "query": "Discuss the role of Hacker News (HN) in the context of Y Combinator (YC). How did it contribute to the author's stress and what was its significance in the overall work of YC?",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "Hacker News (HN) was initially created as a news aggregator for startup founders, but its focus shifted to cater to future startup founders, engaging their intellectual curiosity. It played a significant role in Y Combinator (YC) as it was beneficial for the organization. However, it was also a significant source of stress for the author. The author mentions that if his only task was to select and help founders, his life would have been much easier, implying that managing HN was a challenging task. He likens his situation to running a marathon with an ill-fitting shoe, causing more pain than the marathon itself. He states that when dealing with urgent problems during YC, there was a 60% chance it was related to HN, and a 40% chance it was related to everything else combined. Despite the stress, the author also wrote all of YC's internal software in Arc, the same language used to create HN. This indicates that HN was a significant part of the author's work in YC.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_033",
+    "query": "In the essay, Paul Graham mentions a significant piece of advice given to him by Robert Morris. What was this advice and how did it impact Paul's decision regarding his role at Y Combinator (YC)?",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "In the essay, Robert Morris advised Paul Graham to ensure that Y Combinator (YC) isn't the last cool thing he does. Initially, Paul did not understand the advice, but he later realized that Robert was suggesting he should quit YC. This advice significantly impacted Paul's decision about his role at YC. He acknowledged that if he continued on his current trajectory, YC would consume all his attention and become the last thing he did. This realization, along with personal circumstances, led him to decide to hand over YC to someone else.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_034",
+    "query": "Discuss the transition of leadership at Y Combinator as described in the essay. Who was initially approached to take over as president, and who ultimately assumed this role? What were the reasons behind these decisions?",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "The transition of leadership at Y Combinator was described as a thoughtful and gradual process. Initially, Jessica was asked if she wanted to be president, but she declined the offer. The team then decided to approach Sam Altman for the role. The decision to recruit Sam was part of a larger plan to ensure the longevity of Y Combinator. The founders believed that for YC to last a long time, it couldn't be controlled by the founders, hence the need for a change in leadership. Sam initially declined the offer as he wanted to start a startup to make nuclear reactors. However, after persistent efforts, Sam finally agreed to take over as president in October 2013. The transition was gradual, with Sam taking over more responsibilities towards the end of 2013. This was partly to allow him to learn the job and partly because the author was focused on his mother, whose cancer had returned.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_035",
+    "query": "In the context of the essay, why did the author decide to step away from YC and start painting? What led him to eventually stop painting and return to writing essays and working on Lisp?",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "The author decided to step away from YC to help get a batch of startups through Demo Day, and then he checked out completely. He was also dealing with the death of his mother, whose cancer had returned. He decided to start painting as he wanted to do something completely different and see how good he could get if he really focused on it. However, in November, while in the middle of a painting, he ran out of steam and found finishing the painting to be a chore, so he stopped painting. He then started writing essays again and in March 2015, he started working on Lisp. The author mentions that attention is a zero-sum game and if a project isn't the best one for you, it's getting in the way of another project that is. This could be a reason why he decided to return to writing essays and working on Lisp.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_036",
+    "query": "Discuss the significance of Lisp as a programming language as described in the essay. How does the author describe its origins and evolution, and what makes it distinct from other programming languages?",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "In the essay, the author describes Lisp as a programming language that originated as a model of computation, which gave it a power and elegance that other languages couldn't match. This unique origin is what initially attracted the author to Lisp during his college years.\n\nThe author explains that Lisp was invented by John McCarthy in 1960, and its core is defined by writing an interpreter in itself. It wasn't originally intended to be a programming language in the ordinary sense, but rather a formal model of computation, an alternative to the Turing machine. The minimum set of predefined operators needed to write an interpreter for a language in itself is what defines the Lisp that McCarthy invented.\n\nHowever, McCarthy didn't realize this Lisp could be used to program computers until his grad student Steve Russell suggested it. Russell translated McCarthy's interpreter into IBM 704 machine language, and from that point, Lisp began to be used as a programming language in the ordinary sense.\n\nThe author notes that McCarthy's original Lisp did nothing more than interpret Lisp expressions and was missing many features that are desirable in a programming language. These features had to be added later, but they weren't defined using McCarthy's original axiomatic approach because it wouldn't have been feasible at the time due to the limitations of computers.\n\nThe author concludes by suggesting that with the power of modern computers, it would now be possible to continue using McCarthy's axiomatic approach to define a complete programming language. As long as every change made to McCarthy's Lisp was a discoveredness-preserving transformation, one could, in principle, end up with a complete language that retained the unique qualities of Lisp.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_037",
+    "query": "In the essay, the author discusses the development of a new programming language. What was this language called, and what was the unique approach the author used in its creation?",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "The author developed a new programming language called Bel. The unique approach used in its creation was continuing McCarthy's axiomatic approach until a complete programming language was defined. The author also wrote this new language, Bel, in itself in Arc, which involved a lot of trickery and hacks to make it work.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_038",
+    "query": "The author mentions a significant life change that occurred during the development of the programming language. What was this change, and how did it impact the author's work on the project?",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "The significant life change that occurred during the development of the programming language was the author's move to England in the summer of 2016. The author and his family moved to England because they wanted their kids to experience living in another country. Originally, they intended to stay for a year, but they liked it so much that they decided to continue living there. This move impacted the author's work on the project as most of the programming language, Bel, was written in England.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_039",
+    "query": "In the essay by Paul Graham, he discusses his process of choosing what to work on and how he was surprised by the complexity of his own decision-making process. Based on this, can you explain how personal experiences and introspection can influence the decision-making process in professional life? Use examples from the text to support your answer.",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "In Paul Graham's essay, he reflects on his own decision-making process, demonstrating how personal experiences and introspection can greatly influence professional choices. He begins by asking himself how he had chosen what to work on in the past, indicating that he is drawing on his personal experiences to guide his future decisions. This introspective process leads him to a long and messy answer, suggesting that his decision-making process is complex and influenced by various factors from his life experiences.\n\nFor example, he mentions that he wrote an essay for himself to answer the question of how he chooses what to work on. This indicates that he uses writing as a tool for introspection, allowing him to articulate and understand his thoughts and experiences better. This introspective process can lead to surprising insights, as it did for Graham when he found his answer to be longer and messier than expected.\n\nFurthermore, he thought that his introspective journey might be interesting and encouraging to others with similarly messy lives. This suggests that he believes his personal experiences and the insights gained from introspection can be valuable not only for his own decision-making process but also for others in similar situations.\n\nIn the notes, Graham also shares various personal experiences, from his time living in Florence (note 3) to his experiences with software and online publishing (notes 9, 10, 11). These experiences likely influenced his professional decisions, demonstrating how personal experiences can shape our professional lives.\n\nIn conclusion, Graham's essay illustrates how personal experiences and introspection can influence decision-making in professional life. By reflecting on past experiences and using introspection to understand our thoughts and feelings, we can gain valuable insights that guide our professional choices.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_040",
+    "query": "The author mentions several notes at the end of his essay, each providing a unique insight or anecdote. Choose one note and discuss its significance in the context of the essay. How does this note contribute to the overall theme or message of the essay?",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "Without the full context of the essay, it's difficult to determine the exact significance of each note. However, we can make some assumptions based on the content of the notes themselves. \n\nFor example, let's take note [10]: \"This was the first instance of what is now a familiar experience, and so was what happened next, when I read the comments and found they were full of angry people. How could I claim that Lisp was better than other languages? Weren't they all Turing complete? People who see the responses to essays I write sometimes tell me how sorry they feel for me, but I'm not exaggerating when I reply that it has always been like this, since the very beginning. It comes with the territory. An essay must tell readers things they don't already know, and some people dislike being told such things.\"\n\nThis note appears to discuss the author's experience with criticism and backlash, particularly in relation to his opinions on programming languages. It might contribute to the overall theme or message of the essay by highlighting the challenges and criticisms that come with sharing new or controversial ideas, a theme that could be relevant if the essay is about the author's experiences as a writer or a programmer. It could also be a reflection on the nature of online discourse and the resistance to new ideas or change.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_041",
+    "query": "In the essay, Paul Graham discusses the concept of customs and how they continue to influence practices even after the original constraints have disappeared. Can you explain this concept with reference to the examples he provides in the text?",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "Yes, Paul Graham discusses the concept of customs and their lasting influence in the essay. He uses the example of venture capital (VC) practices and the publishing of essays to illustrate this point. \n\nIn the case of VC practices, he explains that these customs were formed during a time when startups were expensive to start and rare. However, even though startups can now be cheap and common, the customs of VCs still reflect the constraints of the old world. \n\nSimilarly, he talks about how the customs of publishing essays still reflect the constraints of the print era, despite the advent of online publishing. \n\nHe further argues that independent-minded individuals, who are less influenced by these outdated customs, have an advantage in fields affected by rapid change. This is because these customs are more likely to be obsolete in such rapidly changing environments.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_042",
+    "query": "Paul Graham uses the example of advanced alien civilizations to discuss the concept of invented vs discovered. How does he use this analogy to explain his viewpoint? What does he suggest about the potential knowledge of these civilizations?",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "Paul Graham uses the analogy of advanced alien civilizations to explain the concept of invented versus discovered knowledge. He suggests that certain fundamental concepts, like the Pythagorean theorem, would be known to any sufficiently advanced civilization, implying that these concepts are discovered, universal truths rather than human inventions. He also posits that these civilizations might know about Lisp, a programming language from McCarthy's 1960 paper, indicating that some technological advancements might also be universal discoveries. However, he also suggests that there's no reason to believe that this would be the limit of their knowledge. He speculates that these civilizations would likely have a need for numbers, errors, and I/O, and thus there could be other paths of discovery beyond what we currently know.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_043",
+    "query": "In the essay by Paul Graham, he discusses the concept of invented versus discovered knowledge. Using the example of an advanced alien civilization, how does he illustrate this concept, specifically in relation to the Pythagorean theorem and Lisp in McCarthy's 1960 paper?",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "In the essay, Paul Graham uses the concept of an advanced alien civilization to illustrate the idea of invented versus discovered knowledge. He posits that any sufficiently advanced alien civilization would certainly know about the Pythagorean theorem, suggesting that this knowledge is universal and thus discovered, not invented. He also believes, though with less certainty, that these aliens would know about the Lisp in McCarthy's 1960 paper. This implies that the Lisp language, like the Pythagorean theorem, is a discovered knowledge that transcends human invention. He further speculates that there might be no limit to the language that might be known to these aliens, suggesting the possibility of more discovered knowledge.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_044",
+    "query": "Paul Graham mentions his experience of leaving YC and no longer working with Jessica. How does he describe this experience and what does it reveal about his personal and professional relationship with Jessica?",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "Paul Graham describes his experience of leaving YC and no longer working with Jessica as like \"pulling up a deeply rooted tree\". This metaphor suggests that their professional relationship was deeply intertwined with their personal lives, and was not something that could be easily separated or removed. It reveals that their work on YC was a significant part of their relationship and that leaving it was a significant and potentially difficult change.",
+    "category": "paul_graham_essay"
+  }
+]

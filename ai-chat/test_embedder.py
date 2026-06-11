@@ -3,7 +3,14 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from embedder import generate_embeddings
+from embedder import _cached_generate_embeddings, generate_embeddings
+
+
+@pytest.fixture(autouse=True)
+def clear_cache() -> None:
+    """Clear embedder's LRU cache before each test to prevent test isolation issues."""
+    _cached_generate_embeddings.cache_clear()
+
 
 # Test constants to avoid PLR2004 (magic value comparison)
 SINGLE_VALS: list[float] = [0.1, 0.2, 0.3]

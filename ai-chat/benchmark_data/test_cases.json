@@ -1,14 +1,62 @@
 [
   {
     "id": "TC_001",
-    "query": "What does the text document list as the primary system requirements?",
+    "query": "In the essay, the author mentions his early experiences with programming. Describe the first computer he used for programming, the language he used, and the challenges he faced.",
     "expected_sources": [
-      "sample_text.txt"
+      "paul_graham_essay.txt"
     ],
     "expected_content_types": [
       "text"
     ],
-    "reference_answer": "The primary requirements are Python 3.12+ and 16GB RAM.",
-    "category": "text_retrieval"
+    "reference_answer": "The first computer the author used for programming was the IBM 1401, which was used by his school district for data processing. He started using it in 9th grade, around the age of 13 or 14. The programming language he used was an early version of Fortran. The author faced several challenges while using this computer. The only form of input to programs was data stored on punched cards, and he didn't have any data stored on punched cards. The only other option was to do things that didn't rely on any input, like calculate approximations of pi, but he didn't know enough math to do anything interesting of that type. Therefore, he couldn't figure out what to do with it and in retrospect, he believes there's not much he could have done with it.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_002",
+    "query": "The author switched his major from philosophy to AI during his college years. What were the two specific influences that led him to develop an interest in AI? Provide a brief description of each.",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "The two specific influences that led the author to develop an interest in AI were a novel and a documentary. The novel was \"The Moon is a Harsh Mistress\" by Heinlein, which featured an intelligent computer named Mike. The author was drawn into the world of the novel and felt it was only a matter of time before we'd have an intelligent computer like Mike. The documentary was a PBS documentary that showed Terry Winograd using SHRDLU, a computer program that used natural language processing. Seeing Winograd use SHRDLU made the author believe that the development of AI was imminent.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_003",
+    "query": "In the essay, the author discusses his initial interest in AI and his eventual disillusionment with it. According to the author, what were the two main influences that initially drew him to AI and what realization led him to believe that the approach to AI during his time was a hoax?",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "The two main influences that initially drew the author to AI were a novel by Heinlein called \"The Moon is a Harsh Mistress,\" which featured an intelligent computer called Mike, and a PBS documentary that showed Terry Winograd using SHRDLU. The realization that led him to believe that the approach to AI during his time was a hoax was that the AI programs of the time, which translated natural language into formal representations and added them to their knowledge base, were not truly understanding natural language. He realized that there was an unbridgeable gap between what these programs could do and actual understanding of natural language.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_004",
+    "query": "The author mentions his shift of interest towards Lisp, a programming language. What reasons does he provide for this shift and how did he further his understanding of Lisp?",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "The author shifted his interest towards Lisp after realizing that the way AI was practiced at the time, with explicit data structures representing concepts, was not going to work. He found that Lisp was interesting for its own sake and not just for its association with AI, which was the main reason people cared about it at the time. To further his understanding of Lisp, he decided to write a book about Lisp hacking. He mentions that writing a book about something can help you learn it. The book he wrote, \"On Lisp,\" was mostly written during his time in grad school.",
+    "category": "paul_graham_essay"
+  },
+  {
+    "id": "TC_005",
+    "query": "In the essay, the author mentions his interest in both computer science and art. Discuss how he attempts to reconcile these two interests during his time in grad school. Provide specific examples from the text.",
+    "expected_sources": [
+      "paul_graham_essay.txt"
+    ],
+    "expected_content_types": [
+      "text"
+    ],
+    "reference_answer": "The author in the essay is Paul Graham, who was pursuing a PhD in computer science but also developed an interest in art. He found himself in a complex situation where he was simultaneously exploring different fields and trying to reconcile his interests.\n\nIn terms of computer science, Graham was particularly interested in Lisp, a programming language. He decided to write a book about Lisp hacking, titled \"On Lisp,\" as a way to deepen his understanding of the language. He was also intrigued by the idea of building things that would last, which he felt was a challenge in the field of systems work in computer science as any program written would eventually become obsolete.\n\nOn the other hand, Graham also developed a fascination with art. He was inspired by a visit to the Carnegie Institute where he realized that paintings, unlike software, do not become obsolete and can last for hundreds of years. This realization led him to consider the possibility of becoming an artist himself. Despite having no prior experience, he started taking art classes at Harvard while still being in the PhD program.\n\nGraham found himself working on multiple projects that were not related to his thesis. He was writing his book on Lisp, taking art classes, and still trying to complete his PhD. He was in a dilemma about how to reconcile his varied interests and find a way out of grad school.\n\nA turning point came when his professor asked if he was ready to graduate. Despite not having written a word of his dissertation, Graham decided to write one in the remaining weeks before the deadline, reusing parts of his book \"On Lisp\" where he could. This decision reflects his attempt to reconcile his interests by integrating his work on Lisp into his academic obligations.",
+    "category": "paul_graham_essay"
   }
 ]

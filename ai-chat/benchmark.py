@@ -146,7 +146,7 @@ def run_benchmark(data_dir: str | None = None) -> list[dict]:
         raise FileNotFoundError(f"Benchmark data directory not found: {data_dir}")
 
     for filename in sorted(os.listdir(data_dir)):
-        if filename == "test_cases.json":
+        if filename.endswith(".json"):
             continue
         file_path = os.path.join(data_dir, filename)
         if not os.path.isfile(file_path):

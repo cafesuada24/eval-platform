@@ -1,12 +1,52 @@
 [
   {
     "id": "TC_001",
-    "query": "What does the text document list as the primary system requirements?",
-    "precision": 0.3333333333333333,
+    "query": "In the essay, the author mentions his early experiences with programming. Describe the first computer he used for programming, the language he used, and the challenges he faced.",
+    "precision": 1.0,
     "recall": 1.0,
-    "quality_score": 1.0,
-    "candidate_answer": "The primary system requirements for the Multi-Modal RAG system are Python 3.12+ and 16GB of RAM.",
-    "reference_answer": "The primary requirements are Python 3.12+ and 16GB RAM.",
+    "quality_score": 0.7,
+    "candidate_answer": "Based on the provided text, here are the details regarding the author's early programming experiences:\n\n*   **The first computer:** The author identifies the TRS-80 (purchased around 1980) as the computer he used when he really started programming. However, he also describes an earlier experience with a machine called the 1401.\n*   **The language:** The author states the language used was an early version of Fortran.\n*   **The challenges:**\n    *   **TRS-80:** The memory was very limited, holding only about two pages of text at a time.\n    *   **1401:** He faced significant input challenges because the only form of input was data stored on punch cards, which he did not possess. Additionally, he lacked the mathematical knowledge to create programs that did not require input (such as calculating pi).\n    *   **General process:** Programming required typing code on punch cards, stacking them in a card reader, and pressing a button to run the program, which would then print results on a \"spectacularly loud\" printer.\n    *   **Technical/Social error:** On the 1401, he experienced a program that did not terminate. Because the machine lacked time-sharing, this was a social error that upset the data center manager.",
+    "reference_answer": "The first computer the author used for programming was the IBM 1401, which was used by his school district for data processing. He started using it in 9th grade, around the age of 13 or 14. The programming language he used was an early version of Fortran. The author faced several challenges while using this computer. The only form of input to programs was data stored on punched cards, and he didn't have any data stored on punched cards. The only other option was to do things that didn't rely on any input, like calculate approximations of pi, but he didn't know enough math to do anything interesting of that type. Therefore, he couldn't figure out what to do with it and in retrospect, he believes there's not much he could have done with it.",
+    "status": "success"
+  },
+  {
+    "id": "TC_002",
+    "query": "The author switched his major from philosophy to AI during his college years. What were the two specific influences that led him to develop an interest in AI? Provide a brief description of each.",
+    "precision": 1.0,
+    "recall": 1.0,
+    "quality_score": 0.95,
+    "candidate_answer": "The two specific influences that led the author to develop an interest in AI were:\n\n*   **A novel by Heinlein called *The Moon is a Harsh Mistress*:** This book featured an intelligent computer character named Mike, and the author was drawn into its world, believing that such technology would soon exist.\n*   **A PBS documentary featuring Terry Winograd and SHRDLU:** Seeing Winograd use SHRDLU made the author believe that achieving advanced AI was only a matter of teaching a program more words and that such technology would be available in a few years at most.",
+    "reference_answer": "The two specific influences that led the author to develop an interest in AI were a novel and a documentary. The novel was \"The Moon is a Harsh Mistress\" by Heinlein, which featured an intelligent computer named Mike. The author was drawn into the world of the novel and felt it was only a matter of time before we'd have an intelligent computer like Mike. The documentary was a PBS documentary that showed Terry Winograd using SHRDLU, a computer program that used natural language processing. Seeing Winograd use SHRDLU made the author believe that the development of AI was imminent.",
+    "status": "success"
+  },
+  {
+    "id": "TC_003",
+    "query": "In the essay, the author discusses his initial interest in AI and his eventual disillusionment with it. According to the author, what were the two main influences that initially drew him to AI and what realization led him to believe that the approach to AI during his time was a hoax?",
+    "precision": 1.0,
+    "recall": 1.0,
+    "quality_score": 0.9,
+    "candidate_answer": "According to the author, the two main influences that initially drew him to AI were a novel by Heinlein called *The Moon is a Harsh Mistress*, which featured an intelligent computer named Mike, and a PBS documentary showing Terry Winograd using SHRDLU.\n\nThe realization that led him to believe the approach to AI at the time was a hoax was that programs were simply taking inputs\u2014such as \"the dog is sitting on the chair\"\u2014translating them into a formal representation, and adding them to a list of known information.",
+    "reference_answer": "The two main influences that initially drew the author to AI were a novel by Heinlein called \"The Moon is a Harsh Mistress,\" which featured an intelligent computer called Mike, and a PBS documentary that showed Terry Winograd using SHRDLU. The realization that led him to believe that the approach to AI during his time was a hoax was that the AI programs of the time, which translated natural language into formal representations and added them to their knowledge base, were not truly understanding natural language. He realized that there was an unbridgeable gap between what these programs could do and actual understanding of natural language.",
+    "status": "success"
+  },
+  {
+    "id": "TC_004",
+    "query": "The author mentions his shift of interest towards Lisp, a programming language. What reasons does he provide for this shift and how did he further his understanding of Lisp?",
+    "precision": 1.0,
+    "recall": 1.0,
+    "quality_score": 0.9,
+    "candidate_answer": "Based on the provided context, the author shifted his interest to Lisp for the following reasons:\n\n*   **Association with AI:** At the time, Lisp was regarded as the language of AI, and since there were no AI classes at Cornell, the author began teaching himself AI by learning Lisp.\n*   **Dissatisfaction with other languages:** The author found the commonly used programming languages of the time (such as the Pascal-like PL/I) to be \"pretty primitive.\"\n*   **Intellectual impact:** Learning Lisp \"expanded [the author's] concept of a program so fast\" that it provided the stimulating educational experience he had expected from college.\n*   **Inherent qualities:** The author recognized that Lisp was \"interesting for its own sake\" and possessed a \"power and elegance\" stemming from its origins as a formal model of computation.\n\nTo further his understanding of Lisp, the author:\n*   **Taught himself:** He began by self-studying the language.\n*   **Wrote a book:** He decided to write a book on Lisp hacking titled *On Lisp*. He notes that \"there's nothing like writing a book about something to help you learn it.\"",
+    "reference_answer": "The author shifted his interest towards Lisp after realizing that the way AI was practiced at the time, with explicit data structures representing concepts, was not going to work. He found that Lisp was interesting for its own sake and not just for its association with AI, which was the main reason people cared about it at the time. To further his understanding of Lisp, he decided to write a book about Lisp hacking. He mentions that writing a book about something can help you learn it. The book he wrote, \"On Lisp,\" was mostly written during his time in grad school.",
+    "status": "success"
+  },
+  {
+    "id": "TC_005",
+    "query": "In the essay, the author mentions his interest in both computer science and art. Discuss how he attempts to reconcile these two interests during his time in grad school. Provide specific examples from the text.",
+    "precision": 1.0,
+    "recall": 1.0,
+    "quality_score": 0.9,
+    "candidate_answer": "During his time in grad school, the author attempts to reconcile his interests in computer science and art by simultaneously working on multiple projects that were not related to his PhD thesis. \n\nSpecific examples from the text include:\n\n*   **Enrolling in art classes:** While pursuing a PhD in computer science, he began taking art classes at Harvard.\n*   **\"Lisp hacking\":** He maintained a genuine love for Lisp programming while exploring his interest in becoming an artist. He worked on his book, *On Lisp*, during his time in grad school, noting that he was \"working energetically on multiple projects that were not my thesis.\"\n*   **Seeking independence through art:** After realizing that paintings do not become obsolete, he contemplated a path where he could be \"truly independent\" as an artist\u2014avoiding the need for a boss or research funding\u2014while ultimately deciding to focus his technical work on Lisp, which he viewed as interesting for its own sake.",
+    "reference_answer": "The author in the essay is Paul Graham, who was pursuing a PhD in computer science but also developed an interest in art. He found himself in a complex situation where he was simultaneously exploring different fields and trying to reconcile his interests.\n\nIn terms of computer science, Graham was particularly interested in Lisp, a programming language. He decided to write a book about Lisp hacking, titled \"On Lisp,\" as a way to deepen his understanding of the language. He was also intrigued by the idea of building things that would last, which he felt was a challenge in the field of systems work in computer science as any program written would eventually become obsolete.\n\nOn the other hand, Graham also developed a fascination with art. He was inspired by a visit to the Carnegie Institute where he realized that paintings, unlike software, do not become obsolete and can last for hundreds of years. This realization led him to consider the possibility of becoming an artist himself. Despite having no prior experience, he started taking art classes at Harvard while still being in the PhD program.\n\nGraham found himself working on multiple projects that were not related to his thesis. He was writing his book on Lisp, taking art classes, and still trying to complete his PhD. He was in a dilemma about how to reconcile his varied interests and find a way out of grad school.\n\nA turning point came when his professor asked if he was ready to graduate. Despite not having written a word of his dissertation, Graham decided to write one in the remaining weeks before the deadline, reusing parts of his book \"On Lisp\" where he could. This decision reflects his attempt to reconcile his interests by integrating his work on Lisp into his academic obligations.",
     "status": "success"
   }
 ]
