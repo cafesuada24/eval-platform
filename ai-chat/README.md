@@ -4,8 +4,9 @@ This directory contains a complete, robust, multi-modal Retrieval-Augmented Gene
 
 ## Features
 
-- **Document Ingestion & Parsing**: Parses plain text (`.txt`) and PDF (`.pdf`) documents.
-- **Multi-Modal Image Captioning**: Extracts images from PDFs using `pymupdf4llm` and generates detailed semantic descriptions using `gemini-3.1-flash-lite`, placing captions inline in the retrieved text context.
+- **Document Ingestion & Parsing**: Parses plain text (`.txt`), PDF (`.pdf`) documents, and standalone images (`.png`, `.jpg`, `.jpeg`, `.webp`).
+- **Structured OCR & Captioning**: Utilizes Gemini structured output JSON schemas to perform both high-fidelity OCR and visual captioning in a single request.
+- **Scanned PDF OCR & Hybrid Parsing**: Identifies scanned/empty pages in PDFs dynamically and runs page-level OCR via Gemini structured outputs to extract text and captions, preserving PDF formatting.
 - **Vector Search & Storage**: Stores document chunks and metadata in a persistent ChromaDB instance.
 - **RAG Execution**: Hydrates user queries with relevant text chunks and context images, feeding them to the Gemini model for generation.
 - **Benchmarking Suite**: Evaluates precision, recall, and semantic answer quality (LLM-as-a-judge) on test cases, complete with API rate limit protection.

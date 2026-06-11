@@ -8,22 +8,26 @@ This document details the design, logic flow, and components of the multi-modal 
 
 ```mermaid
 graph TD
-    A[Source Files .txt, .pdf] --> B[Parser Module parser.py]
-    B -->|Extract Text| C[Plain Text Extraction]
-    B -->|Extract Images & Pages| D[PDF Parser pymupdf4llm]
-    D -->|Extracted Images| E[Gemini Captioning gemini-3.1-flash-lite]
-    E -->|Combine Markdown + Captions| F[unified markdown text]
-    C --> F
-    F -->|Chunking| G[Text Splitters]
-    G --> H[Embedder Module embedder.py]
-    H -->|Sub-batching & Caching| I[Gemini Embeddings gemini-embedding-2]
-    I -->|Vector Insertion| J[ChromaDB vector_store.py]
+    A["Source Files (.txt, .pdf, .png, .jpg, .jpeg, .webp)"] --> B[Parser Module parser.py]
+    B -->|Plain Text| C[Plain Text Extraction]
+    B -->|Standalone Image| D[Gemini OCR + Captioning]
+    B -->|PDF pages & images| E[PDF Parser pymupdf4llm]
+    E -->|Scanned / Low-Text Pages| F[Dynamic PyMuPDF PNG Rendering]
+    F -->|PNG Bytes| D
+    E -->|Embedded Images| D
+    D -->|Structured JSON| G[Process OCR Text & Visual Captions]
+    G -->|Combine Markdown + Captions| H[Unified Markdown Text]
+    C --> H
+    H -->|Chunking| I[Text Splitters]
+    I --> J[Embedder Module embedder.py]
+    J -->|Sub-batching & Caching| K[Gemini Embeddings gemini-embedding-2]
+    K -->|Vector Insertion| L[ChromaDB vector_store.py]
     
-    K[User Query] --> L[RAG Engine rag_engine.py]
-    L -->|Embed Query| H
-    J -->|Vector Search| L
-    L -->|Context Hydration| M[Gemini Generation gemini-3.1-flash-lite]
-    M --> N[Response + Telemetry]
+    M[User Query] --> N[RAG Engine rag_engine.py]
+    N -->|Embed Query| J
+    L -->|Vector Search| N
+    N -->|Context Hydration| O[Gemini Generation gemini-3.1-flash-lite]
+    O --> P[Response + Telemetry]
 ```
 
 ---
@@ -32,20 +36,31 @@ graph TD
 Implemented in [parser.py](file:///home/serein/SourceCodes/eval-platform/ai-chat/parser.py).
 
 * **Text Parsing**: Reads standard `.txt` files directly using UTF-8 encoding.
-* **PDF Parsing**:
-  * Employs `pymupdf4llm` to extract document structures directly as page-by-page markdown chunks.
-  * Writes extracted images on disk to [assets/extracted_images/](file:///home/serein/SourceCodes/eval-platform/ai-chat/assets/extracted_images/).
-  * For each extracted image:
-    1. Renames it using a deterministic schema: `<pdf_basename>_page_<page_num>_img_<index>.<ext>`.
-    2. Sends the image to `gemini-3.1-flash-lite` with a dense semantic technical captioning prompt.
-    3. Replaces the inline markdown image reference `![](...)` with the caption info:
+* **Standalone Image Ingestion**:
+  * Supports `.png`, `.jpg`, `.jpeg`, and `.webp` formats.
+  * Copies images to the `assets/extracted_images/standalone/` folder with a unique UUID prefix.
+  * Passes image bytes to `gemini-3.1-flash-lite` using the structured OCR and captioning helper to extract both raw text and visual descriptors in a single call.
+* **Structured OCR & Captioning**:
+  * Utilizes a Pydantic schema `ExtractionResult` defining `extracted_text` (exact OCR text) and `visual_caption` (charts/drawings/figure descriptions).
+  * Calls Gemini with `response_mime_type="application/json"` and `response_schema=ExtractionResult`.
+* **Hybrid PDF Parsing**:
+  * Employs `pymupdf4llm` to extract document structures page-by-page.
+  * Writes extracted images on disk to `assets/extracted_images/<pdf_basename>/`.
+  * **Dynamic Scanned Page Detection**:
+    * If a page has less than `SCANNED_PAGE_TEXT_THRESHOLD = 100` characters of clean text (excluding image tags), it is flagged as scanned.
+    * Flags scanned pages are rendered to in-memory PNG bytes using `fitz` (PyMuPDF) at 150 DPI and processed using the structured OCR helper.
+    * Prepend the OCR text and captions to the page text to preserve any embedded image tags found.
+  * **Embedded Image Processing**:
+    * Renames images using a deterministic schema: `<pdf_basename>_page_<page_num>_img_<index>.<ext>`.
+    * Sends image bytes to the structured OCR helper to obtain visual captions.
+    * Replaces the inline markdown image reference `![](...)` with:
        ```markdown
        ![](<new_path>)
 
        **Image Caption:** <description>
        ```
   * Combines pages with a custom page-break separator: `\n\n<!-- PAGE_{page_num} -->\n\n` to maintain page context in the vector database.
-* **Fallback PDF Parsing**: If `pymupdf4llm` fails or is not available, uses `pypdf` as a text-only page-by-page fallback parser.
+* **Fallback PDF Parsing**: If `pymupdf4llm` fails, uses `pypdf` as a text-only page-by-page fallback parser.
 
 ---
 
