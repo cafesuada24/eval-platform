@@ -18,7 +18,7 @@ export function formatDate(dateStr?: string): string {
 
 export function getAbsoluteFileUrl(url?: string): string {
   if (!url) return "";
-  if (/^[a-zA-Z0-9+.-]+:/.test(url)) {
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(url)) {
     return url;
   }
   
@@ -30,8 +30,9 @@ export function getAbsoluteFileUrl(url?: string): string {
     path = "/" + path.replace("api/v1/", "v1/");
   }
 
-  const cleanBase = apiBase.endsWith("/") ? apiBase.slice(0, -1) : apiBase;
+  const cleanBase = apiBase.replace(/\/+$/, "");
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
   return `${cleanBase}${cleanPath}`;
 }
+
 
