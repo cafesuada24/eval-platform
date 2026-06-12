@@ -25,7 +25,7 @@ export function FileViewerModal({ file, isOpen, onClose, onDelete }: FileViewerM
   const [loading, setLoading] = useState(false);
   const [copiedRef, setCopiedRef] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState(false);
-  const [preview, setPreview] = useState<PreviewContent | null>(null);
+  const [asyncPreview, setAsyncPreview] = useState<PreviewContent | null>(null);
 
   const handleCopyRef = () => {
     if (!file) return;
@@ -43,106 +43,119 @@ export function FileViewerModal({ file, isOpen, onClose, onDelete }: FileViewerM
     setTimeout(() => setCopiedUrl(false), 2000);
   };
 
-  useEffect(() => {
-    if (!isOpen || !file) {
-      setPreview(null);
-      return;
-    }
+  const absoluteUrl = file ? getAbsoluteFileUrl(file.url) : "";
+  const ext = file ? file.filename.split(".").pop()?.toLowerCase() || "" : "";
 
-    const absoluteUrl = getAbsoluteFileUrl(file.url);
-    const ext = file.filename.split(".").pop()?.toLowerCase() || "";
-
-    // Native preview types
+  // Compute preview type during render if possible to avoid synchronous setState inside useEffect
+  let preview: PreviewContent | null = null;
+  if (file) {
     if (["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(ext)) {
-      setPreview({ type: "image", url: absoluteUrl });
-      return;
+      preview = { type: "image", url: absoluteUrl };
+    } else if (ext === "pdf") {
+      preview = { type: "pdf", url: absoluteUrl };
+    } else if (["mp3", "wav", "ogg"].includes(ext)) {
+      preview = { type: "media", url: absoluteUrl, isAudio: true };
+    } else if (["mp4", "webm"].includes(ext)) {
+      preview = { type: "media", url: absoluteUrl, isAudio: false };
+    } else {
+      preview = asyncPreview;
     }
-    if (ext === "pdf") {
-      setPreview({ type: "pdf", url: absoluteUrl });
-      return;
-    }
-    if (["mp3", "wav", "ogg"].includes(ext)) {
-      setPreview({ type: "media", url: absoluteUrl, isAudio: true });
-      return;
-    }
-    if (["mp4", "webm"].includes(ext)) {
-      setPreview({ type: "media", url: absoluteUrl, isAudio: false });
+  }
+
+  useEffect(() => {
+    if (!isOpen || !file) return;
+
+    const currentAbsoluteUrl = getAbsoluteFileUrl(file.url);
+    const currentExt = file.filename.split(".").pop()?.toLowerCase() || "";
+
+    // If it is not a text format, we don't need to fetch
+    if (!["csv", "json", "jsonl", "txt", "md", "yaml", "yml"].includes(currentExt)) {
       return;
     }
 
-    // Fetch and parse text-based formats
-    if (["csv", "json", "jsonl", "txt", "md", "yaml", "yml"].includes(ext)) {
-      setLoading(true);
-      fetch(absoluteUrl)
-        .then(async (res) => {
-          if (!res.ok) throw new Error("Failed to load file contents");
-          
-          const contentLengthHeader = res.headers.get("content-length");
-          const contentLength = contentLengthHeader ? parseInt(contentLengthHeader, 10) : 0;
-          
-          const text = await res.text();
-          const byteSize = new Blob([text]).size;
-          
-          const sizeLimit = 2 * 1024 * 1024; // 2MB limit
-          const lineLimit = 1000;
-          const lines = text.split("\n");
-          
-          const isTooLarge = byteSize > sizeLimit || contentLength > sizeLimit;
-          const isTooManyLines = lines.length > lineLimit;
-          const truncated = isTooLarge || isTooManyLines;
-          
-          const contentLines = truncated ? lines.slice(0, lineLimit) : lines;
-          const cleanText = contentLines.join("\n");
+    let active = true;
+    setTimeout(() => {
+      if (active) {
+        setLoading(true);
+      }
+    }, 0);
+    fetch(currentAbsoluteUrl)
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Failed to load file contents");
+        
+        const contentLengthHeader = res.headers.get("content-length");
+        const contentLength = contentLengthHeader ? parseInt(contentLengthHeader, 10) : 0;
+        
+        const text = await res.text();
+        if (!active) return;
 
-          if (ext === "csv") {
-            // Parse CSV lines respecting quotes and commas
-            const rows = contentLines.map(line => {
-              const matches = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || line.split(",");
-              return matches.map(cell => cell.replace(/^"|"$/g, "").trim());
-            });
-            const headers = rows[0] || [];
-            const dataRows = rows.slice(1);
-            setPreview({ type: "csv", headers, rows: dataRows, truncated });
-          } else if (ext === "json") {
-            try {
-              const formatted = JSON.stringify(JSON.parse(text), null, 2);
-              const formattedLines = formatted.split("\n");
-              if (formattedLines.length > lineLimit) {
-                setPreview({
-                  type: "json",
-                  text: formattedLines.slice(0, lineLimit).join("\n"),
-                  truncated: true
-                });
-              } else {
-                setPreview({ type: "json", text: formatted, truncated });
-              }
-            } catch {
-              setPreview({ type: "json", text: cleanText, truncated });
+        const byteSize = new Blob([text]).size;
+        const sizeLimit = 2 * 1024 * 1024; // 2MB limit
+        const lineLimit = 1000;
+        const lines = text.split("\n");
+        
+        const isTooLarge = byteSize > sizeLimit || contentLength > sizeLimit;
+        const isTooManyLines = lines.length > lineLimit;
+        const truncated = isTooLarge || isTooManyLines;
+        
+        const contentLines = truncated ? lines.slice(0, lineLimit) : lines;
+        const cleanText = contentLines.join("\n");
+
+        if (currentExt === "csv") {
+          // Parse CSV lines respecting quotes and commas
+          const rows = contentLines.map(line => {
+            const matches = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || line.split(",");
+            return matches.map(cell => cell.replace(/^"|"$/g, "").trim());
+          });
+          const headers = rows[0] || [];
+          const dataRows = rows.slice(1);
+          setAsyncPreview({ type: "csv", headers, rows: dataRows, truncated });
+        } else if (currentExt === "json") {
+          try {
+            const formatted = JSON.stringify(JSON.parse(text), null, 2);
+            const formattedLines = formatted.split("\n");
+            if (formattedLines.length > lineLimit) {
+              setAsyncPreview({
+                type: "json",
+                text: formattedLines.slice(0, lineLimit).join("\n"),
+                truncated: true
+              });
+            } else {
+              setAsyncPreview({ type: "json", text: formatted, truncated });
             }
-          } else if (ext === "jsonl") {
-            const formattedJsonl = contentLines.map((line) => {
-              if (!line.trim()) return "";
-              try {
-                return JSON.stringify(JSON.parse(line));
-              } catch {
-                return line;
-              }
-            }).join("\n");
-            setPreview({ type: "json", text: formattedJsonl, truncated });
-          } else {
-            setPreview({ type: "text", text: cleanText, truncated });
+          } catch {
+            setAsyncPreview({ type: "json", text: cleanText, truncated });
           }
-        })
-        .catch((err) => {
-          console.error(err);
-          setPreview({ type: "fallback", url: absoluteUrl });
-        })
-        .finally(() => setLoading(false));
-      return;
-    }
+        } else if (currentExt === "jsonl") {
+          const formattedJsonl = contentLines.map((line) => {
+            if (!line.trim()) return "";
+            try {
+              return JSON.stringify(JSON.parse(line));
+            } catch {
+              return line;
+            }
+          }).join("\n");
+          setAsyncPreview({ type: "json", text: formattedJsonl, truncated });
+        } else {
+          setAsyncPreview({ type: "text", text: cleanText, truncated });
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        if (active) {
+          setAsyncPreview({ type: "fallback", url: currentAbsoluteUrl });
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setLoading(false);
+        }
+      });
 
-    // Fallback for unsupported formats
-    setPreview({ type: "fallback", url: absoluteUrl });
+    return () => {
+      active = false;
+      setAsyncPreview(null);
+    };
   }, [file, isOpen]);
 
   if (!isOpen || !file) return null;
