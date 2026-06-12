@@ -6,6 +6,8 @@ import { uploadFile } from "@/lib/api/datasets";
 import { FileAsset } from "@/types/dataset";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { FileViewerModal } from "./FileViewerModal";
+import { getAbsoluteFileUrl } from "@/lib/utils";
 
 interface FileManagerProps {
   datasetId: string;
@@ -17,8 +19,22 @@ export function FileManager({ datasetId, files, setFiles }: FileManagerProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [activeFile, setActiveFile] = useState<FileAsset | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleDeleteFile = async (fileId: string) => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/v1/datasets/${datasetId}/files/${fileId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed to delete file");
+      setFiles(prev => prev.filter(f => f.file_id !== fileId));
+      toast.success("File deleted successfully");
+    } catch (error) {
+      toast.error("Failed to delete file");
+    }
+  };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -119,11 +135,15 @@ export function FileManager({ datasetId, files, setFiles }: FileManagerProps) {
           </div>
         ) : (
           files.map((file) => (
-            <div key={file.file_id} className="flex items-center justify-between p-3 bg-card rounded-lg border border-border group hover:border-border transition-colors">
+            <div 
+              key={file.file_id} 
+              onClick={() => setActiveFile(file)}
+              className="flex items-center justify-between p-3 bg-card rounded-lg border border-border group hover:border-border hover:bg-muted/10 transition-colors cursor-pointer"
+            >
               <div className="flex items-center space-x-3 overflow-hidden">
                 {file.url && /\.(jpe?g|png|gif|webp|svg)$/i.test(file.filename) ? (
                   <div className="h-8 w-8 flex-shrink-0 rounded-md overflow-hidden bg-muted flex items-center justify-center">
-                    <img src={file.url} alt={file.filename} className="object-cover h-full w-full" />
+                    <img src={getAbsoluteFileUrl(file.url)} alt={file.filename} className="object-cover h-full w-full" />
                   </div>
                 ) : (
                   <div className="p-2 bg-muted rounded-md text-muted-foreground flex-shrink-0">
@@ -135,12 +155,12 @@ export function FileManager({ datasetId, files, setFiles }: FileManagerProps) {
                   <p className="text-xs text-muted-foreground font-mono truncate">{file.file_id}</p>
                 </div>
               </div>
-              <div className="flex items-center space-x-1">
+              <div className="flex items-center space-x-1" onClick={(e) => e.stopPropagation()}>
                 {file.url && (
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => window.open(file.url, '_blank')}
+                    onClick={() => window.open(getAbsoluteFileUrl(file.url), '_blank')}
                     className="flex-shrink-0 text-muted-foreground hover:text-foreground"
                     title="Open File URL"
                   >
@@ -175,6 +195,12 @@ export function FileManager({ datasetId, files, setFiles }: FileManagerProps) {
           ))
         )}
       </div>
+      <FileViewerModal 
+        file={activeFile} 
+        isOpen={activeFile !== null} 
+        onClose={() => setActiveFile(null)} 
+        onDelete={handleDeleteFile}
+      />
     </div>
   );
 }
