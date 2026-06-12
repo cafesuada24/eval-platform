@@ -1,9 +1,6 @@
 """Integration tests for MM-Vet multimodal dataset ingestion."""
 
-import os
 import shutil
-from pathlib import Path
-import pytest
 import httpx
 from fastapi.testclient import TestClient
 from app.main import app
@@ -55,17 +52,18 @@ def test_mm_vet_ingestion_integration() -> None:
     # Slice the first 3 keys for testing
     target_keys = list(mm_vet_data.keys())[:3]
 
-    # 2. Create the dataset in backend
-    create_response = client.post(
-        '/v1/datasets/',
-        json={'name': 'MM-Vet-Benchmark-Sample', 'schema': {'inputs': {}, 'outputs': {}}}
-    )
-    assert create_response.status_code == 201
-    dataset_info = create_response.json()
-    dataset_id = dataset_info['id']
-
-    uploaded_files = {}
+    dataset_id = None
     try:
+        # 2. Create the dataset in backend
+        create_response = client.post(
+            '/v1/datasets/',
+            json={'name': 'MM-Vet-Benchmark-Sample', 'schema': {'inputs': {}, 'outputs': {}}}
+        )
+        assert create_response.status_code == 201
+        dataset_info = create_response.json()
+        dataset_id = dataset_info['id']
+
+        uploaded_files = {}
         # 3. Download images and upload to API
         for key in target_keys:
             imagename = mm_vet_data[key]['imagename']
@@ -123,6 +121,14 @@ def test_mm_vet_ingestion_integration() -> None:
         retrieved_dataset = get_response.json()
         assert len(retrieved_dataset['cases']) == 3
 
+        # Verify first case content matches source metadata
+        first_case = retrieved_dataset['cases'][0]
+        first_key = target_keys[0]
+        first_source = mm_vet_data[first_key]
+        assert first_case['inputs']['query'] == first_source['question']
+        assert first_case['expected_outputs']['expected_output'] == first_source['answer']
+        assert first_case['metadata']['mm_vet_id'] == first_key
+
         # Verify files exist in settings.dataset_files_dir / dataset_id
         dataset_files_dir = settings.dataset_files_dir / dataset_id
         assert dataset_files_dir.exists()
@@ -131,13 +137,14 @@ def test_mm_vet_ingestion_integration() -> None:
             assert physical_file.exists()
 
     finally:
-        # 6. Cleanup after test completion
-        # Delete dataset file
-        dataset_json_path = settings.datasets_dir / f'{dataset_id}.json'
-        if dataset_json_path.exists():
-            dataset_json_path.unlink()
+        if dataset_id is not None:
+            # 6. Cleanup after test completion
+            # Delete dataset file
+            dataset_json_path = settings.datasets_dir / f'{dataset_id}.json'
+            if dataset_json_path.exists():
+                dataset_json_path.unlink()
 
-        # Delete uploaded files directory
-        dataset_files_dir = settings.dataset_files_dir / dataset_id
-        if dataset_files_dir.exists():
-            shutil.rmtree(dataset_files_dir)
+            # Delete uploaded files directory
+            dataset_files_dir = settings.dataset_files_dir / dataset_id
+            if dataset_files_dir.exists():
+                shutil.rmtree(dataset_files_dir)
