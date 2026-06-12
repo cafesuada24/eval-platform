@@ -15,3 +15,23 @@ export function formatDate(dateStr?: string): string {
     return "-";
   }
 }
+
+export function getAbsoluteFileUrl(url?: string): string {
+  if (!url) return "";
+  if (/^[a-zA-Z0-9+.-]+:/.test(url)) {
+    return url;
+  }
+  
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  let path = url;
+  if (path.startsWith("/api/v1/")) {
+    path = path.replace("/api/v1/", "/v1/");
+  } else if (path.startsWith("api/v1/")) {
+    path = "/" + path.replace("api/v1/", "v1/");
+  }
+
+  const cleanBase = apiBase.endsWith("/") ? apiBase.slice(0, -1) : apiBase;
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  return `${cleanBase}${cleanPath}`;
+}
+
