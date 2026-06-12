@@ -1,10 +1,13 @@
 """Integration tests for MM-Vet multimodal dataset ingestion."""
 
 import shutil
+from typing import Any
+
 import httpx
 from fastapi.testclient import TestClient
-from app.main import app
+
 from app.core.config import settings
+from app.main import app
 
 client = TestClient(app)
 
@@ -13,20 +16,20 @@ MOCK_MM_VET_METADATA = {
         'imagename': 'v1_1.jpg',
         'question': 'Identify the primary colors in the image.',
         'answer': 'Red, green, blue',
-        'capability': ['recognition']
+        'capability': ['recognition'],
     },
     'v1_2': {
         'imagename': 'v1_2.jpg',
         'question': 'What number is displayed?',
         'answer': '42',
-        'capability': ['OCR']
+        'capability': ['OCR'],
     },
     'v1_3': {
         'imagename': 'v1_3.jpg',
         'question': 'Solve the equation in the picture.',
         'answer': 'x = 5',
-        'capability': ['math']
-    }
+        'capability': ['math'],
+    },
 }
 
 # 1x1 pixel dummy JPEG bytes
@@ -37,12 +40,12 @@ def test_mm_vet_ingestion_integration() -> None:
     """Verify end-to-end MM-Vet dataset ingestion flow, mapping, and teardown."""
     # 1. Download metadata with network fallback
     mm_vet_url = 'https://raw.githubusercontent.com/yuweihao/MM-Vet_data/main/mm-vet.json'
-    mm_vet_data = {}
+    mm_vet_data: dict[str, Any] = {}
     try:
         response = httpx.get(mm_vet_url, timeout=5.0)
         if response.status_code == 200:
             mm_vet_data = response.json()
-    except Exception:
+    except httpx.HTTPError:
         pass
 
     # Fallback to mock data if download failed or empty
@@ -52,18 +55,21 @@ def test_mm_vet_ingestion_integration() -> None:
     # Slice the first 3 keys for testing
     target_keys = list(mm_vet_data.keys())[:3]
 
-    dataset_id = None
+    dataset_id: str | None = None
     try:
         # 2. Create the dataset in backend
         create_response = client.post(
             '/v1/datasets/',
-            json={'name': 'MM-Vet-Benchmark-Sample', 'schema': {'inputs': {}, 'outputs': {}}}
+            json={
+                'name': 'MM-Vet-Benchmark-Sample',
+                'schema': {'inputs': {}, 'outputs': {}},
+            },
         )
         assert create_response.status_code == 201
         dataset_info = create_response.json()
         dataset_id = dataset_info['id']
 
-        uploaded_files = {}
+        uploaded_files: dict[str, str] = {}
         # 3. Download images and upload to API
         for key in target_keys:
             imagename = mm_vet_data[key]['imagename']
@@ -74,7 +80,7 @@ def test_mm_vet_ingestion_integration() -> None:
                 img_response = httpx.get(img_url, timeout=5.0)
                 if img_response.status_code == 200:
                     image_bytes = img_response.content
-            except Exception:
+            except httpx.HTTPError:
                 pass
 
             if not image_bytes:
@@ -84,7 +90,7 @@ def test_mm_vet_ingestion_integration() -> None:
             files_payload = {'file': (imagename, image_bytes, 'image/jpeg')}
             file_response = client.post(
                 f'/v1/datasets/{dataset_id}/files',
-                files=files_payload
+                files=files_payload,
             )
             assert file_response.status_code == 201
             file_info = file_response.json()
@@ -97,21 +103,16 @@ def test_mm_vet_ingestion_integration() -> None:
             file_id = uploaded_files[imagename]
 
             case_payload = {
-                'inputs': {
-                    'query': case_raw['question'],
-                    'image_id': file_id
-                },
-                'expected_outputs': {
-                    'expected_output': case_raw['answer']
-                },
+                'inputs': {'query': case_raw['question'], 'image_id': file_id},
+                'expected_outputs': {'expected_output': case_raw['answer']},
                 'metadata': {
                     'mm_vet_id': key,
-                    'capability': case_raw.get('capability', [])
-                }
+                    'capability': case_raw.get('capability', []),
+                },
             }
             case_response = client.post(
                 f'/v1/datasets/{dataset_id}/cases',
-                json=case_payload
+                json=case_payload,
             )
             assert case_response.status_code == 201
 
@@ -126,13 +127,16 @@ def test_mm_vet_ingestion_integration() -> None:
         first_key = target_keys[0]
         first_source = mm_vet_data[first_key]
         assert first_case['inputs']['query'] == first_source['question']
-        assert first_case['expected_outputs']['expected_output'] == first_source['answer']
+        assert (
+            first_case['expected_outputs']['expected_output']
+            == first_source['answer']
+        )
         assert first_case['metadata']['mm_vet_id'] == first_key
 
         # Verify files exist in settings.dataset_files_dir / dataset_id
         dataset_files_dir = settings.dataset_files_dir / dataset_id
         assert dataset_files_dir.exists()
-        for imagename, file_id in uploaded_files.items():
+        for file_id in uploaded_files.values():
             physical_file = dataset_files_dir / file_id
             assert physical_file.exists()
 
@@ -148,3 +152,4 @@ def test_mm_vet_ingestion_integration() -> None:
             dataset_files_dir = settings.dataset_files_dir / dataset_id
             if dataset_files_dir.exists():
                 shutil.rmtree(dataset_files_dir)
+
