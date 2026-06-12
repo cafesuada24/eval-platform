@@ -32,6 +32,7 @@ export function FileManager({ datasetId, files, setFiles }: FileManagerProps) {
       setFiles(prev => prev.filter(f => f.file_id !== fileId));
       toast.success("File deleted successfully");
     } catch (error) {
+      console.error(error);
       toast.error("Failed to delete file");
     }
   };
@@ -67,6 +68,7 @@ export function FileManager({ datasetId, files, setFiles }: FileManagerProps) {
       setFiles(prev => [newFile, ...prev]);
       toast.success("File uploaded successfully");
     } catch (error) {
+      console.error(error);
       toast.error("Failed to upload file");
     } finally {
       setIsUploading(false);
