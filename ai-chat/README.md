@@ -8,7 +8,7 @@ This directory contains a complete, robust, multi-modal Retrieval-Augmented Gene
 - **Structured OCR & Captioning**: Utilizes Gemini structured output JSON schemas to perform both high-fidelity OCR and visual captioning in a single request.
 - **Scanned PDF OCR & Hybrid Parsing**: Identifies scanned/empty pages in PDFs dynamically and runs page-level OCR via Gemini structured outputs to extract text and captions, preserving PDF formatting.
 - **Vector Search & Storage**: Stores document chunks and metadata in a persistent ChromaDB instance.
-- **RAG Execution**: Hydrates user queries with relevant text chunks and context images, feeding them to the Gemini model for generation.
+- **Agentic RAG Execution**: Employs Gemini Function Calling to dynamically route queries. The LLM decides whether to perform document retrieval or answer directly. Includes a forced-retrieval fallback to support evaluation and benchmarking pipelines.
 - **Benchmarking Suite**: Evaluates precision, recall, and semantic answer quality (LLM-as-a-judge) on test cases, complete with API rate limit protection.
 
 ---

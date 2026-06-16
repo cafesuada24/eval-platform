@@ -23,18 +23,21 @@ graph TD
     J -->|Sub-batching & Caching| K[Gemini Embeddings gemini-embedding-2]
     K -->|Vector Insertion| L[ChromaDB vector_store.py]
     
-    M[User Query] --> N[RAG Engine rag_engine.py]
-    N -->|Embed Query| J
-    L -->|Vector Search| N
-    N -->|Context Hydration| O[Gemini Generation gemini-3.1-flash-lite]
-    O --> P[Response + Telemetry]
+    M[User Query] --> N["generate_answer (rag_engine.py)"]
+    N -->|force_retrieve=False| O{"Model decides to retrieve?"}
+    O -->|Yes: retrieve_documents tool| P[retrieve_context]
+    P -->|Embed Query| J
+    L -->|Vector Search| P
+    P -->|Hydrated Context + Images| Q[Gemini Generation gemini-3.1-flash-lite]
+    O -->|No| R[Direct LLM Answer]
+    N -->|force_retrieve=True| P
+    Q --> S[Response + Telemetry]
+    R --> S
 ```
 
 ---
 
 ## 1. Document Ingestion & Parsing
-Implemented in [parser.py](file:///home/serein/SourceCodes/eval-platform/ai-chat/parser.py).
-
 * **Text Parsing**: Reads standard `.txt` files directly using UTF-8 encoding.
 * **Standalone Image Ingestion**:
   * Supports `.png`, `.jpg`, `.jpeg`, and `.webp` formats.
@@ -65,8 +68,6 @@ Implemented in [parser.py](file:///home/serein/SourceCodes/eval-platform/ai-chat
 ---
 
 ## 2. Embedding Module
-Implemented in [embedder.py](file:///home/serein/SourceCodes/eval-platform/ai-chat/embedder.py).
-
 * **Model**: Utilizes `gemini-embedding-2` for text vectorization.
 * **Sub-Batching**: The Gemini embedding API restricts batch sizes to a maximum of 100 items per request. The module automatically slices larger chunk arrays into sub-batches of 100 to prevent `400 INVALID_ARGUMENT` API errors.
 * **Caching Optimization**: Implements Python's `functools.lru_cache` at the batch-embedding level to cache identical vectorization requests (e.g. duplicate query embeddings during RAG retrieval and metric calculation), saving 50% on API call volume.
@@ -74,8 +75,6 @@ Implemented in [embedder.py](file:///home/serein/SourceCodes/eval-platform/ai-ch
 ---
 
 ## 3. Persistent Vector Store
-Implemented in [vector_store.py](file:///home/serein/SourceCodes/eval-platform/ai-chat/vector_store.py).
-
 * **Database**: ChromaDB persistence at the [db/](file:///home/serein/SourceCodes/eval-platform/ai-chat/db/) directory relative to the module.
 * **Index Collection**: Writes data chunks to the collection `ai_chat_docs`.
 * **Metadata Schema**:
@@ -90,17 +89,17 @@ Implemented in [vector_store.py](file:///home/serein/SourceCodes/eval-platform/a
 
 ---
 
-## 4. RAG Retrieval & Generation
-Implemented in [rag_engine.py](file:///home/serein/SourceCodes/eval-platform/ai-chat/rag_engine.py).
-
+## 4. Agentic RAG Retrieval & Generation
+* **Hybrid Execution Flow (`generate_answer`)**:
+  * **Agentic Path (`force_retrieve=False`)**: The RAG engine defines a `retrieve_documents` tool using Gemini Function Calling. The initial LLM request sends the query along with the tool declaration and a system instruction.
+    * If the model determines it needs document context, it outputs a function call. The engine catches the call, executes `retrieve_context()`, converts matched images directly into `types.Part.from_bytes` objects, and sends a follow-up conversation turn containing the function response.
+    * If the model can answer from its own knowledge, it answers directly, bypassing vector store query overhead.
+  * **Forced Path (`force_retrieve=True`)**: Unconditionally queries ChromaDB and injects context before executing a single-turn generation. Used by benchmarks and evaluation pipelines to ensure backward compatibility and deterministic trace histories.
 * **Context Retrieval**:
   * Vectorizes user query and retrieves top matches ($N=3$) from ChromaDB.
   * Hydrates context using retrieved text chunks.
-  * If a matched chunk corresponds to an image caption (`content_type == "image_caption"`), the engine extracts the image file path (`asset_path`) from its metadata.
-* **Response Generation**:
-  * Loads matched PIL Images into the generation context.
-  * Submits both the hydrated text context and physical image payloads to `gemini-3.1-flash-lite`.
-* **Telemetry**: Tracks token counts, generation provider/model, and query time using the `RuntimeState` context manager.
+  * If a matched chunk corresponds to an image caption (`content_type == "image_caption"`), the engine extracts the image file path (`asset_path`) from its metadata and loads it as an image byte part.
+* **Telemetry**: Tracks aggregated token counts from both LLM turns in the agentic loop, along with generation provider/model name, and execution latency under a single unified `track_generation()` trace block. Individual retrieval steps are logged to `track_retrieval()` only when context is actually retrieved.
 
 ---
 
