@@ -227,6 +227,7 @@ def _make_tool_call_response(query_arg: str) -> MagicMock:
     fc = MagicMock()
     fc.args = {"query": query_arg}
     fc.name = "retrieve_documents"
+    fc.id = "call_123"
     part = MagicMock()
     part.function_call = fc
     response.candidates = [MagicMock()]
@@ -300,6 +301,7 @@ def test_generate_answer_agentic_triggers_retrieval(
     tool_resp_part = second_call_contents[2].parts[0]
     assert tool_resp_part.function_response.name == "retrieve_documents"
     assert tool_resp_part.function_response.response == {"context": "retrieved context"}
+    assert tool_resp_part.function_response.id == "call_123"
 
 
 @patch("rag_engine.retrieve_context")
@@ -324,6 +326,7 @@ def test_generate_answer_agentic_bad_tool_args_falls_back(
     fc = MagicMock()
     fc.args = {}  # missing 'query'
     fc.name = "retrieve_documents"
+    fc.id = "call_456"
     part = MagicMock()
     part.function_call = fc
     bad_tool_resp.candidates = [MagicMock()]

@@ -103,6 +103,12 @@ def _call_generate_content_with_retry(
         except Exception as e:
             if attempt == MAX_RETRIES:
                 raise e
+            logger.warning(
+                "Gemini API call failed on attempt %d: %s. Retrying in %.1f seconds...",
+                attempt + 1,
+                e,
+                delay,
+            )
             time.sleep(delay)
             delay *= 2.0
 
@@ -179,8 +185,8 @@ def _generate_agentic(
     total_input_tokens = 0
     total_output_tokens = 0
     if response.usage_metadata:
-        total_input_tokens += response.usage_metadata.prompt_token_count
-        total_output_tokens += response.usage_metadata.candidates_token_count
+        total_input_tokens += response.usage_metadata.prompt_token_count or 0
+        total_output_tokens += response.usage_metadata.candidates_token_count or 0
 
     # Check if the model called the tool
     function_call = _extract_function_call(response)
@@ -188,22 +194,34 @@ def _generate_agentic(
     if function_call is None:
         # Model answered directly — no retrieval needed
         if total_input_tokens > 0 or total_output_tokens > 0:
-            gen_tracker.token_usage(total_input_tokens, total_output_tokens)
+            gen_tracker.token_usage(input_tokens=total_input_tokens, output_tokens=total_output_tokens)
         return response.text or ""
 
     # Model called retrieve_documents — execute it
-    tool_query = function_call.get("query", query)
+    try:
+        fc_args = dict(function_call.args) if function_call.args else {}
+    except (TypeError, ValueError):
+        fc_args = {}
+
+    tool_query = fc_args.get("query", query)
     if not isinstance(tool_query, str):
-        logger.warning("retrieve_documents called with non-string query; using original query")
+        logger.warning(
+            "retrieve_documents called with invalid query type: %s (value: %s); using original query",
+            type(tool_query),
+            tool_query,
+        )
         tool_query = query
 
     context, image_paths = retrieve_context(state, tool_query)
 
     # Second call: send tool result back to model
     image_parts = _load_image_parts(image_paths)
-    tool_result_part = types.Part.from_function_response(
-        name="retrieve_documents",
-        response={"context": context},
+    tool_result_part = types.Part(
+        function_response=types.FunctionResponse(
+            name="retrieve_documents",
+            response={"context": context},
+            id=function_call.id,
+        )
     )
 
     follow_up_contents = [
@@ -220,22 +238,22 @@ def _generate_agentic(
     )
 
     if final_response.usage_metadata:
-        total_input_tokens += final_response.usage_metadata.prompt_token_count
-        total_output_tokens += final_response.usage_metadata.candidates_token_count
+        total_input_tokens += final_response.usage_metadata.prompt_token_count or 0
+        total_output_tokens += final_response.usage_metadata.candidates_token_count or 0
 
     if total_input_tokens > 0 or total_output_tokens > 0:
-        gen_tracker.token_usage(total_input_tokens, total_output_tokens)
+        gen_tracker.token_usage(input_tokens=total_input_tokens, output_tokens=total_output_tokens)
     return final_response.text or ""
 
 
-def _extract_function_call(response: types.GenerateContentResponse) -> dict | None:
-    """Extracts function call args from response, or returns None if not present."""
+def _extract_function_call(response: types.GenerateContentResponse) -> types.FunctionCall | None:
+    """Extracts retrieve_documents function call from response, or returns None if not present."""
     try:
         for part in response.candidates[0].content.parts:
             if hasattr(part, "function_call") and part.function_call:
                 if part.function_call.name == "retrieve_documents":
-                    return dict(part.function_call.args)
-    except (AttributeError, IndexError, TypeError):
+                    return part.function_call
+    except (AttributeError, IndexError, TypeError, ValueError):
         pass
     return None
 
