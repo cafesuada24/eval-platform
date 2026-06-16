@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 # Constants
 MODEL_NAME = "gemini-3.1-flash-lite"
 MAX_RETRIES = 3
+INITIAL_DELAY = 1.0
 
 
 def retrieve_context(state: RuntimeState, query: str, n_results: int = 3) -> tuple[str, list[str]]:
@@ -95,7 +96,7 @@ def _call_generate_content_with_retry(
     client: genai.Client, **kwargs: Any
 ) -> types.GenerateContentResponse:
     """Calls client.models.generate_content with exponential backoff retry."""
-    delay = 1.0
+    delay = INITIAL_DELAY
     for attempt in range(MAX_RETRIES + 1):
         try:
             return client.models.generate_content(**kwargs)
@@ -232,7 +233,8 @@ def _extract_function_call(response: types.GenerateContentResponse) -> dict | No
     try:
         for part in response.candidates[0].content.parts:
             if hasattr(part, "function_call") and part.function_call:
-                return dict(part.function_call.args)
+                if part.function_call.name == "retrieve_documents":
+                    return dict(part.function_call.args)
     except (AttributeError, IndexError, TypeError):
         pass
     return None

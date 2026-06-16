@@ -6,7 +6,6 @@ import pytest
 
 # We must import RuntimeState for typing/spec verification
 from evalplatform_sdk.models import RuntimeState
-from PIL import Image
 
 # Import functions under test
 from rag_engine import generate_answer, retrieve_context
@@ -82,121 +81,262 @@ def test_retrieve_context_no_embeddings() -> None:
         mock_embed.assert_called_once_with(["empty query"])
 
 
-@patch("rag_engine.Image.open")
+# ── Forced-retrieval path ────────────────────────────────────────────────────
+
+@patch("rag_engine.retrieve_context")
 @patch("rag_engine.genai.Client")
-def test_generate_answer_success(mock_client_class: MagicMock, mock_image_open: MagicMock) -> None:
-    """Verify generate_answer processes inputs, formats prompt, calls Gemini, and logs telemetry."""
+def test_generate_answer_forced_retrieval(
+    mock_client_class: MagicMock, mock_retrieve: MagicMock
+) -> None:
+    """force_retrieve=True: always calls retrieve_context and returns model answer."""
     mock_state = MagicMock(spec=RuntimeState)
     mock_gen_tracker = MagicMock()
     mock_state.track_generation.return_value.__enter__.return_value = mock_gen_tracker
 
+    mock_retrieve.return_value = ("some context text", [])
+
     mock_client = MagicMock()
     mock_client_class.return_value = mock_client
-
-    # Mock response
     mock_response = MagicMock()
-    mock_response.text = "Generated answer text"
-    mock_response.usage_metadata.prompt_token_count = 120
-    mock_response.usage_metadata.candidates_token_count = 35
+    mock_response.text = "Forced answer"
+    mock_response.usage_metadata = None
     mock_client.models.generate_content.return_value = mock_response
 
-    # Mock PIL images
-    mock_img = MagicMock(spec=Image.Image)
-    mock_image_open.return_value = mock_img
+    answer = generate_answer(mock_state, "What is X?", force_retrieve=True)
 
-    query = "Find the total amount."
-    context = "Context info."
-    image_paths = ["/path/to/img.png"]
-
-    answer = generate_answer(mock_state, query, context, image_paths)
-
-    assert answer == "Generated answer text"
-
-    # Verify PIL image opened
-    mock_image_open.assert_called_once_with("/path/to/img.png")
-
-    # Verify Client called with model and correct contents structure
+    assert answer == "Forced answer"
+    mock_retrieve.assert_called_once_with(mock_state, "What is X?")
     mock_client.models.generate_content.assert_called_once()
-    call_kwargs = mock_client.models.generate_content.call_args[1]
-    assert call_kwargs["model"] == "gemini-3.1-flash-lite"
-    assert len(call_kwargs["contents"]) == 2
-    assert call_kwargs["contents"][0] == mock_img
-    assert "Context info." in call_kwargs["contents"][1]
-    assert "Find the total amount." in call_kwargs["contents"][1]
+    # Verify context injected into prompt
+    call_contents = mock_client.models.generate_content.call_args[1]["contents"]
+    prompt = call_contents[-1]
+    assert "some context text" in prompt
+    assert "What is X?" in prompt
 
-    # Verify telemetry tracker calls
-    mock_gen_tracker.model_info.assert_called_once_with(provider="google", model_name="gemini-3.1-flash-lite")
-    mock_gen_tracker.user_input.assert_called_once_with(query)
-    mock_gen_tracker.token_usage.assert_called_once_with(input_tokens=120, output_tokens=35)
-    mock_gen_tracker.output_text.assert_called_once_with("Generated answer text")
+
+@patch("rag_engine.retrieve_context")
+@patch("rag_engine.genai.Client")
+def test_generate_answer_forced_retrieval_logs_tokens(
+    mock_client_class: MagicMock, mock_retrieve: MagicMock
+) -> None:
+    """force_retrieve=True: records token usage when usage_metadata is present."""
+    mock_state = MagicMock(spec=RuntimeState)
+    mock_gen_tracker = MagicMock()
+    mock_state.track_generation.return_value.__enter__.return_value = mock_gen_tracker
+
+    mock_retrieve.return_value = ("ctx", [])
+
+    mock_client = MagicMock()
+    mock_client_class.return_value = mock_client
+    mock_response = MagicMock()
+    mock_response.text = "Answer"
+    mock_response.usage_metadata.prompt_token_count = 50
+    mock_response.usage_metadata.candidates_token_count = 20
+    mock_client.models.generate_content.return_value = mock_response
+
+    generate_answer(mock_state, "query", force_retrieve=True)
+
+    mock_gen_tracker.token_usage.assert_called_once_with(input_tokens=50, output_tokens=20)
 
 
 @patch("rag_engine.time.sleep")
-@patch("rag_engine.Image.open")
+@patch("rag_engine.retrieve_context")
 @patch("rag_engine.genai.Client")
-def test_generate_answer_retries_and_succeeds(
+def test_generate_answer_forced_retries_and_succeeds(
     mock_client_class: MagicMock,
-    mock_image_open: MagicMock,
+    mock_retrieve: MagicMock,
     mock_sleep: MagicMock,
 ) -> None:
-    """Verify generate_answer performs exponential backoff and succeeds on a retry."""
+    """force_retrieve=True: retries with exponential backoff on transient errors."""
     mock_state = MagicMock(spec=RuntimeState)
     mock_gen_tracker = MagicMock()
     mock_state.track_generation.return_value.__enter__.return_value = mock_gen_tracker
 
+    mock_retrieve.return_value = ("ctx", [])
+
     mock_client = MagicMock()
     mock_client_class.return_value = mock_client
-
     mock_response = MagicMock()
     mock_response.text = "Answer on retry"
-    mock_response.usage_metadata = None  # Telemetry should skip token logging if missing
+    mock_response.usage_metadata = None
 
-    # Fail twice, then succeed
     mock_client.models.generate_content.side_effect = [
         Exception("API Error 1"),
         Exception("API Error 2"),
         mock_response,
     ]
 
-    answer = generate_answer(mock_state, "query", "context", [])
+    answer = generate_answer(mock_state, "query", force_retrieve=True)
 
     assert answer == "Answer on retry"
     assert mock_client.models.generate_content.call_count == 3
     assert mock_sleep.call_count == 2
-    # Sleep delays: 1s, then 2s
     mock_sleep.assert_any_call(1.0)
     mock_sleep.assert_any_call(2.0)
-    mock_gen_tracker.token_usage.assert_not_called()
 
 
 @patch("rag_engine.time.sleep")
-@patch("rag_engine.Image.open")
+@patch("rag_engine.retrieve_context")
 @patch("rag_engine.genai.Client")
-def test_generate_answer_retries_failure(
+def test_generate_answer_forced_retries_exhausted(
     mock_client_class: MagicMock,
-    mock_image_open: MagicMock,
+    mock_retrieve: MagicMock,
     mock_sleep: MagicMock,
 ) -> None:
-    """Verify generate_answer fails and propagates exception after maximum retries."""
+    """force_retrieve=True: propagates exception after max retries."""
+    mock_state = MagicMock(spec=RuntimeState)
+    mock_gen_tracker = MagicMock()
+    mock_state.track_generation.return_value.__enter__.return_value = mock_gen_tracker
+
+    mock_retrieve.return_value = ("ctx", [])
+
+    mock_client = MagicMock()
+    mock_client_class.return_value = mock_client
+    mock_client.models.generate_content.side_effect = [
+        Exception("E1"), Exception("E2"), Exception("E3"), Exception("E4"),
+    ]
+
+    with pytest.raises(Exception, match="E4"):
+        generate_answer(mock_state, "query", force_retrieve=True)
+
+    assert mock_client.models.generate_content.call_count == 4
+    sleep_args = [c[0][0] for c in mock_sleep.call_args_list]
+    assert sleep_args == [1.0, 2.0, 4.0]
+
+
+# ── Agentic path ─────────────────────────────────────────────────────────────
+
+def _make_direct_response(text: str) -> MagicMock:
+    """Helper: mock response where model answers directly (no function call)."""
+    response = MagicMock()
+    response.text = text
+    response.usage_metadata = None
+    # No function_call on any part
+    part = MagicMock()
+    part.function_call = None
+    response.candidates = [MagicMock()]
+    response.candidates[0].content.parts = [part]
+    return response
+
+
+def _make_tool_call_response(query_arg: str) -> MagicMock:
+    """Helper: mock response where model calls retrieve_documents."""
+    response = MagicMock()
+    response.text = None
+    response.usage_metadata = None
+    fc = MagicMock()
+    fc.args = {"query": query_arg}
+    fc.name = "retrieve_documents"
+    part = MagicMock()
+    part.function_call = fc
+    response.candidates = [MagicMock()]
+    response.candidates[0].content.parts = [part]
+    return response
+
+
+@patch("rag_engine.retrieve_context")
+@patch("rag_engine.genai.Client")
+def test_generate_answer_agentic_no_retrieval(
+    mock_client_class: MagicMock, mock_retrieve: MagicMock
+) -> None:
+    """Agentic path: model answers directly without calling the tool."""
     mock_state = MagicMock(spec=RuntimeState)
     mock_gen_tracker = MagicMock()
     mock_state.track_generation.return_value.__enter__.return_value = mock_gen_tracker
 
     mock_client = MagicMock()
     mock_client_class.return_value = mock_client
+    mock_client.models.generate_content.return_value = _make_direct_response("Hi there!")
 
-    # Fails all 4 times (1 initial + 3 retries)
-    mock_client.models.generate_content.side_effect = [
-        Exception("Error 1"),
-        Exception("Error 2"),
-        Exception("Error 3"),
-        Exception("Error 4"),
-    ]
+    answer = generate_answer(mock_state, "Hi!")
 
-    with pytest.raises(Exception, match="Error 4"):
-        generate_answer(mock_state, "query", "context", [])
+    assert answer == "Hi there!"
+    mock_retrieve.assert_not_called()
+    mock_client.models.generate_content.assert_called_once()
 
-    assert mock_client.models.generate_content.call_count == 4
-    assert mock_sleep.call_count == 3
-    sleep_args = [arg[0][0] for arg in mock_sleep.call_args_list]
-    assert sleep_args == [1.0, 2.0, 4.0]
+
+@patch("rag_engine.retrieve_context")
+@patch("rag_engine.genai.Client")
+def test_generate_answer_agentic_triggers_retrieval(
+    mock_client_class: MagicMock, mock_retrieve: MagicMock
+) -> None:
+    """Agentic path: model calls retrieve_documents; second LLM call returns final answer."""
+    mock_state = MagicMock(spec=RuntimeState)
+    mock_gen_tracker = MagicMock()
+    mock_state.track_generation.return_value.__enter__.return_value = mock_gen_tracker
+
+    mock_retrieve.return_value = ("retrieved context", [])
+
+    mock_client = MagicMock()
+    mock_client_class.return_value = mock_client
+
+    tool_call_resp = _make_tool_call_response("Paul Graham essays")
+    final_resp = MagicMock()
+    final_resp.text = "Final grounded answer"
+    final_resp.usage_metadata = None
+
+    mock_client.models.generate_content.side_effect = [tool_call_resp, final_resp]
+
+    answer = generate_answer(mock_state, "What did Paul Graham write about?")
+
+    assert answer == "Final grounded answer"
+    mock_retrieve.assert_called_once_with(mock_state, "Paul Graham essays")
+    assert mock_client.models.generate_content.call_count == 2
+
+    # Assert payload of the second LLM call
+    call_args_list = mock_client.models.generate_content.call_args_list
+    second_call_kwargs = call_args_list[1][1]
+    second_call_contents = second_call_kwargs["contents"]
+
+    # Structure should contain:
+    # 1. User original query
+    # 2. Model's tool call response
+    # 3. User's tool response with context
+    assert len(second_call_contents) == 3
+    assert second_call_contents[0].parts[0].text == "What did Paul Graham write about?"
+    # The second turn content is the tool call from model
+    assert second_call_contents[1] == tool_call_resp.candidates[0].content
+    # The third turn contains the tool response part
+    tool_resp_part = second_call_contents[2].parts[0]
+    assert tool_resp_part.function_response.name == "retrieve_documents"
+    assert tool_resp_part.function_response.response == {"context": "retrieved context"}
+
+
+@patch("rag_engine.retrieve_context")
+@patch("rag_engine.genai.Client")
+def test_generate_answer_agentic_bad_tool_args_falls_back(
+    mock_client_class: MagicMock, mock_retrieve: MagicMock
+) -> None:
+    """Agentic path: malformed tool call (missing query) falls back to original query."""
+    mock_state = MagicMock(spec=RuntimeState)
+    mock_gen_tracker = MagicMock()
+    mock_state.track_generation.return_value.__enter__.return_value = mock_gen_tracker
+
+    mock_retrieve.return_value = ("ctx", [])
+
+    mock_client = MagicMock()
+    mock_client_class.return_value = mock_client
+
+    # Tool call with no 'query' key
+    bad_tool_resp = MagicMock()
+    bad_tool_resp.text = None
+    bad_tool_resp.usage_metadata = None
+    fc = MagicMock()
+    fc.args = {}  # missing 'query'
+    fc.name = "retrieve_documents"
+    part = MagicMock()
+    part.function_call = fc
+    bad_tool_resp.candidates = [MagicMock()]
+    bad_tool_resp.candidates[0].content.parts = [part]
+
+    final_resp = MagicMock()
+    final_resp.text = "Fallback answer"
+    final_resp.usage_metadata = None
+
+    mock_client.models.generate_content.side_effect = [bad_tool_resp, final_resp]
+
+    answer = generate_answer(mock_state, "original query")
+
+    assert answer == "Fallback answer"
+    # retrieve_context called with original query as fallback
+    mock_retrieve.assert_called_once_with(mock_state, "original query")
