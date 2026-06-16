@@ -11,7 +11,7 @@ from embedder import generate_embeddings
 from evalplatform_sdk.helpers import trace
 from google import genai
 from parser import ingest_file
-from rag_engine import generate_answer, retrieve_context
+from rag_engine import generate_answer
 from vector_store import collection, query_vector_store
 
 T = TypeVar("T")
@@ -199,8 +199,7 @@ def run_benchmark(data_dir: str | None = None) -> list[dict]:
         try:
             # Context retrieval and generation inside trace()
             with trace() as state:
-                context, image_paths = retrieve_context(state, query)
-                candidate_answer = generate_answer(state, query, context, image_paths)
+                candidate_answer = generate_answer(state, query, force_retrieve=True)
 
             # Embed the query to retrieve the matched chunks and compute precision/recall
             query_embeddings = generate_embeddings([query])

@@ -1,5 +1,4 @@
 import os
-import sys
 
 from dotenv import load_dotenv
 
@@ -42,7 +41,7 @@ def main() -> None:
             # Or we can just mock it if we don't have the key
             print("To test generate_answer, ensure GEMINI_API_KEY is set in environment.")
             if "GEMINI_API_KEY" in os.environ:
-                answer = generate_answer(state, query, context, image_paths)
+                answer = generate_answer(state, query)
                 print(f"Answer: {answer}")
 
         print("Test completed successfully.")

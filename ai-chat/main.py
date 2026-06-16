@@ -3,14 +3,13 @@
 import contextlib
 import os
 import tempfile
-import uuid
 
 import streamlit as st
 from dotenv import load_dotenv
 from evalplatform_sdk.client import EvalClient
 from evalplatform_sdk.helpers import trace
 from parser import ingest_file
-from rag_engine import generate_answer, retrieve_context
+from rag_engine import generate_answer
 from vector_store import collection
 
 load_dotenv()
@@ -94,8 +93,7 @@ with tab1:
         with st.chat_message('assistant'), st.spinner('Thinking...'):
             try:
                 with trace() as state:
-                    context, image_paths = retrieve_context(state, prompt)
-                    answer = generate_answer(state, prompt, context, image_paths)
+                    answer = generate_answer(state, prompt)
                 st.markdown(answer)
                 st.session_state.messages.append(
                     {'role': 'assistant', 'content': answer},
@@ -204,11 +202,8 @@ with tab2:
                             with contextlib.suppress(Exception):
                                 os.rmdir(tmp_dir)
 
-                    # Retrieve Context (Traces Retrieval Event internally)
-                    context, image_paths = retrieve_context(state, query)
-
-                    # Generate Response (Traces Generation Event internally)
-                    answer = generate_answer(state, query, context, image_paths)
+                    # Generate Response — forced retrieval ensures eval traces match historical behaviour
+                    answer = generate_answer(state, query, force_retrieve=True)
                     st.write(f'  └─ Q: {query}')
                     st.write(f'  └─ A: {answer.strip()}')
 

@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from evalplatform_sdk.client import EvalClient
 from evalplatform_sdk.helpers import trace
 from evalplatform_sdk.management import DatasetClient
-from rag_engine import generate_answer, retrieve_context
+from rag_engine import generate_answer
 
 
 def main() -> None:
@@ -42,11 +42,8 @@ def main() -> None:
             print(case)
             query = case['inputs']['query']
 
-            # Retrieve context (automatically tracks retrieval via state)
-            context, image_paths = retrieve_context(state, query)
-
             # Generate answer (automatically tracks generation via state)
-            answer = generate_answer(state, query, context, image_paths)
+            answer = generate_answer(state, query, force_retrieve=True)
 
             print(f'  Q: {query}')
             print(f'  A: {answer.strip()}')
