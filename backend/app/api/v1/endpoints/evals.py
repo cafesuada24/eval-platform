@@ -35,7 +35,11 @@ from app.core.eval_engine.services.evaluation_orchestrator import (
 from app.core.eval_engine.services.metric_evaluator import MetricEvaluatorService
 from app.core.exceptions import NotFoundError
 from app.core.kernel.ports import RuntimeStateRepository
+import asyncio
+import json
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
+from fastapi.encoders import jsonable_encoder
 
 router = APIRouter()
 
@@ -217,3 +221,47 @@ def list_evaluations(
 ) -> list[BatchRunResult]:
     """List all evaluation jobs with pagination."""
     return orchestrator.list_jobs(skip=skip, limit=limit)
+
+
+@router.get('/{evaluation_id}/stream')
+async def stream_evaluation(
+    evaluation_id: UUID,
+    orchestrator: Annotated[
+        EvaluationOrchestratorService,
+        Depends(get_evaluation_orchestrator),
+    ],
+) -> StreamingResponse:
+    """SSE endpoint that streams PipelineRunResult events as testcases complete."""
+    from app.core.eval_engine.services.evaluation_orchestrator import EvaluationOrchestratorService as Svc
+
+    # Verify job exists
+    try:
+        orchestrator.get_job(evaluation_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail=f'Evaluation {evaluation_id} not found.')
+
+    async def event_generator():
+        q = await Svc.subscribe(evaluation_id)
+        try:
+            while True:
+                item = await asyncio.wait_for(q.get(), timeout=30.0)
+                if item is None:
+                    yield f"event: job_complete\ndata: {json.dumps({'status': 'COMPLETED'})}\n\n"
+                    break
+                yield f"event: testcase_complete\ndata: {json.dumps(jsonable_encoder(item))}\n\n"
+        except asyncio.TimeoutError:
+            # Keep-alive: no events for 30s, send a comment and loop
+            yield ": keep-alive\n\n"
+        except asyncio.CancelledError:
+            pass
+        finally:
+            await Svc.unsubscribe(evaluation_id, q)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
