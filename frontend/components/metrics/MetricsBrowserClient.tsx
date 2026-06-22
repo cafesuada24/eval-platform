@@ -4,17 +4,21 @@ import { useState } from "react"
 import { MetricsList } from "@/components/metrics/MetricsList"
 import { MetricDetail } from "@/components/metrics/MetricDetail"
 import { Metric } from "@/lib/types"
+import useSWR from "swr"
+import { swrFetcher } from "@/hooks/use-swr-fetcher"
 
-interface MetricsBrowserClientProps {
-  metrics: Metric[]
-}
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/v1"
 
-export function MetricsBrowserClient({ metrics }: MetricsBrowserClientProps) {
-  const [selectedId, setSelectedId] = useState<string | null>(
-    metrics[0]?.id ?? null
+export function MetricsBrowserClient() {
+  const { data: metrics = [] } = useSWR<Metric[]>(
+    `${API_BASE}/configs/metrics`,
+    swrFetcher,
+    { refreshInterval: 5000 }
   )
 
-  // Adjust state during rendering if the selected metric no longer exists (e.g. deleted)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+
+  // Determine actual selected ID
   const stillExists = metrics.some((m) => m.id === selectedId)
   const targetId = stillExists ? selectedId : (metrics[0]?.id ?? null)
 
@@ -40,4 +44,3 @@ export function MetricsBrowserClient({ metrics }: MetricsBrowserClientProps) {
     </div>
   )
 }
-
