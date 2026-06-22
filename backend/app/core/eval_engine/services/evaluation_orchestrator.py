@@ -15,7 +15,11 @@ from app.core.eval_engine.models import (
     Pipeline,
     PipelineRunResult,
 )
-from app.core.eval_engine.ports import BatchResultRepository, DatasetRepository, PipelineRepository
+from app.core.eval_engine.ports import (
+    BatchResultRepository,
+    DatasetRepository,
+    PipelineRepository,
+)
 from app.core.eval_engine.services.pipeline_evaluator import PipelineEvaluatorService
 from app.core.exceptions import NotFoundError
 from app.core.kernel.ports import RuntimeStateRepository
@@ -44,6 +48,8 @@ class EvaluationOrchestratorService:
     #    (e.g., in a directory `results/{job_id}/{testcase_id}.json`) to completely avoid write contention.
     _locks: dict[UUID, asyncio.Lock] = {}
     _global_lock = asyncio.Lock()
+    _subscriber_queues: dict[UUID, list[asyncio.Queue]] = {}
+    _queues_lock = asyncio.Lock()
 
     @classmethod
     async def _get_lock(cls, job_id: UUID) -> asyncio.Lock:
@@ -51,6 +57,40 @@ class EvaluationOrchestratorService:
             if job_id not in cls._locks:
                 cls._locks[job_id] = asyncio.Lock()
             return cls._locks[job_id]
+
+    @classmethod
+    async def subscribe(cls, job_id: UUID) -> asyncio.Queue:
+        """Register a new SSE subscriber queue for a job. Returns the queue."""
+        q: asyncio.Queue = asyncio.Queue()
+        async with cls._queues_lock:
+            cls._subscriber_queues.setdefault(job_id, []).append(q)
+        return q
+
+    @classmethod
+    async def unsubscribe(cls, job_id: UUID, q: asyncio.Queue) -> None:
+        """Remove a subscriber queue, e.g. when the SSE client disconnects."""
+        async with cls._queues_lock:
+            queues = cls._subscriber_queues.get(job_id, [])
+            if q in queues:
+                queues.remove(q)
+            if not queues:
+                cls._subscriber_queues.pop(job_id, None)
+
+    @classmethod
+    async def publish_result(cls, job_id: UUID, result: 'PipelineRunResult') -> None:
+        """Publish a completed PipelineRunResult to all subscribers of a job."""
+        async with cls._queues_lock:
+            queues = list(cls._subscriber_queues.get(job_id, []))
+        for q in queues:
+            await q.put(result)
+
+    @classmethod
+    async def publish_sentinel(cls, job_id: UUID) -> None:
+        """Signal job completion to all subscribers by putting None into each queue."""
+        async with cls._queues_lock:
+            queues = cls._subscriber_queues.pop(job_id, [])
+        for q in queues:
+            await q.put(None)
 
     def __init__(
         self,
@@ -60,6 +100,7 @@ class EvaluationOrchestratorService:
         dataset_repo: DatasetRepository,
         pipeline_repo: PipelineRepository,
     ) -> None:
+        """Initialize the evaluation orchestrator service."""
         self.__batch_result_repo = batch_result_repo
         self.__pipeline_eval_srv = pipeline_eval_srv
         self.__runtime_state_repo = runtime_state_repo
@@ -91,7 +132,7 @@ class EvaluationOrchestratorService:
     ) -> PipelineRunResult:
         """Evaluate a single test case using the provided runtime states."""
         job = self.get_job(job_id)
-        
+
         try:
             pipeline = self.__pipeline_repo.get_by_id(job.pipeline_id)
         except Exception as e:
@@ -132,6 +173,7 @@ class EvaluationOrchestratorService:
             job = self.get_job(job_id)
             job.pipeline_run_results.append(result)
             self.__batch_result_repo.save(job)
+            await self.publish_result(job_id, result)
 
         return result
 
@@ -142,6 +184,7 @@ class EvaluationOrchestratorService:
             job = self.get_job(job_id)
             job.status = BatchRunStatus.COMPLETED
             self.__batch_result_repo.save(job)
+            await self.publish_sentinel(job_id)
             return job
 
     def list_jobs(self, skip: int = 0, limit: int = 50) -> list[BatchRunResult]:
@@ -213,7 +256,7 @@ class EvaluationOrchestratorService:
         """Get a test case result by id."""
         job = self.get_job(job_id)
         result = next(
-            (pr for pr in job.pipeline_run_results if pr.testcase_id == testcase_id), None
+            (pr for pr in job.pipeline_run_results if pr.testcase_id == testcase_id), None,
         )
         if not result:
             raise NotFoundError(f'Test case result not found for {testcase_id}')
@@ -228,7 +271,7 @@ class EvaluationOrchestratorService:
         """Get a specific pipeline result for a job."""
         job = self.get_job(job_id)
         result = next(
-            (pr for pr in job.pipeline_run_results if pr.run_id == pipeline_run_id), None
+            (pr for pr in job.pipeline_run_results if pr.run_id == pipeline_run_id), None,
         )
         if not result:
             raise NotFoundError(f'Pipeline result not found for {pipeline_run_id}')
