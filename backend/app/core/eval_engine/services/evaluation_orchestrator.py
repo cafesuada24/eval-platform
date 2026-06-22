@@ -77,7 +77,7 @@ class EvaluationOrchestratorService:
                 cls._subscriber_queues.pop(job_id, None)
 
     @classmethod
-    async def publish_result(cls, job_id: UUID, result: 'PipelineRunResult') -> None:
+    async def publish_result(cls, job_id: UUID, result: PipelineRunResult) -> None:
         """Publish a completed PipelineRunResult to all subscribers of a job."""
         async with cls._queues_lock:
             queues = list(cls._subscriber_queues.get(job_id, []))
