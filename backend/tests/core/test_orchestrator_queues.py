@@ -1,11 +1,16 @@
 import asyncio
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
-from unittest.mock import MagicMock, AsyncMock, patch
 
 import pytest
-
-from app.core.eval_engine.services.evaluation_orchestrator import EvaluationOrchestratorService
-from app.core.eval_engine.models import PipelineRunResult, AssertionStatus, BatchRunStatus
+from app.core.eval_engine.models import (
+    AssertionStatus,
+    BatchRunStatus,
+    PipelineRunResult,
+)
+from app.core.eval_engine.services.evaluation_orchestrator import (
+    EvaluationOrchestratorService,
+)
 
 
 def _make_orchestrator() -> EvaluationOrchestratorService:
