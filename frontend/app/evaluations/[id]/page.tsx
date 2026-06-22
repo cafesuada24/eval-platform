@@ -96,6 +96,7 @@ export default async function EvaluationDetailsPage(props: {
           pipelines={pipelines}
           dataset={dataset}
           runtimes={runtimes}
+          initialIsComplete={job?.status === "COMPLETED" || job?.status === "FAILED"}
         />
       </div>
     </div>

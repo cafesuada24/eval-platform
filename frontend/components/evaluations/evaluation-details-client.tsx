@@ -29,23 +29,38 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { MetricDiagnosticBoard } from "./metric-diagnostic-board";
 import { filterRunsByMetric } from "@/lib/diagnostic-utils";
+import { useEvaluationStream } from "@/hooks/use-evaluation-stream";
 
 interface EvaluationDetailsClientProps {
   summary: BatchSummary;
   pipelines: PipelineRunResult[];
   dataset: any | null;
   runtimes: RuntimeState[];
+  initialIsComplete?: boolean;
 }
 
 export function EvaluationDetailsClient({
   summary,
-  pipelines,
+  pipelines: initialPipelines,
   dataset,
   runtimes,
+  initialIsComplete = false,
 }: EvaluationDetailsClientProps) {
+  const { pipelines } = useEvaluationStream(
+    summary.job_id,
+    initialPipelines,
+    initialIsComplete
+  );
+
   const [selectedRunId, setSelectedRunId] = useState<string>(
     pipelines.length > 0 ? pipelines[0].run_id : ""
   );
+
+  // Auto-select the first pipeline run if none is selected and runs become available
+  if (!selectedRunId && pipelines.length > 0) {
+    setSelectedRunId(pipelines[0].run_id);
+  }
+
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [metricFilter, setMetricFilter] = useState<{
