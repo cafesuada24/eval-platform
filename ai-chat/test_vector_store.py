@@ -24,7 +24,20 @@ import sys
 if "vector_store" in sys.modules:
     del sys.modules["vector_store"]
 
-from vector_store import add_chunks_to_db, query_vector_store  # noqa: E402
+from vector_store import add_chunks_to_db, get_indexed_files, query_vector_store  # noqa: E402
+
+import chromadb
+
+
+@pytest.fixture
+def clean_collection(tmp_path):
+    """Provides a fresh in-memory ChromaDB collection, patching the module-level one."""
+    import uuid as _uuid
+
+    client = chromadb.EphemeralClient()
+    col = client.get_or_create_collection(f"test_{_uuid.uuid4().hex}")
+    with patch("vector_store.collection", col):
+        yield col
 
 
 @pytest.fixture(autouse=True)
@@ -128,3 +141,58 @@ def test_query_vector_store_n_results_cap() -> None:
         query_embeddings=[query_vector],
         n_results=2,
     )
+
+
+class TestGetIndexedFiles:
+    """Tests for get_indexed_files()."""
+
+    def test_returns_empty_dict_when_collection_empty(self, clean_collection):
+        result = get_indexed_files()
+        assert result == {}
+
+    def test_groups_chunks_by_source_file(self, clean_collection):
+        # Arrange — add 2 chunks for file_a and 1 for file_b
+        clean_collection.add(
+            documents=["chunk 1", "chunk 2", "chunk 3"],
+            embeddings=[[0.1] * 768, [0.2] * 768, [0.3] * 768],
+            metadatas=[
+                {"source_file": "file_a.txt", "page_number": 1, "content_type": "text"},
+                {"source_file": "file_a.txt", "page_number": 1, "content_type": "text"},
+                {"source_file": "file_b.txt", "page_number": 1, "content_type": "text"},
+            ],
+            ids=["id1", "id2", "id3"],
+        )
+
+        result = get_indexed_files()
+
+        assert set(result.keys()) == {"file_a.txt", "file_b.txt"}
+        assert len(result["file_a.txt"]) == 2
+        assert len(result["file_b.txt"]) == 1
+
+    def test_chunk_record_has_expected_keys(self, clean_collection):
+        clean_collection.add(
+            documents=["hello world"],
+            embeddings=[[0.1] * 768],
+            metadatas=[{"source_file": "doc.txt", "page_number": 1, "content_type": "text"}],
+            ids=["id-x"],
+        )
+
+        result = get_indexed_files()
+        chunk = result["doc.txt"][0]
+
+        assert "document" in chunk
+        assert "metadata" in chunk
+        assert "id" in chunk
+        assert chunk["document"] == "hello world"
+        assert chunk["metadata"]["source_file"] == "doc.txt"
+
+    def test_skips_chunks_with_missing_source_file(self, clean_collection):
+        clean_collection.add(
+            documents=["orphan chunk"],
+            embeddings=[[0.1] * 768],
+            metadatas=[{"page_number": 1, "content_type": "text"}],  # no source_file
+            ids=["orphan-id"],
+        )
+
+        result = get_indexed_files()
+        assert result == {}

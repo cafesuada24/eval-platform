@@ -57,3 +57,27 @@ def query_vector_store(query_vector: list[float], n_results: int = 3) -> dict[st
         query_embeddings=[query_vector],  # type: ignore[arg-type]
         n_results=min(n_results, count),
     )
+
+
+def get_indexed_files() -> dict[str, list[dict[str, Any]]]:
+    """Returns all indexed files grouped by source_file.
+
+    Each value is a list of chunk records with keys: document, metadata, id.
+    Chunks missing the source_file metadata key are silently skipped.
+    """
+    result = collection.get(include=["documents", "metadatas"])
+
+    documents: list[str] = result.get("documents") or []
+    metadatas: list[dict[str, Any]] = result.get("metadatas") or []
+    ids: list[str] = result.get("ids") or []
+
+    file_index: dict[str, list[dict[str, Any]]] = {}
+    for doc, meta, doc_id in zip(documents, metadatas, ids):
+        source = meta.get("source_file")
+        if not source:
+            continue
+        file_index.setdefault(source, []).append(
+            {"document": doc, "metadata": meta, "id": doc_id}
+        )
+
+    return file_index
