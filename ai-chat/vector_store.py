@@ -81,3 +81,16 @@ def get_indexed_files() -> dict[str, list[dict[str, Any]]]:
         )
 
     return file_index
+
+
+def delete_file(source_file: str) -> int:
+    """Deletes all chunks for the given source_file from ChromaDB.
+
+    Returns the number of chunks deleted.
+    """
+    existing = collection.get(where={"source_file": source_file})
+    ids_to_delete: list[str] = existing.get("ids") or []
+    if not ids_to_delete:
+        return 0
+    collection.delete(ids=ids_to_delete)
+    return len(ids_to_delete)

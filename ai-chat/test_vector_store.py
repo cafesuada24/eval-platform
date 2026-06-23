@@ -26,7 +26,7 @@ import sys
 if "vector_store" in sys.modules:
     del sys.modules["vector_store"]
 
-from vector_store import add_chunks_to_db, get_indexed_files, query_vector_store  # noqa: E402
+from vector_store import add_chunks_to_db, delete_file, get_indexed_files, query_vector_store  # noqa: E402
 
 
 @pytest.fixture
@@ -204,3 +204,44 @@ class TestGetIndexedFiles:
         )
         result = get_indexed_files()
         assert result == {}
+
+
+class TestDeleteFile:
+    """Tests for delete_file()."""
+
+    def test_deletes_all_chunks_for_source_file(self, clean_collection):
+        # Arrange
+        clean_collection.add(
+            documents=["chunk a", "chunk b", "chunk c"],
+            embeddings=[[0.1] * 768, [0.2] * 768, [0.3] * 768],
+            metadatas=[
+                {"source_file": "target.pdf", "page_number": 1, "content_type": "text"},
+                {"source_file": "target.pdf", "page_number": 2, "content_type": "text"},
+                {"source_file": "other.txt", "page_number": 1, "content_type": "text"},
+            ],
+            ids=["t1", "t2", "o1"],
+        )
+
+        deleted = delete_file("target.pdf")
+
+        assert deleted == 2
+        remaining = clean_collection.get(where={"source_file": "target.pdf"})
+        assert len(remaining["ids"]) == 0
+        # other.txt untouched
+        other = clean_collection.get(where={"source_file": "other.txt"})
+        assert len(other["ids"]) == 1
+
+    def test_returns_zero_when_file_not_found(self, clean_collection):
+        deleted = delete_file("nonexistent.pdf")
+        assert deleted == 0
+
+    def test_returns_correct_count_for_single_chunk_file(self, clean_collection):
+        clean_collection.add(
+            documents=["only chunk"],
+            embeddings=[[0.1] * 768],
+            metadatas=[{"source_file": "solo.txt", "page_number": 1, "content_type": "text"}],
+            ids=["s1"],
+        )
+
+        deleted = delete_file("solo.txt")
+        assert deleted == 1
