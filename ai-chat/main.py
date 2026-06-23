@@ -10,7 +10,7 @@ from evalplatform_sdk.client import EvalClient
 from evalplatform_sdk.helpers import trace
 from parser import ingest_file
 from rag_engine import generate_answer
-from vector_store import collection
+from vector_store import collection, delete_file, get_indexed_files
 
 load_dotenv()
 
@@ -26,6 +26,12 @@ def init_telemetry() -> EvalClient:
 
 
 eval_client = init_telemetry()
+
+if 'selected_file' not in st.session_state:
+    st.session_state.selected_file = None
+
+if 'pending_delete' not in st.session_state:
+    st.session_state.pending_delete = None
 
 st.set_page_config(page_title='AI Chat with RAG', page_icon='🤖')
 
@@ -70,6 +76,59 @@ with st.sidebar:
                 st.error(f'Error processing file: {e}')
             finally:
                 os.unlink(tmp_path)
+
+    # ── File Manager ──────────────────────────────────────────────
+    st.divider()
+
+    try:
+        file_index = get_indexed_files()
+    except Exception as e:
+        st.warning(f'Could not load file index: {e}')
+        file_index = {}
+
+    file_names = sorted(file_index.keys())
+    st.subheader(f'📋 Uploaded Files ({len(file_names)})')
+
+    if not file_names:
+        st.caption('No files ingested yet. Upload a document above.')
+    else:
+        for fname in file_names:
+            chunks = file_index[fname]
+            icon = '🖼' if fname.lower().split('.')[-1] in ('png', 'jpg', 'jpeg', 'webp') else '📄'
+
+            col_name, col_view, col_del = st.columns([5, 1, 1])
+            with col_name:
+                st.caption(f'{icon} {fname}  ·  {len(chunks)} chunks')
+            with col_view:
+                if st.button('👁', key=f'view_{fname}', help='View details'):
+                    st.session_state.selected_file = fname
+                    st.session_state.pending_delete = None
+                    st.rerun()
+            with col_del:
+                if st.button('🗑', key=f'del_{fname}', help='Delete file'):
+                    st.session_state.pending_delete = fname
+                    st.rerun()
+
+            # Inline delete confirmation
+            if st.session_state.pending_delete == fname:
+                st.warning(
+                    f'⚠ Delete **{fname}** and all {len(chunks)} chunks from the index?'
+                )
+                confirm_col, cancel_col = st.columns(2)
+                with confirm_col:
+                    if st.button('Confirm Delete', key=f'confirm_{fname}', type='primary'):
+                        try:
+                            delete_file(fname)
+                            if st.session_state.selected_file == fname:
+                                st.session_state.selected_file = None
+                            st.session_state.pending_delete = None
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f'Delete failed: {e}')
+                with cancel_col:
+                    if st.button('Cancel', key=f'cancel_{fname}'):
+                        st.session_state.pending_delete = None
+                        st.rerun()
 
 # Create Tabs for Chat and Evaluation
 tab1, tab2 = st.tabs(['💬 Chat', '🧪 Evaluation'])
