@@ -78,6 +78,9 @@ def test_generate_embeddings_empty() -> None:
     assert generate_embeddings([]) == []
 
 
+from google.genai import errors as genai_errors
+
+
 @patch('embedder.time.sleep')
 @patch('embedder.genai.Client')
 def test_generate_embeddings_retry_success(
@@ -95,8 +98,8 @@ def test_generate_embeddings_retry_success(
 
     # Fails twice, then succeeds on 3rd attempt (2nd retry)
     mock_client.models.embed_content.side_effect = [
-        Exception('Rate limit 429'),
-        Exception('Transient 503'),
+        genai_errors.APIError(code=429, response_json={}),
+        genai_errors.ServerError(code=503, response_json={}),
         mock_response,
     ]
 
@@ -120,15 +123,12 @@ def test_generate_embeddings_retry_failure(
     mock_client = MagicMock()
     mock_client_class.return_value = mock_client
 
-    # Fails all 4 attempts (initial + 3 retries)
+    # Fails all 4 attempts (initial + 3 retries) with 429
     mock_client.models.embed_content.side_effect = [
-        Exception('Failure 1'),
-        Exception('Failure 2'),
-        Exception('Failure 3'),
-        Exception('Failure 4'),
+        genai_errors.APIError(code=429, response_json={}) for _ in range(4)
     ]
 
-    with pytest.raises(Exception, match='Failure 4'):
+    with pytest.raises(genai_errors.APIError):
         generate_embeddings(['hello'])
 
     assert mock_client.models.embed_content.call_count == EXPECTED_CALLS_4
@@ -137,3 +137,22 @@ def test_generate_embeddings_retry_failure(
     assert mock_sleep.call_count == EXPECTED_SLEEPS_3
     sleep_calls = [call[0][0] for call in mock_sleep.call_args_list]
     assert sleep_calls == [1, 2, 4]
+
+
+@patch('embedder.time.sleep')
+@patch('embedder.genai.Client')
+def test_generate_embeddings_non_retryable_raises_immediately(
+    mock_client_class: MagicMock,
+    mock_sleep: MagicMock,
+) -> None:
+    """Test that a non-retryable exception is not retried and propagates immediately."""
+    mock_client = MagicMock()
+    mock_client_class.return_value = mock_client
+    mock_client.models.embed_content.side_effect = ValueError("non-retryable error")
+
+    with pytest.raises(ValueError, match="non-retryable error"):
+        generate_embeddings(['hello'])
+
+    assert mock_client.models.embed_content.call_count == 1
+    assert mock_sleep.call_count == 0
+
