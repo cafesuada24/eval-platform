@@ -28,7 +28,7 @@ def main() -> None:
         f.write("The quick brown fox jumps over the lazy dog. The AI Chat application was built in 2026.")
 
     try:
-        chunks_count = ingest_file("dummy.txt")
+        chunks_count, _ = ingest_file("dummy.txt")
         print(f"Ingested {chunks_count} chunks.")
 
         with trace() as state:
