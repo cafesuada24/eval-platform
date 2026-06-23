@@ -56,7 +56,7 @@ def _render_chunks_tab(chunks: list[dict[str, Any]]) -> None:
         with st.expander(
             f'Chunk {i} · `{ctype}` · Page {page} · {char_count:,} chars — {preview[:60]}…',
         ):
-            st.code(full, language='markdown')
+            st.text(full)
 
 
 def _render_raw_tab(chunks: list[dict[str, Any]]) -> None:
@@ -66,7 +66,7 @@ def _render_raw_tab(chunks: list[dict[str, Any]]) -> None:
         key=lambda c: (c['metadata'].get('page_number', 0),),
     )
     raw = '\n\n---\n\n'.join(c['document'] for c in sorted_chunks)
-    st.code(raw, language='markdown')
+    st.text(raw)
 
 
 # Initialize Telemetry
