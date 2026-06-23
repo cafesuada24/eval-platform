@@ -167,8 +167,9 @@ def test_ingest_file_txt(mock_extract, mock_embed, mock_add, mock_splitter_class
     ]
     mock_splitter_class.return_value = mock_splitter
 
-    count = ingest_file("dummy.txt")
+    count, content = ingest_file("dummy.txt")
     assert count == 2
+    assert "Hello World" in content
 
     mock_extract.assert_called_once_with("dummy.txt")
     mock_embed.assert_called_once()
@@ -196,9 +197,10 @@ def test_ingest_file_image(mock_copy2, mock_extract, mock_embed, mock_add, tmp_p
     image_file.write_text("dummy image data")
 
     with patch("parser.Path.mkdir"):
-        count = ingest_file(str(image_file))
+        count, content = ingest_file(str(image_file))
 
     assert count == 2
+    assert "Invoice #1234" in content
     mock_extract.assert_called_once_with(b"dummy image data", "image/png")
     mock_copy2.assert_called_once()
     mock_add.assert_called_once()
@@ -222,9 +224,10 @@ def test_ingest_file_webp(mock_copy2, mock_extract, mock_embed, mock_add, tmp_pa
     webp_file.write_text("fake webp bytes")
 
     with patch("parser.Path.mkdir"):
-        count = ingest_file(str(webp_file))
+        count, content = ingest_file(str(webp_file))
 
     assert count == 2
+    assert "Sunset raw text" in content
     mock_extract.assert_called_once_with(b"fake webp bytes", "image/webp")
     mock_copy2.assert_called_once()
     mock_add.assert_called_once()
@@ -257,18 +260,37 @@ def test_extract_and_caption_bytes(mock_genai_client_class):
     assert contents[1] == "Analyze this document page/image. Perform OCR to extract all readable text exactly, and write a detailed descriptive caption for any charts, diagrams, drawings, or figures."
 
 
+from google.genai import errors as genai_errors
+
+
 @patch("parser.time.sleep")
 @patch("parser.genai.Client")
 def test_extract_and_caption_bytes_failure(mock_genai_client_class, mock_sleep):
     mock_client = MagicMock()
     mock_genai_client_class.return_value = mock_client
-    mock_client.models.generate_content.side_effect = Exception("API failure")
+    mock_client.models.generate_content.side_effect = genai_errors.APIError(code=429, response_json={})
 
-    with pytest.raises(Exception) as exc_info:
+    with pytest.raises(genai_errors.APIError):
         extract_and_caption_bytes(b"dummy bytes", "image/png")
 
-    assert "API failure" in str(exc_info.value)
     assert mock_client.models.generate_content.call_count == 4
     assert mock_sleep.call_count == 3
+    sleep_args = [c[0][0] for c in mock_sleep.call_args_list]
+    assert sleep_args == [1.0, 2.0, 4.0]
+
+
+@patch("parser.time.sleep")
+@patch("parser.genai.Client")
+def test_extract_and_caption_bytes_non_retryable_failure(mock_genai_client_class, mock_sleep):
+    mock_client = MagicMock()
+    mock_genai_client_class.return_value = mock_client
+    mock_client.models.generate_content.side_effect = ValueError("API failure")
+
+    with pytest.raises(ValueError, match="API failure"):
+        extract_and_caption_bytes(b"dummy bytes", "image/png")
+
+    assert mock_client.models.generate_content.call_count == 1
+    assert mock_sleep.call_count == 0
+
 
 

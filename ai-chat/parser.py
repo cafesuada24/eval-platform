@@ -47,6 +47,9 @@ class ExtractionResult(BaseModel):
     )
 
 
+from utils import retry_api_call
+
+
 def extract_and_caption_bytes(image_bytes: bytes, mime_type: str) -> ExtractionResult:
     """Uses Gemini API to perform both OCR (raw text extraction) and visual captioning in one structured response."""
     client = genai.Client()
@@ -56,31 +59,32 @@ def extract_and_caption_bytes(image_bytes: bytes, mime_type: str) -> ExtractionR
         "and write a detailed descriptive caption for any charts, diagrams, drawings, or figures."
     )
 
-    max_retries = 3
-    wait_time = 1
-    for attempt in range(max_retries + 1):
-        try:
-            response = client.models.generate_content(
-                model="gemini-3.1-flash-lite",
-                contents=[
-                    genai.types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
-                    prompt,
-                ],  # type: ignore[arg-type]
-                config=genai.types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=ExtractionResult,
-                ),
-            )
-            if response and response.text:
-                return ExtractionResult.model_validate_json(response.text.strip())
-            raise ValueError("Empty response received from GenAI model.")
-        except Exception as e:
-            if attempt == max_retries:
-                print(f"Failed to extract and caption bytes after {max_retries} retries: {e}")
-                raise e
-            time.sleep(wait_time)
-            wait_time *= 2
-    return ExtractionResult(extracted_text="", visual_caption="")
+    def run_ocr():
+        response = client.models.generate_content(
+            model="gemini-3.1-flash-lite",
+            contents=[
+                genai.types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
+                prompt,
+            ],  # type: ignore[arg-type]
+            config=genai.types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=ExtractionResult,
+            ),
+        )
+        if response and response.text:
+            return ExtractionResult.model_validate_json(response.text.strip())
+        raise ValueError("Empty response received from GenAI model.")
+
+    try:
+        return retry_api_call(
+            run_ocr,
+            max_retries=3,
+            initial_delay=1.0,
+            use_jitter=False,
+        )
+    except Exception as e:
+        print(f"Failed to extract and caption bytes after 3 retries: {e}")
+        raise e
 
 
 SCANNED_PAGE_TEXT_THRESHOLD = 100
