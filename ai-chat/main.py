@@ -4,6 +4,7 @@ import contextlib
 import os
 import tempfile
 from collections import Counter
+from typing import Any, Literal
 
 import streamlit as st
 from dotenv import load_dotenv
@@ -16,7 +17,7 @@ from vector_store import collection, delete_file, get_indexed_files
 load_dotenv()
 
 
-def _render_overview_tab(_filename: str, chunks: list[dict], ext: str) -> None:
+def _render_overview_tab(_filename: str, chunks: list[dict[str, Any]], ext: str) -> None:
     """Renders the Overview tab of the file detail panel."""
     pages = sorted({c['metadata'].get('page_number', 1) for c in chunks})
     content_types = Counter(c['metadata'].get('content_type', 'text') for c in chunks)
@@ -32,7 +33,7 @@ def _render_overview_tab(_filename: str, chunks: list[dict], ext: str) -> None:
     st.markdown('**Chunk overlap:** `100` chars')
 
 
-def _render_chunks_tab(chunks: list[dict]) -> None:
+def _render_chunks_tab(chunks: list[dict[str, Any]]) -> None:
     """Renders the Chunks tab of the file detail panel, capped at first 50 chunks for performance."""
     sorted_chunks = sorted(
         chunks,
@@ -58,7 +59,7 @@ def _render_chunks_tab(chunks: list[dict]) -> None:
             st.code(full, language='markdown')
 
 
-def _render_raw_tab(chunks: list[dict]) -> None:
+def _render_raw_tab(chunks: list[dict[str, Any]]) -> None:
     """Renders the Raw Content tab of the file detail panel."""
     sorted_chunks = sorted(
         chunks,
@@ -106,7 +107,7 @@ with st.sidebar:
             state.track_file_processed() as file_tracker,
         ):
             ext = '.' + uploaded_file.name.split('.')[-1].lower()
-            processor = 'ocr' if ext in ['.png', '.jpg', '.jpeg', '.webp'] else 'file_reader'
+            processor: Literal['ocr', 'file_reader'] = 'ocr' if ext in ['.png', '.jpg', '.jpeg', '.webp'] else 'file_reader'
             file_tracker.file_info(
                 file_name=uploaded_file.name,
                 processor=processor,
@@ -184,6 +185,8 @@ with st.sidebar:
                         st.rerun()
 
 # Create Tabs for Chat and Evaluation
+main_col: Any
+detail_col: Any
 if st.session_state.selected_file and st.session_state.selected_file in file_index:
     main_col, detail_col = st.columns([2, 1])
 else:

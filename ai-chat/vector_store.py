@@ -68,16 +68,16 @@ def get_indexed_files() -> dict[str, list[dict[str, Any]]]:
     result = collection.get(include=["documents", "metadatas"])
 
     documents: list[str] = result.get("documents") or []
-    metadatas: list[dict[str, Any]] = result.get("metadatas") or []
+    metadatas: list[Any] = result.get("metadatas") or []
     ids: list[str] = result.get("ids") or []
 
     file_index: dict[str, list[dict[str, Any]]] = {}
-    for doc, meta, doc_id in zip(documents, metadatas, ids):
+    for doc, meta, doc_id in zip(documents, metadatas, ids, strict=False):
         source = meta.get("source_file")
         if not source:
             continue
         file_index.setdefault(source, []).append(
-            {"document": doc, "metadata": meta, "id": doc_id}
+            {"document": doc, "metadata": meta, "id": doc_id},
         )
 
     return file_index
