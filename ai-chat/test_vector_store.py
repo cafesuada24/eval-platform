@@ -1,7 +1,9 @@
 """Tests for the ChromaDB interface module."""
 
+import uuid
 from unittest.mock import MagicMock, patch
 
+import chromadb
 import pytest
 
 # Test constants to avoid PLR2004 (magic value comparison)
@@ -26,16 +28,12 @@ if "vector_store" in sys.modules:
 
 from vector_store import add_chunks_to_db, get_indexed_files, query_vector_store  # noqa: E402
 
-import chromadb
-
 
 @pytest.fixture
-def clean_collection(tmp_path):
+def clean_collection():
     """Provides a fresh in-memory ChromaDB collection, patching the module-level one."""
-    import uuid as _uuid
-
     client = chromadb.EphemeralClient()
-    col = client.get_or_create_collection(f"test_{_uuid.uuid4().hex}")
+    col = client.get_or_create_collection(f"test_{uuid.uuid4().hex}")
     with patch("vector_store.collection", col):
         yield col
 
@@ -194,5 +192,15 @@ class TestGetIndexedFiles:
             ids=["orphan-id"],
         )
 
+        result = get_indexed_files()
+        assert result == {}
+
+    def test_skips_chunks_with_empty_source_file(self, clean_collection):
+        clean_collection.add(
+            documents=["chunk with blank source"],
+            embeddings=[[0.1] * 768],
+            metadatas=[{"source_file": "", "page_number": 1, "content_type": "text"}],
+            ids=["blank-id"],
+        )
         result = get_indexed_files()
         assert result == {}
