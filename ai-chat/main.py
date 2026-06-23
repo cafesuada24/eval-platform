@@ -3,6 +3,7 @@
 import contextlib
 import os
 import tempfile
+from collections import Counter
 
 import streamlit as st
 from dotenv import load_dotenv
@@ -13,6 +14,58 @@ from rag_engine import generate_answer
 from vector_store import collection, delete_file, get_indexed_files
 
 load_dotenv()
+
+
+def _render_overview_tab(_filename: str, chunks: list[dict], ext: str) -> None:
+    """Renders the Overview tab of the file detail panel."""
+    pages = sorted({c['metadata'].get('page_number', 1) for c in chunks})
+    content_types = Counter(c['metadata'].get('content_type', 'text') for c in chunks)
+
+    st.markdown(f'**File type:** `{ext}`')
+    st.markdown(f'**Total chunks:** `{len(chunks)}`')
+    st.markdown(f'**Total characters:** `{sum(len(c["document"]) for c in chunks):,}`')
+    st.markdown(f'**Pages spanned:** `{len(pages)}` (pages {pages[0]}–{pages[-1]})' if len(pages) > 1 else f'**Page:** `{pages[0]}`')
+    st.markdown('**Content types:**')
+    for ctype, count in content_types.most_common():
+        st.markdown(f'- `{ctype}` × {count}')
+    st.markdown('**Chunk size:** `1000` chars')
+    st.markdown('**Chunk overlap:** `100` chars')
+
+
+def _render_chunks_tab(chunks: list[dict]) -> None:
+    """Renders the Chunks tab of the file detail panel, capped at first 50 chunks for performance."""
+    sorted_chunks = sorted(
+        chunks,
+        key=lambda c: (c['metadata'].get('page_number', 0),),
+    )
+
+    max_chunks = 50
+    display_chunks = sorted_chunks[:max_chunks]
+    if len(sorted_chunks) > max_chunks:
+        st.info(f'Showing first {max_chunks} of {len(sorted_chunks)} chunks for performance.')
+
+    for i, chunk in enumerate(display_chunks, start=1):
+        meta = chunk['metadata']
+        page = meta.get('page_number', '?')
+        ctype = meta.get('content_type', 'text')
+        char_count = len(chunk['document'])
+        preview = chunk['document'][:200]
+        full = chunk['document']
+
+        with st.expander(
+            f'Chunk {i} · `{ctype}` · Page {page} · {char_count:,} chars — {preview[:60]}…',
+        ):
+            st.code(full, language='markdown')
+
+
+def _render_raw_tab(chunks: list[dict]) -> None:
+    """Renders the Raw Content tab of the file detail panel."""
+    sorted_chunks = sorted(
+        chunks,
+        key=lambda c: (c['metadata'].get('page_number', 0),),
+    )
+    raw = '\n\n---\n\n'.join(c['document'] for c in sorted_chunks)
+    st.code(raw, language='markdown')
 
 
 # Initialize Telemetry
@@ -112,7 +165,7 @@ with st.sidebar:
             # Inline delete confirmation
             if st.session_state.pending_delete == fname:
                 st.warning(
-                    f'⚠ Delete **{fname}** and all {len(chunks)} chunks from the index?'
+                    f'⚠ Delete **{fname}** and all {len(chunks)} chunks from the index?',
                 )
                 confirm_col, cancel_col = st.columns(2)
                 with confirm_col:
@@ -131,7 +184,14 @@ with st.sidebar:
                         st.rerun()
 
 # Create Tabs for Chat and Evaluation
-tab1, tab2 = st.tabs(['💬 Chat', '🧪 Evaluation'])
+if st.session_state.selected_file and st.session_state.selected_file in file_index:
+    main_col, detail_col = st.columns([2, 1])
+else:
+    main_col = st.container()
+    detail_col = None
+
+with main_col:
+    tab1, tab2 = st.tabs(['💬 Chat', '🧪 Evaluation'])
 
 with tab1:
     # Chat Interface
@@ -315,3 +375,41 @@ with tab2:
                     st.info('No metrics summary returned from evaluation job.')
             except Exception as ex:
                 st.error(f'Failed to load evaluation summary: {ex}')
+
+
+if detail_col is not None:
+    selected = st.session_state.selected_file
+    chunks = file_index.get(selected, [])
+
+    with detail_col:
+        # Close button at the very top for high accessibility/responsiveness
+        close_col, _ = st.columns([1, 4])
+        with close_col:
+            if st.button('✕ Close', key='detail_close'):
+                st.session_state.selected_file = None
+                st.rerun()
+
+        # Header
+        ext = selected.rsplit('.', 1)[-1].upper() if '.' in selected else 'FILE'
+        icon = '🖼' if ext.lower() in ('png', 'jpg', 'jpeg', 'webp') else '📄'
+        total_chars = sum(len(c['document']) for c in chunks)
+
+        st.markdown(f'### {icon} {selected}')
+        st.caption(f'{ext} · {len(chunks)} chunks · {total_chars:,} chars')
+
+        # Tabs
+        ov_tab, ch_tab, raw_tab = st.tabs([
+            'Overview',
+            f'Chunks ({min(len(chunks), 50)})',
+            'Raw Content',
+        ])
+
+        with ov_tab:
+            _render_overview_tab(selected, chunks, ext)
+
+        with ch_tab:
+            _render_chunks_tab(chunks)
+
+        with raw_tab:
+            _render_raw_tab(chunks)
+
