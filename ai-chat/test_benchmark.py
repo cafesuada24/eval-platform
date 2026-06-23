@@ -116,11 +116,11 @@ def test_retry_api_call_succeeds() -> None:
     def mock_func():
         calls.append(1)
         if len(calls) == 1:
-            raise ValueError("First call fails")
+            raise ConnectionError("First call fails")
         return "success"
 
     with patch("time.sleep") as mock_sleep:
-        result = retry_api_call(mock_func)
+        result = retry_api_call(mock_func, max_retries=5, initial_delay=2.0, use_jitter=False)
         assert result == "success"
         assert len(calls) == 2
         mock_sleep.assert_called_once_with(2.0)
@@ -130,16 +130,17 @@ def test_retry_api_call_aborts_after_retries() -> None:
     """Verify retry_api_call propagates exception after max retries with exponential backoff."""
     from unittest.mock import MagicMock, patch
 
-    mock_func = MagicMock(side_effect=ValueError("Persistent error"))
+    mock_func = MagicMock(side_effect=ConnectionError("Persistent error"))
 
     with patch("time.sleep") as mock_sleep:
-        with pytest.raises(ValueError, match="Persistent error"):
-            retry_api_call(mock_func)
+        with pytest.raises(ConnectionError, match="Persistent error"):
+            retry_api_call(mock_func, max_retries=5, initial_delay=2.0, max_delay=60.0, use_jitter=False)
 
         assert mock_func.call_count == 6  # 1 initial + 5 retries
         assert mock_sleep.call_count == 5
         delays = [call[0][0] for call in mock_sleep.call_args_list]
         assert delays == [2.0, 4.0, 8.0, 16.0, 32.0]
+
 
 
 def test_clear_database() -> None:

@@ -8,6 +8,7 @@ import time
 from typing import Callable, TypeVar
 
 from embedder import generate_embeddings
+from utils import retry_api_call
 from evalplatform_sdk.helpers import trace
 from google import genai
 from parser import ingest_file
@@ -65,27 +66,7 @@ def parse_semantic_score(text: str) -> float:
     return min(max(val, 0.0), 1.0)
 
 
-def retry_api_call(
-    func: Callable[[], T], max_retries: int = 5, initial_delay: float = 2.0
-) -> T:
-    """Execute func with exponential backoff retries on Exception.
 
-    Retries up to max_retries times. If all retries fail, propagates the last exception.
-    """
-    delay = initial_delay
-    for attempt in range(1, max_retries + 2):
-        try:
-            return func()
-        except Exception as e:
-            if attempt == max_retries + 1:
-                logger.error(f"API call failed after {max_retries + 1} attempts: {e}")
-                raise
-            logger.warning(
-                f"API call failed (attempt {attempt}/{max_retries + 1}): {e}. "
-                f"Retrying in {delay}s..."
-            )
-            time.sleep(delay)
-            delay *= 2.0
 
 
 def clear_database() -> None:
