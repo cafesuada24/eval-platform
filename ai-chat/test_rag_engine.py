@@ -139,6 +139,9 @@ def test_generate_answer_forced_retrieval_logs_tokens(
     mock_gen_tracker.token_usage.assert_called_once_with(input_tokens=50, output_tokens=20)
 
 
+from google.genai import errors as genai_errors
+
+
 @patch("rag_engine.time.sleep")
 @patch("rag_engine.retrieve_context")
 @patch("rag_engine.genai.Client")
@@ -161,8 +164,8 @@ def test_generate_answer_forced_retries_and_succeeds(
     mock_response.usage_metadata = None
 
     mock_client.models.generate_content.side_effect = [
-        Exception("API Error 1"),
-        Exception("API Error 2"),
+        genai_errors.APIError(code=429, response_json={}),
+        genai_errors.ServerError(code=503, response_json={}),
         mock_response,
     ]
 
@@ -193,15 +196,41 @@ def test_generate_answer_forced_retries_exhausted(
     mock_client = MagicMock()
     mock_client_class.return_value = mock_client
     mock_client.models.generate_content.side_effect = [
-        Exception("E1"), Exception("E2"), Exception("E3"), Exception("E4"),
+        genai_errors.APIError(code=429, response_json={}) for _ in range(4)
     ]
 
-    with pytest.raises(Exception, match="E4"):
+    with pytest.raises(genai_errors.APIError):
         generate_answer(mock_state, "query", force_retrieve=True)
 
     assert mock_client.models.generate_content.call_count == 4
     sleep_args = [c[0][0] for c in mock_sleep.call_args_list]
     assert sleep_args == [1.0, 2.0, 4.0]
+
+
+@patch("rag_engine.time.sleep")
+@patch("rag_engine.retrieve_context")
+@patch("rag_engine.genai.Client")
+def test_generate_answer_non_retryable_raises_immediately(
+    mock_client_class: MagicMock,
+    mock_retrieve: MagicMock,
+    mock_sleep: MagicMock,
+) -> None:
+    """force_retrieve=True: fails immediately on non-retryable exception."""
+    mock_state = MagicMock(spec=RuntimeState)
+    mock_gen_tracker = MagicMock()
+    mock_state.track_generation.return_value.__enter__.return_value = mock_gen_tracker
+    mock_retrieve.return_value = ("ctx", [])
+
+    mock_client = MagicMock()
+    mock_client_class.return_value = mock_client
+    mock_client.models.generate_content.side_effect = ValueError("invalid prompt")
+
+    with pytest.raises(ValueError, match="invalid prompt"):
+        generate_answer(mock_state, "query", force_retrieve=True)
+
+    assert mock_client.models.generate_content.call_count == 1
+    assert mock_sleep.call_count == 0
+
 
 
 # ── Agentic path ─────────────────────────────────────────────────────────────

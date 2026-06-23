@@ -113,27 +113,20 @@ def generate_answer(
         return answer
 
 
+from utils import retry_api_call
+
+
 def _call_generate_content_with_retry(
     client: genai.Client,
     **kwargs: Any,  # noqa: ANN401
 ) -> types.GenerateContentResponse:
     """Calls client.models.generate_content with exponential backoff retry."""
-    delay = INITIAL_DELAY
-    for attempt in range(MAX_RETRIES + 1):
-        try:
-            return client.models.generate_content(**kwargs)
-        except Exception as e:
-            if attempt == MAX_RETRIES:
-                raise e
-            logger.warning(
-                'Gemini API call failed on attempt %d: %s. Retrying in %.1f seconds...',
-                attempt + 1,
-                e,
-                delay,
-            )
-            time.sleep(delay)
-            delay *= 2.0
-    raise RuntimeError('Unreachable')
+    return retry_api_call(
+        lambda: client.models.generate_content(**kwargs),
+        max_retries=MAX_RETRIES,
+        initial_delay=INITIAL_DELAY,
+        use_jitter=False,
+    )
 
 
 def _generate_with_forced_retrieval(
