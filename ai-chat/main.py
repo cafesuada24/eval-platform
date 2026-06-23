@@ -46,12 +46,13 @@ with st.sidebar:
             trace() as state,
             state.track_file_processed() as file_tracker,
         ):
+            ext = '.' + uploaded_file.name.split('.')[-1].lower()
+            processor = 'ocr' if ext in ['.png', '.jpg', '.jpeg', '.webp'] else 'file_reader'
             file_tracker.file_info(
                 file_name=uploaded_file.name,
-                processor='file_reader',
+                processor=processor,
             )
             # Save uploaded file to a temporary location
-            ext = '.' + uploaded_file.name.split('.')[-1]
             with tempfile.NamedTemporaryFile(
                 delete=False, suffix=ext,
             ) as tmp_file:
@@ -60,7 +61,8 @@ with st.sidebar:
 
             try:
                 # Ingest and embed
-                chunks_count = ingest_file(tmp_path)
+                chunks_count, content = ingest_file(tmp_path)
+                file_tracker.content(content)
                 st.success(
                     f'Successfully ingested {chunks_count} chunks from {uploaded_file.name}',
                 )
@@ -184,11 +186,13 @@ with tab2:
 
                             # Trace File processing
                             with state.track_file_processed() as file_tracker:
+                                ext = '.' + filename.split('.')[-1].lower()
+                                processor = 'ocr' if ext in ['.png', '.jpg', '.jpeg', '.webp'] else 'file_reader'
                                 file_tracker.file_info(
-                                    file_name=filename, processor='file_reader',
+                                    file_name=filename, processor=processor,
                                 )
-                                chunks_count = ingest_file(tmp_path)
-                                file_tracker.content(f"Ingested {chunks_count} chunks.")
+                                chunks_count, content = ingest_file(tmp_path)
+                                file_tracker.content(content)
 
                             st.write(
                                 f'  └─ Indexed {chunks_count} chunks into vector DB.',

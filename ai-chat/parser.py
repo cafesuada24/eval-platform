@@ -201,8 +201,8 @@ def ingest_pdf_document(file_path: str) -> tuple[str, list[dict[str, Any]]]:
     return "".join(unified_markdown_parts), images_metadata
 
 
-def ingest_file(file_path: str) -> int:
-    """Ingests a file, generates embeddings, stores chunks in ChromaDB, and returns chunk count."""
+def ingest_file(file_path: str) -> tuple[int, str]:
+    """Ingests a file, generates embeddings, stores chunks in ChromaDB, and returns a tuple of (chunk count, extracted markdown text)."""
     filename = os.path.basename(file_path)
     ext = os.path.splitext(filename)[-1].lower()
     images_metadata: list[dict[str, Any]] = []
@@ -292,4 +292,4 @@ def ingest_file(file_path: str) -> int:
         source=filename,
     )
 
-    return len(final_chunks)
+    return len(final_chunks), markdown_text
