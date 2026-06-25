@@ -1,0 +1,59 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file: .env
+    volumes:
+      - ./data/fixtures:/app/fixtures
+    networks:
+      - eval-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    env_file: .env
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - eval-net
+
+  ai-chat:
+    build:
+      context: .
+      dockerfile: ai-chat/Dockerfile
+    env_file: .env
+    volumes:
+      - ./data/fixtures:/app/fixtures
+    profiles:
+      - tools
+    networks:
+      - eval-net
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - eval-net
+
+networks:
+  eval-net:
+    driver: bridge

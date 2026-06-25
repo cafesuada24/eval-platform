@@ -15,3 +15,6 @@ wheels/
 .gitnexus
 .superpowers/
 .worktrees/
+
+# Bind mount data
+data/
