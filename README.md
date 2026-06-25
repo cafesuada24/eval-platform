@@ -19,7 +19,7 @@ eval-platform/
 
 | Component | Role | Technologies | Detailed Docs |
 |---|---|---|---|
-| **[Backend](./backend/)** | Central API ingestion, session tracking, and evaluations processor. | Python 3.12, FastAPI, Uvicorn, ChromaDB | [Backend API Router](./backend/app/api/v1/router.py) |
+| **[Backend](./backend/)** | Central API ingestion, session tracking, and evaluations processor. | Python 3.12, FastAPI, Uvicorn, ChromaDB | [Backend Guide](./backend/README.md) |
 | **[Frontend](./frontend/)** | Interactive metrics UI, performance dashboard, and trace viewer. | React 19, Next.js 16 (standalone), Tailwind CSS v4 | [Frontend README](./frontend/README.md) |
 | **[SDK](./sdk/)** | Async context-manager-driven telemetry tracker for Python apps. | Python, ThreadPoolExecutor telemetry worker | [SDK Guide](./sdk/README.md) |
 | **[AI Chat](./ai-chat/)** | Document parsing (PDF visual OCR) and Gemini RAG benchmarking suite. | Google GenAI SDK, ChromaDB, PyMuPDF | [AI Chat README](./ai-chat/README.md) |
