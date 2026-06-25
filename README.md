@@ -4,7 +4,7 @@ EvalPlatform is a modular, context-driven observability and telemetry ingestion 
 
 ---
 
-## 🏗️ Repository Architecture
+## Repository Architecture
 
 This repository is organized as a monorepo containing the following components:
 
@@ -14,8 +14,7 @@ eval-platform/
 ├── frontend/                 # Next.js 16 Web Dashboard and metrics UI
 ├── sdk/                      # Context-driven Python Telemetry SDK (evalplatform-sdk)
 ├── ai-chat/                  # Multimodal RAG pipeline & evaluation playground
-├── data/fixtures/            # Bind mount for persistent telemetry database (ChromaDB)
-└── .agents/                  # Autonomous developer agent configuration (AG Kit)
+└── data/fixtures/            # Bind mount for persistent telemetry database (ChromaDB)
 ```
 
 | Component | Role | Technologies | Detailed Docs |
@@ -27,7 +26,7 @@ eval-platform/
 
 ---
 
-## 🧠 Core Ingestion Concepts
+## Core Ingestion Concepts
 
 EvalPlatform structures telemetry collection into four distinct layers:
 
@@ -39,7 +38,7 @@ EvalPlatform structures telemetry collection into four distinct layers:
 
 ---
 
-## ⚡ Quick Start (Docker Compose)
+## Quick Start (Docker Compose)
 
 The entire platform is containerized using multi-stage Dockerfiles. A base-plus-override model is used to manage different environments.
 
@@ -89,7 +88,7 @@ docker compose --profile tools run ai-chat python benchmark.py
 
 ---
 
-## 🛠️ Local Development Setup
+## Local Development Setup
 
 To run services natively outside of containers:
 
@@ -115,7 +114,7 @@ npm run dev
 
 ---
 
-## 🧪 Testing & Quality
+## Testing & Quality
 
 To run validation checks across the workspace:
 
@@ -152,6 +151,6 @@ python .agents/scripts/verify_all.py . --url http://localhost:3000
 
 ---
 
-## ⚖️ License
+## License
 
 This project is licensed under the MIT License.
