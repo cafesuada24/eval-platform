@@ -6,7 +6,6 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "chromadb>=1.5.9",
-    "easyocr>=1.7.2",
     "evalplatform-sdk",
     "google-genai>=2.6.0",
     "langchain-text-splitters>=1.1.2",
