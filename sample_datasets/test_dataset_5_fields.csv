@@ -1,0 +1,6 @@
+user_question,assistant_response,dataset_category,llm_temperature,max_tokens
+"How does photosynthesis work?","Photosynthesis is the process by which plants use sunlight, water, and carbon dioxide to create oxygen and energy in the form of sugar.","biology",0.2,512
+"Explain quantum entanglement simply.","Quantum entanglement is a phenomenon where two or more particles become interconnected, such that the state of one instantly influences the other, regardless of distance.","physics",0.7,1024
+"What is the difference between REST and GraphQL?","REST uses multiple endpoints to access different resources, while GraphQL exposes a single endpoint and allows clients to request exactly the data they need.","software_engineering",0.5,2048
+"Why is the sky blue?","The sky is blue because of Rayleigh scattering: light from the sun is scattered in all directions by gases in the atmosphere, and blue light is scattered more than other colors because it travels as shorter, smaller waves.","earth_sciences",0.1,512
+"What is the Turing test?","The Turing test is a test of a machine's ability to exhibit intelligent behavior equivalent to, or indistinguishable from, that of a human.","computer_science",0.3,1024
