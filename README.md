@@ -141,7 +141,7 @@ python .agents/scripts/verify_all.py . --url http://localhost:3000
 
 ---
 
-## 📝 Configuration & Environment Variables
+## Configuration & Environment Variables
 
 | Variable | Scope | Description | Default |
 |---|---|---|---|

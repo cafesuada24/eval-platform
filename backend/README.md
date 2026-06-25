@@ -4,7 +4,7 @@ The backend is the central ingestion, parsing, and execution engine for the Eval
 
 ---
 
-## 🏗️ Architecture & Layout
+## Architecture & Layout
 
 The project follows a clean, decoupled layout:
 
@@ -30,7 +30,7 @@ To avoid database setup overhead, the backend uses a file-based repository model
 
 ---
 
-## ⚡ API Endpoints
+## API Endpoints
 
 Once running, interactive Swagger documentation is available at `http://localhost:8000/docs`.
 
@@ -46,7 +46,7 @@ Once running, interactive Swagger documentation is available at `http://localhos
 
 ---
 
-## 🛠️ Local Development
+## Local Development
 
 ### Prerequisites
 
@@ -75,7 +75,7 @@ API server will start on [http://localhost:8000](http://localhost:8000).
 
 ---
 
-## 🧪 Testing
+## Testing
 
 Run pytest suite locally to verify endpoint handlers and models:
 ```bash
