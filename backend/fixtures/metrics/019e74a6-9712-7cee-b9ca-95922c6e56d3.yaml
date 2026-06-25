@@ -4,9 +4,9 @@ type: ai-judge
 required_inputs:
 - input_artifacts_ocr
 scoring_scale:
-  min: 1.0
-  max: 5.0
-  data_type: integer
+  min: 0.0
+  max: 1.0
+  data_type: float
 model_configuration:
   provider: google
   model: gemini-3.1-flash-lite
