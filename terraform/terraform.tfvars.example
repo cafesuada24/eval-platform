@@ -1,0 +1,6 @@
+project_id              = "your-gcp-project-id"
+region                  = "us-central1"
+zone                    = "us-central1-a"
+google_api_key          = "AIzaSy..."
+cloudflare_tunnel_token = "ey..."
+next_public_api_url     = "https://eval-api.yourdomain.com"
