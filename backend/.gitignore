@@ -219,6 +219,9 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-fixtures/**/*
+fixtures/*
+!fixtures/default_metrics/
 !fixtures/default_metrics/*
-!fixtures/prompts/**/*.txt
+!fixtures/prompts/
+!fixtures/prompts/**/*
+

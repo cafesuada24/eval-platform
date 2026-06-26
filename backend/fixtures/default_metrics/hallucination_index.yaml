@@ -1,0 +1,30 @@
+name: hallucination_index
+type: ai-judge
+description: Evaluates whether the generated response contains hallucinations or unsupported claims based on the context.
+is_system_default: true
+model_configuration:
+  provider: openai
+  model: gpt-4o
+  temperature: 0.1
+required_inputs:
+- retrieved_context
+- generated_response
+prompt_template: 'You are an expert judge checking for hallucinations in an AI''s response.
+
+  Given the retrieved context and the generated response, determine if the response contains information not supported by the context.
+  Note: This is an index of hallucination, so a HIGHER score means MORE hallucination.
+
+  Context: {{retrieved_context}}
+
+  Response: {{generated_response}}
+
+  Provide a score from 0 to 1 where:
+  0.0 - No hallucination. All claims are fully supported by the context.
+  0.5 - Minor hallucination. The response contains slight unsupported details that don''t change the overall meaning.
+  1.0 - Major hallucination. The response contains significant unsupported claims or contradicts the context.
+
+  Respond only with the decimal score (e.g., 0.0, 0.5, 1.0).'
+scoring_scale:
+  min: 0.0
+  max: 1.0
+  data_type: float

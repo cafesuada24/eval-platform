@@ -1,0 +1,30 @@
+name: image_caption_quality
+type: ai-judge
+description: Evaluates the quality and descriptive accuracy of a generated image caption.
+is_system_default: true
+model_configuration:
+  provider: openai
+  model: gpt-4o
+  temperature: 0.3
+required_inputs:
+- generated_caption
+- image_description
+prompt_template: 'You are an expert judge evaluating image captioning models.
+
+  Given an objective description of an image and the generated caption, determine the quality of the caption.
+  The caption should be accurate, grammatically correct, and capture the main subjects and actions.
+
+  Image Description: {{image_description}}
+
+  Generated Caption: {{generated_caption}}
+
+  Provide a score from 0 to 1 where:
+  0.0 - The caption is completely unrelated to the image or nonsensical.
+  0.5 - The caption mentions some elements but misses the main subject or contains minor hallucinations.
+  1.0 - The caption accurately and concisely describes the main elements and actions in the image.
+
+  Respond only with the decimal score (e.g., 0.0, 0.5, 1.0).'
+scoring_scale:
+  min: 0.0
+  max: 1.0
+  data_type: float

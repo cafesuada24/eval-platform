@@ -1,0 +1,30 @@
+name: ocr_accuracy
+type: ai-judge
+description: Evaluates the accuracy of OCR extraction from an image against the expected text.
+is_system_default: true
+model_configuration:
+  provider: openai
+  model: gpt-4o
+  temperature: 0.1
+required_inputs:
+- expected_text
+- extracted_text
+prompt_template: 'You are an expert judge evaluating OCR (Optical Character Recognition) quality.
+
+  Given the expected text and the extracted text, determine how accurate the OCR extraction is.
+  Ignore minor formatting differences like extra newlines, but penalize for missing words, spelling errors, or hallucinations.
+
+  Expected Text: {{expected_text}}
+
+  Extracted Text: {{extracted_text}}
+
+  Provide a score from 0 to 1 where:
+  0.0 - Completely inaccurate or mostly hallucinations.
+  0.5 - Partially accurate, with significant missing words or spelling errors.
+  1.0 - Perfectly accurate, capturing all text correctly.
+
+  Respond only with the decimal score (e.g., 0.0, 0.5, 1.0).'
+scoring_scale:
+  min: 0.0
+  max: 1.0
+  data_type: float
