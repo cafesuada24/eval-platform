@@ -6,3 +6,7 @@ services:
   frontend:
     ports:
       - "3000:3000"
+
+  ai-chat:
+    ports:
+      - "8501:8501"
