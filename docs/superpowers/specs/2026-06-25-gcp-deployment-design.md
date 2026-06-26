@@ -1,16 +1,18 @@
 # Design Spec: GCP Deployment Plan for EvalPlatform
 
 **Date:** 2026-06-25  
-**Status:** DRAFT (Awaiting Final User Review)  
+**Status:** APPROVED  
 **Agent:** DevOps Engineer Specialist
 
 ---
 
 ## 1. Executive Summary
 
-This specification outlines the architecture, resources, and procedures required to deploy the **EvalPlatform** monorepo to Google Cloud Platform (GCP) for a demo environment. 
+This specification outlines the architecture, resources, and procedures required to deploy the **EvalPlatform** monorepo to Google Cloud Platform (GCP) for a demo environment.
 
-To ensure security, simplicity, and ease of management, the infrastructure is provisioned using **Terraform**, runs containerized workloads via **Docker Compose**, and leverages a **Cloudflare Tunnel** for ingress, eliminating the need to expose public ports on the VM.
+To accommodate different environments, the design supports two deployment modes:
+1. **Cloudflare Tunnel Mode (Production/Secure):** Routes ingress traffic securely through a Cloudflare Tunnel container. Requires no open public HTTP/S ports on the GCE instance.
+2. **Direct Public IP Mode (Free/Quick Demo):** Opens ports `3000` (Frontend) and `8000` (Backend API) on the GCE firewall. Allows rapid testing using the VM's public IP without a domain name.
 
 ---
 
@@ -18,21 +20,33 @@ To ensure security, simplicity, and ease of management, the infrastructure is pr
 
 ```mermaid
 graph TD
-    User([User Browser]) -->|HTTPS| CF[Cloudflare Edge]
-    CF -->|Secure Tunnel| Tunnel[Cloudflare Tunnel Container]
-    
-    subgraph GCP Compute Engine VM [GCP GCE Instance: eval-platform-demo]
-        Tunnel -->|Internal HTTP| Frontend[Next.js standalone:3000]
-        Tunnel -->|Internal HTTP| Backend[FastAPI backend:8000]
-        
-        Backend -->|Local Volume| ChromaDB[(ChromaDB Data Fixtures)]
+    subgraph Mode 1: Cloudflare Tunnel Ingress
+        User1([User Browser]) -->|HTTPS| CF[Cloudflare Edge]
+        CF -->|Secure Tunnel| Tunnel[Cloudflare Tunnel Container]
+        Tunnel -->|Internal HTTP| Frontend1[Next.js standalone:3000]
+        Tunnel -->|Internal HTTP| Backend1[FastAPI backend:8000]
     end
-    
-    Backend -->|Outbound HTTPS| GeminiAPI[Google Gemini API]
+
+    subgraph Mode 2: Direct Public IP Ingress
+        User2([User Browser]) -->|HTTP Port 3000| Frontend2[Next.js standalone:3000]
+        User2 -->|HTTP Port 8000| Backend2[FastAPI backend:8000]
+    end
+
+    subgraph GCP Compute Engine VM [GCP GCE Instance: eval-platform-demo]
+        Frontend1
+        Backend1
+        Frontend2
+        Backend2
+        Backend1 -->|Local Volume| ChromaDB1[(ChromaDB Data Fixtures)]
+        Backend2 -->|Local Volume| ChromaDB2[(ChromaDB Data Fixtures)]
+    end
+
+    Backend1 -->|Outbound HTTPS| GeminiAPI1[Google Gemini API]
+    Backend2 -->|Outbound HTTPS| GeminiAPI2[Google Gemini API]
 ```
 
 ### Components
-1. **Cloudflare Tunnel Client Container (`tunnel`):** Established outbound connection to Cloudflare. Securely proxy incoming web requests to the correct services on the local Docker network without inbound firewall rules on GCP.
+1. **Cloudflare Tunnel Client Container (`tunnel`):** Established outbound connection to Cloudflare. Runs conditionally only if a tunnel token is provided.
 2. **Frontend Container (`frontend`):** Standalone Next.js 16 Web Dashboard serving the metrics UI.
 3. **Backend Container (`backend`):** FastAPI app managing telemetry ingestion, session tracking, and evaluations.
 4. **Data Persistence (`ChromaDB`):** Persistent local directory bind-mounted on the GCE boot disk (`/home/ubuntu/eval-platform/data/fixtures`).
@@ -41,24 +55,23 @@ graph TD
 
 ## 3. Infrastructure Provisioning (Terraform)
 
-Infrastructure will be managed via Terraform located in `terraform/`.
+Infrastructure is managed via Terraform located in `terraform/`.
 
 ### Resource Manifest
 * **Provider:** `hashicorp/google`
 * **VM Instance:** `google_compute_instance.eval_vm`
   * **Machine Type:** `e2-medium` (2 vCPUs, 4 GB Memory)
   * **OS Disk:** 30 GB PD-Balanced, Ubuntu 22.04 LTS Minimal
-  * **Network:** Default network with ephemeral external IP (no static IP charge)
+  * **Network:** Default network with ephemeral external IP
 * **Firewall Rule:** `google_compute_firewall.allow_ssh`
-  * Allows TCP port 22 (SSH) for administrative operations.
-  * Inbound ports 80 (HTTP) and 443 (HTTPS) are blocked (ingress handled by tunnel).
+  * Allows TCP ports `22` (SSH), `3000` (Frontend), and `8000` (Backend API).
 * **Service Account:** `google_service_account.eval_sa`
   * Dedicated service account with minimal IAM execution roles.
 
 ### GCE Metadata Key Injections
 Terraform injects application secrets into GCE Instance Metadata:
 - `google_api_key`
-- `cloudflare_tunnel_token`
+- `cloudflare_tunnel_token` (Optional: set to `""` for Direct IP mode)
 - `next_public_api_url`
 
 ---
@@ -70,13 +83,14 @@ A startup shell script is injected via GCE instance metadata to automate VM setu
 ### GCE Startup Script (`terraform/scripts/startup.sh`)
 ```bash
 #!/bin/bash
+# GCP GCE Startup Script
 set -e
 
-echo "=== System Package Update ==="
+echo "=== System Update and Dependencies ==="
 apt-get update && apt-get upgrade -y
 apt-get install -y curl git apt-transport-https ca-certificates gnupg lsb-release
 
-# Install Docker
+# Install Docker Engine
 echo "=== Installing Docker ==="
 mkdir -p /etc/apt/keyrings
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
@@ -86,14 +100,14 @@ echo \
 apt-get update
 apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 
-# Get metadata variables from GCP Metadata Server
-echo "=== Retrieving Environment Configurations from Metadata Server ==="
+# Query GCP Metadata Server for application secrets
+echo "=== Loading Secrets from Metadata Server ==="
 METADATA_URL="http://metadata.google.internal/computeMetadata/v1/instance/attributes"
 GOOGLE_API_KEY=$(curl -H "Metadata-Flavor: Google" "$METADATA_URL/google_api_key")
 CLOUDFLARE_TUNNEL_TOKEN=$(curl -H "Metadata-Flavor: Google" "$METADATA_URL/cloudflare_tunnel_token")
 NEXT_PUBLIC_API_URL=$(curl -H "Metadata-Flavor: Google" "$METADATA_URL/next_public_api_url")
 
-# Setup project directory
+# Setup App Directory
 cd /home/ubuntu
 if [ ! -d "eval-platform" ]; then
   echo "=== Cloning Repository ==="
@@ -101,22 +115,30 @@ if [ ! -d "eval-platform" ]; then
 fi
 cd eval-platform
 
-# Write environment secrets
-echo "=== Creating .env Configuration ==="
+# Generate Production .env File
+echo "=== Creating .env ==="
 cat <<EOF > .env
 GOOGLE_API_KEY=$GOOGLE_API_KEY
 CLOUDFLARE_TUNNEL_TOKEN=$CLOUDFLARE_TUNNEL_TOKEN
 NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 EOF
 chmod 600 .env
+
+# Create Database Volume Path
 mkdir -p data/fixtures
 chown -R ubuntu:ubuntu /home/ubuntu/eval-platform
 
-# Run Production Containers
-echo "=== Launching Production Services ==="
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+# Spin Up Containers
+echo "=== Launching Docker Compose Workloads ==="
+if [ -z "$CLOUDFLARE_TUNNEL_TOKEN" ]; then
+  echo "No Cloudflare Tunnel Token detected. Running in Direct IP mode (excluding tunnel)."
+  docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d backend frontend
+else
+  echo "Cloudflare Tunnel Token detected. Running all services including tunnel."
+  docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+fi
 
-echo "=== Startup Script Completed ==="
+echo "=== Deployment Successfully Completed ==="
 ```
 
 ---
@@ -124,45 +146,68 @@ echo "=== Startup Script Completed ==="
 ## 5. Deployment Runbook
 
 ### Pre-requisites
-1. **Cloudflare Zero Trust account:** Access dashboard and create a new Cloudflare Tunnel. Retrieve the `CLOUDFLARE_TUNNEL_TOKEN`.
-2. **GCP Project:** Set up a billing-enabled GCP project and install/initialize the `gcloud` CLI tool locally.
-3. **Google Gemini API Key:** Obtain an API key for the LLM evaluation engine.
+1. **GCP Project:** Set up a billing-enabled GCP project and install/initialize the `gcloud` CLI tool locally.
+2. **Google Gemini API Key:** Obtain an API key for the LLM evaluation engine.
 
-### Deployment Step-by-Step
+---
+
+### Path A: Deploying via Direct Public IP (Free, No Domain)
+
+#### Step 1: Provision the Infrastructure
+1. Go to the `terraform/` folder in your local repository.
+2. Create `terraform/terraform.tfvars`:
+   ```hcl
+   project_id              = "your-gcp-project-id"
+   google_api_key          = "AIzaSy..."
+   next_public_api_url     = "http://TEMP_IP_PLACEHOLDER:8000"
+   # cloudflare_tunnel_token is omitted or set to ""
+   ```
+3. Run Terraform to spin up the VM:
+   ```bash
+   terraform init
+   terraform apply
+   ```
+4. Note the output `vm_external_ip` from the terminal (e.g. `34.120.10.11`).
+
+#### Step 2: Update variables with VM Public IP
+1. Edit `terraform.tfvars` and update `next_public_api_url` with the VM's public IP:
+   ```hcl
+   next_public_api_url     = "http://34.120.10.11:8000"
+   ```
+2. Re-run `terraform apply` to apply the metadata update to GCE and rebuild containers with the correct Next.js build-time variables:
+   ```bash
+   terraform apply
+   ```
+
+#### Step 3: Access
+Open `http://34.120.10.11:3000` in your web browser.
+
+---
+
+### Path B: Deploying via Cloudflare Tunnel (Secure Custom Domain)
 
 #### Step 1: Configure DNS & Routing in Cloudflare
 Add public hostname mappings in your Cloudflare Tunnel dashboard:
 * `eval.yourdomain.com` -> `http://frontend:3000`
 * `eval-api.yourdomain.com` -> `http://backend:8000`
 
-#### Step 2: Initialize & Configure Terraform
-Create a local variables file `terraform/terraform.tfvars`:
+#### Step 2: Configure variables and run Terraform
+Create `terraform/terraform.tfvars`:
 ```hcl
 project_id              = "your-gcp-project-id"
 google_api_key          = "AIzaSy..."
-cloudflare_tunnel_token = "ey..."
+cloudflare_tunnel_token = "eyJhbGciOiJ..." # Copy the token shown in the Cloudflare Setup screen
 next_public_api_url     = "https://eval-api.yourdomain.com"
 ```
 
-Apply the Terraform configurations to provision GCE VM:
+Apply the configurations to provision the GCE VM:
 ```bash
-cd terraform
 terraform init
-terraform plan -out=tfplan
-terraform apply tfplan
+terraform apply
 ```
 
-#### Step 3: Deployment Verification
-1. GCE VM creation triggers the startup script automatically.
-2. Watch the startup script logs by SSHing into the VM and running:
-   ```bash
-   sudo tail -f /var/log/syslog | grep startup-script
-   ```
-3. Verify containers are running healthy:
-   ```bash
-   docker compose ps
-   ```
-4. Access `https://eval.yourdomain.com` in your browser.
+#### Step 3: Access
+The VM will automatically connect to Cloudflare. Click **Next** on the Cloudflare website and open `https://eval.yourdomain.com` in your browser.
 
 ---
 
