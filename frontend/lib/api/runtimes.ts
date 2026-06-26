@@ -1,9 +1,9 @@
 import { RuntimeState } from "../types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/v1";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export async function getRuntimes(): Promise<RuntimeState[]> {
-  const res = await fetch(`${API_BASE_URL}/runtimes`, {
+  const res = await fetch(`${API_BASE_URL}/v1/runtimes`, {
     cache: "no-store",
   });
   if (!res.ok) {
@@ -14,7 +14,7 @@ export async function getRuntimes(): Promise<RuntimeState[]> {
 }
 
 export async function getRuntime(runtimeId: string): Promise<RuntimeState> {
-  const res = await fetch(`${API_BASE_URL}/runtimes/${runtimeId}`, {
+  const res = await fetch(`${API_BASE_URL}/v1/runtimes/${runtimeId}`, {
     cache: "no-store",
   });
   if (!res.ok) {

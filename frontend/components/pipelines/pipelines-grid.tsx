@@ -10,11 +10,11 @@ import { PipelineCardMenu } from "@/components/pipelines/PipelineCardMenu";
 import { swrFetcher } from "@/hooks/use-swr-fetcher";
 import { Pipeline } from "@/lib/types";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/v1";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export function PipelinesGrid() {
   const { data: pipelines = [], isLoading } = useSWR<Pipeline[]>(
-    `${API_BASE}/configs/pipelines`,
+    `${API_BASE}/v1/configs/pipelines`,
     swrFetcher,
     { refreshInterval: 5000 }
   );

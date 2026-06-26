@@ -13,7 +13,7 @@ import Link from "next/link";
 import { ChevronRight, ArrowUpDown, Loader2 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/v1";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 interface SortableHeaderProps {
   field: string;
@@ -57,12 +57,12 @@ export function EvaluationsTable() {
   const order = searchParams.get("order") || "desc";
 
   const { data: allRuns = [], isLoading: runsLoading } = useSWR<BatchRunResult[]>(
-    `${API_BASE}/evaluations`,
+    `${API_BASE}/v1/evaluations`,
     swrFetcher,
     { refreshInterval: 3000 }
   );
   const { data: pipelines = [] } = useSWR<Pipeline[]>(
-    `${API_BASE}/configs/pipelines`,
+    `${API_BASE}/v1/configs/pipelines`,
     swrFetcher,
     { refreshInterval: 10000 }
   );

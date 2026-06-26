@@ -7,11 +7,11 @@ import { Metric } from "@/lib/types"
 import useSWR from "swr"
 import { swrFetcher } from "@/hooks/use-swr-fetcher"
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/v1"
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
 export function MetricsBrowserClient() {
   const { data: metrics = [] } = useSWR<Metric[]>(
-    `${API_BASE}/configs/metrics`,
+    `${API_BASE}/v1/configs/metrics`,
     swrFetcher,
     { refreshInterval: 5000 }
   )

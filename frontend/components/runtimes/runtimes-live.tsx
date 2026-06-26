@@ -6,7 +6,7 @@ import { swrFetcher } from "@/hooks/use-swr-fetcher";
 import { RuntimeState } from "@/lib/types";
 import { RuntimeTable } from "@/components/runtimes/runtime-table";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/v1";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const PAGE_SIZE = 12;
 
 export function RuntimesLive() {
@@ -16,7 +16,7 @@ export function RuntimesLive() {
   const page = parseInt(searchParams.get("page") || "1", 10);
 
   const { data: runtimes = [] } = useSWR<RuntimeState[]>(
-    `${API_BASE}/runtimes`,
+    `${API_BASE}/v1/runtimes`,
     swrFetcher,
     { refreshInterval: 3000 }
   );

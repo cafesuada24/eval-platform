@@ -1,6 +1,6 @@
 import { BatchRunResult, Pipeline } from "../types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/v1";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export enum AssertionStatus {
   PASS = 0,
@@ -46,7 +46,7 @@ export interface PipelineRunResult {
 }
 
 export async function getEvaluations(): Promise<BatchRunResult[]> {
-  const res = await fetch(`${API_BASE_URL}/evaluations`, {
+  const res = await fetch(`${API_BASE_URL}/v1/evaluations`, {
     cache: "no-store", // Since evaluations can be running, we avoid aggressive caching
   });
   if (!res.ok) {
@@ -57,7 +57,7 @@ export async function getEvaluations(): Promise<BatchRunResult[]> {
 }
 
 export async function getEvaluation(evaluationId: string): Promise<BatchRunResult> {
-  const res = await fetch(`${API_BASE_URL}/evaluations/${evaluationId}`, {
+  const res = await fetch(`${API_BASE_URL}/v1/evaluations/${evaluationId}`, {
     cache: "no-store",
   });
   if (!res.ok) {
@@ -67,7 +67,7 @@ export async function getEvaluation(evaluationId: string): Promise<BatchRunResul
 }
 
 export async function getEvaluationSummary(evaluationId: string): Promise<BatchSummary> {
-  const res = await fetch(`${API_BASE_URL}/evaluations/${evaluationId}/summary`, {
+  const res = await fetch(`${API_BASE_URL}/v1/evaluations/${evaluationId}/summary`, {
     cache: "no-store",
   });
   if (!res.ok) {
@@ -77,7 +77,7 @@ export async function getEvaluationSummary(evaluationId: string): Promise<BatchS
 }
 
 export async function getEvaluationPipelines(evaluationId: string): Promise<PipelineRunResult[]> {
-  const res = await fetch(`${API_BASE_URL}/evaluations/${evaluationId}/pipelines`, {
+  const res = await fetch(`${API_BASE_URL}/v1/evaluations/${evaluationId}/pipelines`, {
     cache: "no-store",
   });
   if (!res.ok) {
@@ -87,7 +87,7 @@ export async function getEvaluationPipelines(evaluationId: string): Promise<Pipe
 }
 
 export async function getEvaluationMetrics(evaluationId: string, metricId: string): Promise<MetricRunResult[]> {
-  const res = await fetch(`${API_BASE_URL}/evaluations/${evaluationId}/metrics/${metricId}`, {
+  const res = await fetch(`${API_BASE_URL}/v1/evaluations/${evaluationId}/metrics/${metricId}`, {
     cache: "no-store",
   });
   if (!res.ok) {
@@ -97,7 +97,7 @@ export async function getEvaluationMetrics(evaluationId: string, metricId: strin
 }
 
 export async function getPipelines(): Promise<Pipeline[]> {
-  const res = await fetch(`${API_BASE_URL}/configs/pipelines`, {
+  const res = await fetch(`${API_BASE_URL}/v1/configs/pipelines`, {
     cache: "no-store",
   });
   if (!res.ok) {
@@ -107,7 +107,7 @@ export async function getPipelines(): Promise<Pipeline[]> {
 }
 
 export async function getPipeline(pipelineId: string): Promise<Pipeline> {
-  const res = await fetch(`${API_BASE_URL}/configs/pipelines/${pipelineId}`, {
+  const res = await fetch(`${API_BASE_URL}/v1/configs/pipelines/${pipelineId}`, {
     cache: "no-store",
   });
   if (!res.ok) {

@@ -5,7 +5,7 @@ import useSWR from "swr";
 import { swrFetcher } from "@/hooks/use-swr-fetcher";
 import { PipelineRunResult } from "@/lib/api/evaluations";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/v1";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export function useEvaluationStream(
   evaluationId: string,
@@ -21,7 +21,7 @@ export function useEvaluationStream(
   useEffect(() => {
     if (isComplete) return;
 
-    const es = new EventSource(`${API_BASE}/evaluations/${evaluationId}/stream`);
+    const es = new EventSource(`${API_BASE}/v1/evaluations/${evaluationId}/stream`);
     esRef.current = es;
 
     es.addEventListener("testcase_complete", (e) => {
@@ -55,7 +55,7 @@ export function useEvaluationStream(
 
   // SWR fallback — only activates if SSE failed
   const { data: fallbackPipelines } = useSWR<PipelineRunResult[]>(
-    useFallback && !isComplete ? `${API_BASE}/evaluations/${evaluationId}/pipelines` : null,
+    useFallback && !isComplete ? `${API_BASE}/v1/evaluations/${evaluationId}/pipelines` : null,
     swrFetcher,
     { refreshInterval: 5000 }
   );
