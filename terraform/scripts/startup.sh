@@ -46,6 +46,12 @@ chown -R ubuntu:ubuntu /home/ubuntu/eval-platform
 
 # Spin Up Containers
 echo "=== Launching Docker Compose Workloads ==="
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+if [ -z "$CLOUDFLARE_TUNNEL_TOKEN" ]; then
+  echo "No Cloudflare Tunnel Token detected. Running in Direct IP mode (excluding tunnel)."
+  docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d backend frontend
+else
+  echo "Cloudflare Tunnel Token detected. Running all services including tunnel."
+  docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+fi
 
 echo "=== Deployment Successfully Completed ==="

@@ -6,6 +6,8 @@ services:
     env_file: .env
     volumes:
       - ./data/fixtures:/app/fixtures
+    ports:
+      - "8000:8000"
     networks:
       - eval-net
     healthcheck:
@@ -22,6 +24,8 @@ services:
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
     env_file: .env
+    ports:
+      - "3000:3000"
     depends_on:
       backend:
         condition: service_healthy

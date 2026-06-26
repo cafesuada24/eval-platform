@@ -24,6 +24,7 @@ variable "google_api_key" {
 variable "cloudflare_tunnel_token" {
   type        = string
   sensitive   = true
+  default     = ""
   description = "Cloudflare Tunnel Token for secure ingress."
 }
 
