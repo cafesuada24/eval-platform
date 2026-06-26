@@ -3,9 +3,14 @@ resource "google_service_account" "eval_sa" {
   display_name = "EvalPlatform VM Service Account"
 }
 
+resource "google_compute_network" "eval_vpc" {
+  name                    = "eval-platform-vpc"
+  auto_create_subnetworks = true
+}
+
 resource "google_compute_firewall" "allow_ssh" {
   name    = "eval-allow-ssh"
-  network = "default"
+  network = google_compute_network.eval_vpc.name
 
   allow {
     protocol = "tcp"
@@ -31,7 +36,7 @@ resource "google_compute_instance" "eval_vm" {
   }
 
   network_interface {
-    network = "default"
+    network = google_compute_network.eval_vpc.name
     access_config {
       // Allocate an ephemeral public IP for SSH and outbound updates
     }
