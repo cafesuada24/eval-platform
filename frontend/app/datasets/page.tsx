@@ -1,11 +1,12 @@
 import { Dataset } from "@/lib/types"
+import { getApiBaseUrl } from "@/lib/utils"
 import { UploadDatasetDialog } from "@/components/datasets/UploadDatasetDialog"
 import { CreateDatasetDialog } from "@/components/datasets/CreateDatasetDialog"
 import { DatasetListClient } from "@/components/datasets/DatasetListClient"
 
 export const dynamic = "force-dynamic";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = getApiBaseUrl();
 
 async function getDatasets(): Promise<Dataset[]> {
   try {

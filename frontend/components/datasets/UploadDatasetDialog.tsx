@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Upload, AlertCircle, CheckCircle2, ChevronRight, Info, FileJson, FileSpreadsheet, Settings2, Eye, EyeOff } from "lucide-react"
 import { toast } from "sonner"
 import { buttonVariants } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { cn, getApiBaseUrl } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
 
 // --- Helper Types & Helpers ---
@@ -240,7 +240,7 @@ export function UploadDatasetDialog() {
     if (datasetDescription.trim()) formData.append("description", datasetDescription.trim())
 
     try {
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+      const API_BASE_URL = getApiBaseUrl()
       
       // XMLHTTPRequest to monitor upload progress
       const xhr = new XMLHttpRequest()

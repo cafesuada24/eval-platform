@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import useSWR from "swr";
 import { swrFetcher } from "@/hooks/use-swr-fetcher";
 import { PipelineRunResult } from "@/lib/api/evaluations";
+import { getApiBaseUrl } from "@/lib/utils";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE = getApiBaseUrl();
 
 export function useEvaluationStream(
   evaluationId: string,

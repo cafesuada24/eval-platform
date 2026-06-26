@@ -11,9 +11,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { ChevronRight, ArrowUpDown, Loader2 } from "lucide-react";
-import { formatDate } from "@/lib/utils";
+import { formatDate, getApiBaseUrl } from "@/lib/utils";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE = getApiBaseUrl();
 
 interface SortableHeaderProps {
   field: string;

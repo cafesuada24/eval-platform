@@ -3,6 +3,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Loader2, TestTube, CheckCircle2, FileText, Lightbulb } from "lucide-react";
 import { toast } from "sonner";
+import { getApiBaseUrl } from "@/lib/utils";
+
+const API_BASE = getApiBaseUrl();
 import { MetricConfig } from "@/app/metric-builder/page";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { motion, AnimatePresence } from "framer-motion";
@@ -47,12 +50,10 @@ export function RuntimeInspectorModal({ runtimeId, metricId, isOpen, onClose, me
       const fetchVariables = async () => {
         setIsLoading(true);
         try {
-          const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
           const keysParam = metricConfig?.required_inputs?.length ? `?keys=${encodeURIComponent(metricConfig.required_inputs.join(','))}` : '';
-          
           const [varsRes, stateRes] = await Promise.all([
-            fetch(`${baseUrl}/v1/runtimes/${runtimeId}/variables${keysParam}`),
-            fetch(`${baseUrl}/v1/runtimes/${runtimeId}`)
+            fetch(`${API_BASE}/v1/runtimes/${runtimeId}/variables${keysParam}`),
+            fetch(`${API_BASE}/v1/runtimes/${runtimeId}`)
           ]);
 
           if (varsRes.ok) {
@@ -86,12 +87,10 @@ export function RuntimeInspectorModal({ runtimeId, metricId, isOpen, onClose, me
     
     setIsEvaluating(true);
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
       const payload = {
         inputs: variables
       };
-      
-      const res = await fetch(`${baseUrl}/v1/evaluations/metrics/${metricId}/run/${runtimeId}?building_mode=true`, {
+      const res = await fetch(`${API_BASE}/v1/evaluations/metrics/${metricId}/run/${runtimeId}?building_mode=true`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)

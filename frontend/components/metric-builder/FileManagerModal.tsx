@@ -3,6 +3,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Loader2, Upload, Trash2, FileText, Eye, X } from "lucide-react";
 import { toast } from "sonner";
+import { getApiBaseUrl } from "@/lib/utils";
+
+const API_BASE = getApiBaseUrl();
 
 interface UploadedArtifact {
   id: string;
@@ -25,8 +28,7 @@ export function FileManagerModal({ isOpen, onClose }: FileManagerModalProps) {
     if (isOpen) {
       const fetchUploadedFiles = async () => {
         try {
-          const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-          const res = await fetch(`${baseUrl}/v1/documents`);
+          const res = await fetch(`${API_BASE}/v1/documents`);
           if (res.ok) {
             const files = await res.json();
             setUploadedArtifacts(files);
@@ -53,8 +55,7 @@ export function FileManagerModal({ isOpen, onClose }: FileManagerModalProps) {
           const formData = new FormData();
           formData.append("file", file);
           
-          const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-          const res = await fetch(`${baseUrl}/v1/documents/upload`, {
+          const res = await fetch(`${API_BASE}/v1/documents/upload`, {
             method: "POST",
             body: formData
           });
@@ -82,8 +83,7 @@ export function FileManagerModal({ isOpen, onClose }: FileManagerModalProps) {
 
   const deleteArtifactFile = async (id: string) => {
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      const res = await fetch(`${baseUrl}/v1/documents/${id}`, {
+      const res = await fetch(`${API_BASE}/v1/documents/${id}`, {
         method: "DELETE"
       });
       

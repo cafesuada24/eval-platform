@@ -1,6 +1,7 @@
 import { RuntimeState } from "../types";
+import { getApiBaseUrl } from "@/lib/utils";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE_URL = getApiBaseUrl();
 
 export async function getRuntimes(): Promise<RuntimeState[]> {
   const res = await fetch(`${API_BASE_URL}/v1/runtimes`, {

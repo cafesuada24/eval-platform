@@ -27,7 +27,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 import Link from "next/link"
-import { cn } from "@/lib/utils"
+import { cn, getApiBaseUrl } from "@/lib/utils"
 
 const data = {
   groups: [
@@ -90,7 +90,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [checking, setChecking] = useState(true)
 
   useEffect(() => {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const baseUrl = getApiBaseUrl();
     
     const checkStatus = async () => {
       try {

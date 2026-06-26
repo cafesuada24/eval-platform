@@ -1,6 +1,7 @@
 import { BatchRunResult, Pipeline } from "../types";
+import { getApiBaseUrl } from "@/lib/utils";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE_URL = getApiBaseUrl();
 
 export enum AssertionStatus {
   PASS = 0,

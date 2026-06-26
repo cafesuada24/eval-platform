@@ -13,6 +13,7 @@ import { Save } from "lucide-react"
 import { useSearchParams } from "next/navigation"
 import { Suspense } from "react"
 import { ChatMessage, Metric, MetricDraft } from "@/lib/types"
+import { getApiBaseUrl } from "@/lib/utils"
 
 export const metricSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -31,7 +32,7 @@ export const metricSchema = z.object({
 
 export type MetricConfig = z.infer<typeof metricSchema>
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE = getApiBaseUrl();
 
 /** Applies a metric_draft returned by the agent onto the react-hook-form instance. */
 function applyMetricDraft(

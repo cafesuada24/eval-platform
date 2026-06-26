@@ -16,13 +16,20 @@ export function formatDate(dateStr?: string): string {
   }
 }
 
+export function getApiBaseUrl(): string {
+  if (typeof window !== "undefined") {
+    return "/api";
+  }
+  return process.env.NEXT_PUBLIC_API_URL || "http://backend:8000";
+}
+
 export function getAbsoluteFileUrl(url?: string): string {
   if (!url) return "";
   if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(url)) {
     return url;
   }
   
-  const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const apiBase = getApiBaseUrl();
   let path = url;
   if (path.startsWith("/api/v1/")) {
     path = path.replace("/api/v1/", "/v1/");

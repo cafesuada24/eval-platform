@@ -7,7 +7,7 @@ import { FileAsset } from "@/types/dataset";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { FileViewerModal } from "./FileViewerModal";
-import { getAbsoluteFileUrl } from "@/lib/utils";
+import { getAbsoluteFileUrl, getApiBaseUrl } from "@/lib/utils";
 
 interface FileManagerProps {
   datasetId: string;
@@ -25,7 +25,7 @@ export function FileManager({ datasetId, files, setFiles }: FileManagerProps) {
 
   const handleDeleteFile = async (fileId: string) => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/v1/datasets/${datasetId}/files/${fileId}`, {
+      const res = await fetch(`${getApiBaseUrl()}/v1/datasets/${datasetId}/files/${fileId}`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Failed to delete file");

@@ -1,10 +1,11 @@
 import Link from "next/link"
+import { getApiBaseUrl } from "@/lib/utils"
 import { ArrowLeft } from "lucide-react"
 import { PipelineEditor } from "@/components/pipelines/PipelineEditor"
 
 export const dynamic = "force-dynamic";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = getApiBaseUrl();
 
 import { Pipeline, Metric } from "@/lib/types"
 

@@ -9,8 +9,9 @@ import { ListTree, Plus, Settings2, Loader2 } from "lucide-react";
 import { PipelineCardMenu } from "@/components/pipelines/PipelineCardMenu";
 import { swrFetcher } from "@/hooks/use-swr-fetcher";
 import { Pipeline } from "@/lib/types";
+import { getApiBaseUrl } from "@/lib/utils";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE = getApiBaseUrl();
 
 export function PipelinesGrid() {
   const { data: pipelines = [], isLoading } = useSWR<Pipeline[]>(

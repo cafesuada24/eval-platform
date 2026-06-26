@@ -6,8 +6,9 @@ import { MetricDetail } from "@/components/metrics/MetricDetail"
 import { Metric } from "@/lib/types"
 import useSWR from "swr"
 import { swrFetcher } from "@/hooks/use-swr-fetcher"
+import { getApiBaseUrl } from "@/lib/utils"
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+const API_BASE = getApiBaseUrl()
 
 export function MetricsBrowserClient() {
   const { data: metrics = [] } = useSWR<Metric[]>(

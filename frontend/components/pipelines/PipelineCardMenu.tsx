@@ -11,13 +11,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { toast } from "sonner"
+import { getApiBaseUrl } from "@/lib/utils"
 
 interface PipelineCardMenuProps {
   pipelineId: string
   pipelineName: string
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+const API_BASE_URL = getApiBaseUrl()
 
 export function PipelineCardMenu({ pipelineId, pipelineName }: PipelineCardMenuProps) {
   const router = useRouter()

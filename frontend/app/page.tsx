@@ -12,11 +12,11 @@ import {
   ChevronRight
 } from "lucide-react";
 import { Metric, Pipeline } from "@/lib/types";
-import { formatDate } from "@/lib/utils";
+import { formatDate, getApiBaseUrl } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = getApiBaseUrl();
 
 async function getPipelines(): Promise<Pipeline[]> {
   try {

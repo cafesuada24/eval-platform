@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { getApiBaseUrl } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -22,7 +23,7 @@ export function DeleteMetricButton({ metricId, metricName, disabled }: { metricI
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const baseUrl = getApiBaseUrl();
       const res = await fetch(`${baseUrl}/v1/configs/metrics/${metricId}`, {
         method: "DELETE",
       });

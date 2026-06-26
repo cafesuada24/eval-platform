@@ -1,6 +1,7 @@
 import { Dataset, TestCase, PaginatedTestCases, FileAsset } from "@/types/dataset";
+import { getApiBaseUrl } from "@/lib/utils";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE = getApiBaseUrl();
 const BASE_URL = `${API_BASE}/v1/datasets`;
 
 export async function fetchDataset(id: string): Promise<Dataset> {

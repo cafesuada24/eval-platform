@@ -6,7 +6,7 @@ import { Save, Play, X, Pencil } from "lucide-react"
 import { PipelineMetricCard } from "@/components/pipelines/PipelineMetricCard"
 import { MetricSelectorSheet } from "@/components/pipelines/MetricSelectorSheet"
 import { toast } from "sonner"
-import { cn } from "@/lib/utils"
+import { cn, getApiBaseUrl } from "@/lib/utils"
 
 import { Pipeline, Metric } from "@/lib/types"
 import { Thresholds } from "@/components/pipelines/ThresholdBuilder"
@@ -84,7 +84,7 @@ export function PipelineEditor({ initialPipeline, availableMetrics }: Props) {
     setIsSaving(true);
     try {
       const isNew = !pipeline.id;
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const API_BASE_URL = getApiBaseUrl();
       
       const url = isNew 
         ? `${API_BASE_URL}/v1/configs/pipelines`

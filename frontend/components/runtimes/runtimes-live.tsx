@@ -5,8 +5,9 @@ import { useSearchParams } from "next/navigation";
 import { swrFetcher } from "@/hooks/use-swr-fetcher";
 import { RuntimeState } from "@/lib/types";
 import { RuntimeTable } from "@/components/runtimes/runtime-table";
+import { getApiBaseUrl } from "@/lib/utils";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE = getApiBaseUrl();
 const PAGE_SIZE = 12;
 
 export function RuntimesLive() {
