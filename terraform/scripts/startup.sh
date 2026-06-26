@@ -53,8 +53,11 @@ NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 EOF
 chmod 600 .env
 
-# Create Database Volume Path
+# Create Database Volume Path and seed default metrics/prompts
+echo "=== Seeding default metrics and prompts to persistent volume ==="
 mkdir -p data/fixtures
+cp -r backend/fixtures/default_metrics data/fixtures/
+cp -r backend/fixtures/prompts data/fixtures/
 chown -R ubuntu:ubuntu /home/ubuntu/eval-platform
 
 # Spin Up Containers
