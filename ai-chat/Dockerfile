@@ -45,3 +45,9 @@ USER appuser
 
 # Set runtime working directory to ai-chat so it matches the expected local files
 WORKDIR /app/ai-chat
+
+# Expose Streamlit port
+EXPOSE 8501
+
+# Start Streamlit application
+CMD ["streamlit", "run", "main.py", "--server.port=8501", "--server.address=0.0.0.0"]
