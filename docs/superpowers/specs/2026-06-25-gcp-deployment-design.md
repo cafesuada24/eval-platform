@@ -59,12 +59,14 @@ Infrastructure is managed via Terraform located in `terraform/`.
 
 ### Resource Manifest
 * **Provider:** `hashicorp/google`
+* **VPC Network:** `google_compute_network.eval_vpc`
+  * Custom network named `eval-platform-vpc` with `auto_create_subnetworks = true` to avoid relying on a default project network.
 * **VM Instance:** `google_compute_instance.eval_vm`
   * **Machine Type:** `e2-medium` (2 vCPUs, 4 GB Memory)
   * **OS Disk:** 30 GB PD-Balanced, Ubuntu 22.04 LTS Minimal
-  * **Network:** Default network with ephemeral external IP
+  * **Network:** Connected to the custom `eval-platform-vpc` network with ephemeral external IP
 * **Firewall Rule:** `google_compute_firewall.allow_ssh`
-  * Allows TCP ports `22` (SSH), `3000` (Frontend), and `8000` (Backend API).
+  * Allows TCP ports `22` (SSH), `3000` (Frontend), and `8000` (Backend API) on the custom VPC.
 * **Service Account:** `google_service_account.eval_sa`
   * Dedicated service account with minimal IAM execution roles.
 
@@ -162,7 +164,7 @@ echo "=== Deployment Successfully Completed ==="
    next_public_api_url     = "http://TEMP_IP_PLACEHOLDER:8000"
    # cloudflare_tunnel_token is omitted or set to ""
    ```
-3. Run Terraform to spin up the VM:
+3. Run Terraform to spin up the VPC network, firewall, and GCE instance:
    ```bash
    terraform init
    terraform apply
@@ -200,7 +202,7 @@ cloudflare_tunnel_token = "eyJhbGciOiJ..." # Copy the token shown in the Cloudfl
 next_public_api_url     = "https://eval-api.yourdomain.com"
 ```
 
-Apply the configurations to provision the GCE VM:
+Apply the configurations to provision the GCP resources:
 ```bash
 terraform init
 terraform apply

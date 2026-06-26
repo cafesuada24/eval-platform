@@ -68,6 +68,7 @@ variable "google_api_key" {
 variable "cloudflare_tunnel_token" {
   type        = string
   sensitive   = true
+  default     = ""
   description = "Cloudflare Tunnel Token for secure ingress."
 }
 
@@ -117,20 +118,25 @@ git commit -m "infra: initialize terraform providers and variables"
 
 - [ ] **Step 1: Create `terraform/main.tf`**
 
-Define the service account, firewall rules, and Compute Engine instance with GCE metadata mapping:
+Define the service account, dedicated VPC network, firewall rules, and Compute Engine instance with GCE metadata mapping:
 ```hcl
 resource "google_service_account" "eval_sa" {
   account_id   = "eval-platform-sa"
   display_name = "EvalPlatform VM Service Account"
 }
 
+resource "google_compute_network" "eval_vpc" {
+  name                    = "eval-platform-vpc"
+  auto_create_subnetworks = true
+}
+
 resource "google_compute_firewall" "allow_ssh" {
   name    = "eval-allow-ssh"
-  network = "default"
+  network = google_compute_network.eval_vpc.name
 
   allow {
     protocol = "tcp"
-    ports    = ["22"]
+    ports    = ["22", "3000", "8000"]
   }
 
   source_ranges = ["0.0.0.0/0"]
@@ -152,7 +158,7 @@ resource "google_compute_instance" "eval_vm" {
   }
 
   network_interface {
-    network = "default"
+    network = google_compute_network.eval_vpc.name
     access_config {
       // Allocate an ephemeral public IP for SSH and outbound updates
     }
@@ -255,7 +261,13 @@ chown -R ubuntu:ubuntu /home/ubuntu/eval-platform
 
 # Spin Up Containers
 echo "=== Launching Docker Compose Workloads ==="
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+if [ -z "$CLOUDFLARE_TUNNEL_TOKEN" ]; then
+  echo "No Cloudflare Tunnel Token detected. Running in Direct IP mode (excluding tunnel)."
+  docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d backend frontend
+else
+  echo "Cloudflare Tunnel Token detected. Running all services including tunnel."
+  docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+fi
 
 echo "=== Deployment Successfully Completed ==="
 ```
