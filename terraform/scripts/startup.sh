@@ -23,11 +23,24 @@ GOOGLE_API_KEY=$(curl -H "Metadata-Flavor: Google" "$METADATA_URL/google_api_key
 CLOUDFLARE_TUNNEL_TOKEN=$(curl -H "Metadata-Flavor: Google" "$METADATA_URL/cloudflare_tunnel_token")
 NEXT_PUBLIC_API_URL=$(curl -H "Metadata-Flavor: Google" "$METADATA_URL/next_public_api_url")
 
+# Automatically detect external IP if NEXT_PUBLIC_API_URL is empty
+if [ -z "$NEXT_PUBLIC_API_URL" ]; then
+  echo "NEXT_PUBLIC_API_URL is empty. Querying GCP Metadata Server for VM's public IP..."
+  VM_PUBLIC_IP=$(curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip")
+  if [ -n "$VM_PUBLIC_IP" ]; then
+    NEXT_PUBLIC_API_URL="http://${VM_PUBLIC_IP}:8000"
+    echo "Automatically set NEXT_PUBLIC_API_URL to $NEXT_PUBLIC_API_URL"
+  else
+    echo "Failed to query external IP from metadata server. Falling back to localhost."
+    NEXT_PUBLIC_API_URL="http://localhost:8000"
+  fi
+fi
+
 # Setup App Directory
 cd /home/ubuntu
 if [ ! -d "eval-platform" ]; then
   echo "=== Cloning Repository ==="
-  git clone https://github.com/your-username/eval-platform.git
+  git clone https://github.com/cafesuada24/eval-platform.git
 fi
 cd eval-platform
 

@@ -30,5 +30,6 @@ variable "cloudflare_tunnel_token" {
 
 variable "next_public_api_url" {
   type        = string
+  default     = ""
   description = "Next.js build-time API URL endpoint."
 }
