@@ -29,7 +29,7 @@ graph TD
 
     subgraph Mode 2: Direct Public IP Ingress
         User2([User Browser]) -->|HTTP Port 3000| Frontend2[Next.js standalone:3000]
-        User2 -->|HTTP Port 8000| Backend2[FastAPI backend:8000]
+        Frontend2 -->|Internal Docker Proxy| Backend2[FastAPI backend:8000]
     end
 
     subgraph GCP Compute Engine VM [GCP GCE Instance: eval-platform-demo]
@@ -47,7 +47,7 @@ graph TD
 
 ### Components
 1. **Cloudflare Tunnel Client Container (`tunnel`):** Established outbound connection to Cloudflare. Runs conditionally only if a tunnel token is provided.
-2. **Frontend Container (`frontend`):** Standalone Next.js 16 Web Dashboard serving the metrics UI.
+2. **Frontend Container (`frontend`):** Standalone Next.js 16 Web Dashboard serving the metrics UI. Internally proxies `/api/*` to `http://backend:8000/*` to resolve hairpin NAT routing and CORS issues.
 3. **Backend Container (`backend`):** FastAPI app managing telemetry ingestion, session tracking, and evaluations.
 4. **Data Persistence (`ChromaDB`):** Persistent local directory bind-mounted on the GCE boot disk (`/home/ubuntu/eval-platform/data/fixtures`).
 
@@ -74,7 +74,7 @@ Infrastructure is managed via Terraform located in `terraform/`.
 Terraform injects application secrets into GCE Instance Metadata:
 - `google_api_key`
 - `cloudflare_tunnel_token` (Optional: set to `""` for Direct IP mode)
-- `next_public_api_url` (Optional: set to `""` for Direct IP mode to trigger automatic IP detection)
+- `next_public_api_url` (Optional: set to `""` or `"/api"` for Direct IP mode to trigger Next.js reverse proxy)
 
 ---
 
@@ -109,17 +109,10 @@ GOOGLE_API_KEY=$(curl -H "Metadata-Flavor: Google" "$METADATA_URL/google_api_key
 CLOUDFLARE_TUNNEL_TOKEN=$(curl -H "Metadata-Flavor: Google" "$METADATA_URL/cloudflare_tunnel_token")
 NEXT_PUBLIC_API_URL=$(curl -H "Metadata-Flavor: Google" "$METADATA_URL/next_public_api_url")
 
-# Automatically detect external IP if NEXT_PUBLIC_API_URL is empty
+# Automatically set relative API path if NEXT_PUBLIC_API_URL is empty (triggers Next.js reverse proxy)
 if [ -z "$NEXT_PUBLIC_API_URL" ]; then
-  echo "NEXT_PUBLIC_API_URL is empty. Querying GCP Metadata Server for VM's public IP..."
-  VM_PUBLIC_IP=$(curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip")
-  if [ -n "$VM_PUBLIC_IP" ]; then
-    NEXT_PUBLIC_API_URL="http://${VM_PUBLIC_IP}:8000"
-    echo "Automatically set NEXT_PUBLIC_API_URL to $NEXT_PUBLIC_API_URL"
-  else
-    echo "Failed to query external IP from metadata server. Falling back to localhost."
-    NEXT_PUBLIC_API_URL="http://localhost:8000"
-  fi
+  echo "NEXT_PUBLIC_API_URL is empty. Setting to relative path /api to utilize Next.js API proxy."
+  NEXT_PUBLIC_API_URL="/api"
 fi
 
 # Setup App Directory
@@ -186,7 +179,7 @@ echo "=== Deployment Successfully Completed ==="
    ```
 
 #### Step 2: Access the Application
-The GCE startup script will automatically detect the VM's public IP, write it to `.env`, and launch the Docker services. No second Terraform apply is needed.
+The GCE startup script will automatically configure Next.js to use the internal reverse proxy to resolve API calls, keeping it safe and fully automated.
 1. Note the output `vm_external_ip` from the Terraform output in your terminal (e.g. `34.120.10.11`).
 2. Wait 2-3 minutes for the VM setup to complete.
 3. Open `http://34.120.10.11:3000` in your web browser.
