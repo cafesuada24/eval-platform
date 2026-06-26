@@ -74,7 +74,7 @@ Infrastructure is managed via Terraform located in `terraform/`.
 Terraform injects application secrets into GCE Instance Metadata:
 - `google_api_key`
 - `cloudflare_tunnel_token` (Optional: set to `""` for Direct IP mode)
-- `next_public_api_url`
+- `next_public_api_url` (Optional: set to `""` for Direct IP mode to trigger automatic IP detection)
 
 ---
 
@@ -108,6 +108,19 @@ METADATA_URL="http://metadata.google.internal/computeMetadata/v1/instance/attrib
 GOOGLE_API_KEY=$(curl -H "Metadata-Flavor: Google" "$METADATA_URL/google_api_key")
 CLOUDFLARE_TUNNEL_TOKEN=$(curl -H "Metadata-Flavor: Google" "$METADATA_URL/cloudflare_tunnel_token")
 NEXT_PUBLIC_API_URL=$(curl -H "Metadata-Flavor: Google" "$METADATA_URL/next_public_api_url")
+
+# Automatically detect external IP if NEXT_PUBLIC_API_URL is empty
+if [ -z "$NEXT_PUBLIC_API_URL" ]; then
+  echo "NEXT_PUBLIC_API_URL is empty. Querying GCP Metadata Server for VM's public IP..."
+  VM_PUBLIC_IP=$(curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip")
+  if [ -n "$VM_PUBLIC_IP" ]; then
+    NEXT_PUBLIC_API_URL="http://${VM_PUBLIC_IP}:8000"
+    echo "Automatically set NEXT_PUBLIC_API_URL to $NEXT_PUBLIC_API_URL"
+  else
+    echo "Failed to query external IP from metadata server. Falling back to localhost."
+    NEXT_PUBLIC_API_URL="http://localhost:8000"
+  fi
+fi
 
 # Setup App Directory
 cd /home/ubuntu
@@ -161,28 +174,19 @@ echo "=== Deployment Successfully Completed ==="
    ```hcl
    project_id              = "your-gcp-project-id"
    google_api_key          = "AIzaSy..."
-   next_public_api_url     = "http://TEMP_IP_PLACEHOLDER:8000"
-   # cloudflare_tunnel_token is omitted or set to ""
+   # cloudflare_tunnel_token and next_public_api_url are omitted or set to ""
    ```
 3. Run Terraform to spin up the VPC network, firewall, and GCE instance:
    ```bash
    terraform init
    terraform apply
    ```
-4. Note the output `vm_external_ip` from the terminal (e.g. `34.120.10.11`).
 
-#### Step 2: Update variables with VM Public IP
-1. Edit `terraform.tfvars` and update `next_public_api_url` with the VM's public IP:
-   ```hcl
-   next_public_api_url     = "http://34.120.10.11:8000"
-   ```
-2. Re-run `terraform apply` to apply the metadata update to GCE and rebuild containers with the correct Next.js build-time variables:
-   ```bash
-   terraform apply
-   ```
-
-#### Step 3: Access
-Open `http://34.120.10.11:3000` in your web browser.
+#### Step 2: Access the Application
+The GCE startup script will automatically detect the VM's public IP, write it to `.env`, and launch the Docker services. No second Terraform apply is needed.
+1. Note the output `vm_external_ip` from the Terraform output in your terminal (e.g. `34.120.10.11`).
+2. Wait 2-3 minutes for the VM setup to complete.
+3. Open `http://34.120.10.11:3000` in your web browser.
 
 ---
 

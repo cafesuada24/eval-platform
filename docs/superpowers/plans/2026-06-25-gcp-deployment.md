@@ -74,6 +74,7 @@ variable "cloudflare_tunnel_token" {
 
 variable "next_public_api_url" {
   type        = string
+  default     = ""
   description = "Next.js build-time API URL endpoint."
 }
 ```
@@ -224,7 +225,7 @@ apt-get install -y curl git apt-transport-https ca-certificates gnupg lsb-releas
 # Install Docker Engine
 echo "=== Installing Docker ==="
 mkdir -p /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+curl -fsSL https://download.google.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 echo \
   "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
   $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
@@ -237,6 +238,19 @@ METADATA_URL="http://metadata.google.internal/computeMetadata/v1/instance/attrib
 GOOGLE_API_KEY=$(curl -H "Metadata-Flavor: Google" "$METADATA_URL/google_api_key")
 CLOUDFLARE_TUNNEL_TOKEN=$(curl -H "Metadata-Flavor: Google" "$METADATA_URL/cloudflare_tunnel_token")
 NEXT_PUBLIC_API_URL=$(curl -H "Metadata-Flavor: Google" "$METADATA_URL/next_public_api_url")
+
+# Automatically detect external IP if NEXT_PUBLIC_API_URL is empty
+if [ -z "$NEXT_PUBLIC_API_URL" ]; then
+  echo "NEXT_PUBLIC_API_URL is empty. Querying GCP Metadata Server for VM's public IP..."
+  VM_PUBLIC_IP=$(curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip")
+  if [ -n "$VM_PUBLIC_IP" ]; then
+    NEXT_PUBLIC_API_URL="http://${VM_PUBLIC_IP}:8000"
+    echo "Automatically set NEXT_PUBLIC_API_URL to $NEXT_PUBLIC_API_URL"
+  else
+    echo "Failed to query external IP from metadata server. Falling back to localhost."
+    NEXT_PUBLIC_API_URL="http://localhost:8000"
+  fi
+fi
 
 # Setup App Directory
 cd /home/ubuntu
