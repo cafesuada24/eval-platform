@@ -227,7 +227,7 @@ echo "=== Installing Docker ==="
 mkdir -p /etc/apt/keyrings
 curl -fsSL https://download.google.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.google.com/linux/ubuntu \
   $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
 apt-get update
 apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
@@ -269,8 +269,11 @@ NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 EOF
 chmod 600 .env
 
-# Create Database Volume Path
+# Create Database Volume Path and seed default metrics/prompts
+echo "=== Seeding default metrics and prompts to persistent volume ==="
 mkdir -p data/fixtures
+cp -r backend/fixtures/default_metrics data/fixtures/
+cp -r backend/fixtures/prompts data/fixtures/
 chown -R ubuntu:ubuntu /home/ubuntu/eval-platform
 
 # Spin Up Containers
